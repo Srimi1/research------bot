@@ -136,10 +136,15 @@ a {
   align-items: center;
   justify-content: center;
   width: 37px;
-  height: 41px;
-  background: var(--green);
-  color: #f4f6ed;
-  border-radius: 11px 11px 11px 2px;
+  height: 37px;
+  flex: none;
+}
+.brand-mark > img,
+.welcome-icon > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 25%;
 }
 .brand strong {
   display: block;
@@ -1626,14 +1631,6 @@ h1 {
   width: 82px;
   height: 82px;
   margin: 0 auto 26px;
-  color: #719459;
-  background: #eaf0e0;
-  border: 1px solid #dfe8d4;
-  border-radius: 22px 22px 22px 5px;
-  transform: rotate(-4deg);
-}
-.welcome-icon > svg {
-  transform: rotate(4deg);
 }
 .welcome > .eyebrow {
   font-size: 10px;
@@ -1992,7 +1989,7 @@ h1 {
     font-size: 8px;
   }
   .brand-mark {
-    height: 36px;
+    height: 32px;
     width: 32px;
   }
   .main {
@@ -2149,7 +2146,7 @@ h1 {
   }
   .brand-mark {
     width: 35px;
-    height: 39px;
+    height: 35px;
   }
   .main {
     margin-left: 0;
@@ -2283,11 +2280,7 @@ h1 {
   .welcome-icon {
     width: 68px;
     height: 68px;
-    border-radius: 18px 18px 18px 3px;
     margin-bottom: 24px;
-  }
-  .welcome-icon > svg {
-    width: 30px;
   }
   .welcome h1 {
     font-size: 36px;

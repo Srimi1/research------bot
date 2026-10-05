@@ -1374,7 +1374,7 @@ export default function App() {
       <aside className={`sidebar ${mobileSidebar ? 'sidebar-open' : ''}`}>
         <div className="brand">
           <span className="brand-mark">
-            <Leaf size={23} strokeWidth={1.7} />
+            <img src="./app-icon.png" alt="" width={37} height={37} />
           </span>
           <div>
             <strong>Research Bot</strong>
@@ -1497,7 +1497,7 @@ export default function App() {
         ) : !detail ? (
           <div className="welcome">
             <span className="welcome-icon">
-              <Leaf size={36} strokeWidth={1.3} />
+              <img src="./app-icon.png" alt="" width={82} height={82} />
             </span>
             <span className="eyebrow">Human-led research</span>
             <h1>

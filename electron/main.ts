@@ -95,12 +95,16 @@ app.whenReady().then(() => {
     decrypt: (b: Buffer) => safeStorage.decryptString(b),
   };
   auth = new AuthService(join(app.getPath('userData'), 'account'), url => shell.openExternal(url), credentials);
+  const appIcon = app.isPackaged
+    ? join(process.resourcesPath, 'app-icon.png')
+    : join(app.getAppPath(), 'public/app-icon.png');
   win = new BrowserWindow({
     width: 1440,
     height: 950,
     minWidth: 860,
     minHeight: 620,
     title: 'Research Bot',
+    icon: appIcon,
     backgroundColor: '#f6f5ef',
     webPreferences: {
       preload: join(__dirname, 'preload.cjs'),

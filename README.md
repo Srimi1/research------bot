@@ -1,5 +1,7 @@
 # Research Bot
 
+<img src="public/app-icon.png" alt="Research Bot app icon: a book, magnifying glass, and leaf" width="96" />
+
 A personal research workspace for sustainability and any other subject. You lead the research; specialist AI agents help you improve grammar, find evidence, explore ideas, learn methods, and turn rough thoughts into a practical plan.
 
 ## Project status

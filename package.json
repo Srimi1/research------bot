@@ -58,6 +58,7 @@
     "publish": [],
     "appId": "com.researchbot.desktop",
     "productName": "Research Bot",
+    "icon": "public/app-icon.png",
     "directories": {
       "output": "release"
     },
@@ -68,6 +69,12 @@
       "LICENSE",
       "package.json"
     ],
+    "extraResources": [
+      {
+        "from": "public/app-icon.png",
+        "to": "app-icon.png"
+      }
+    ],
     "linux": {
       "target": [
         "AppImage"
@@ -76,11 +83,13 @@
       "syncDesktopName": true
     },
     "win": {
+      "icon": "build/icon.ico",
       "target": [
         "nsis"
       ]
     },
     "mac": {
+      "icon": "build/icon.icns",
       "target": [
         "dmg"
       ]

@@ -1,0 +1,45 @@
+name: Publish desktop beta
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to build
+        required: true
+        default: v0.1.0
+
+permissions:
+  contents: write
+
+concurrency:
+  group: desktop-release-${{ github.event.release.tag_name || inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    env:
+      RESEARCH_RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - name: Package Linux app
+        run: npx electron-builder --linux AppImage --publish never
+      - name: Prepare source and checksums
+        run: |
+          git archive --format=zip --prefix=research-bot/ --output=release/research-bot.zip HEAD
+          cd release
+          sha256sum -- *.AppImage research-bot.zip > SHA256SUMS.txt
+      - name: Upload release files
+        run: gh release upload "$RESEARCH_RELEASE_TAG" release/*.AppImage release/research-bot.zip release/SHA256SUMS.txt --repo "$GITHUB_REPOSITORY" --clobber

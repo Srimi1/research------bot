@@ -37,9 +37,13 @@ try {
   await page.waitForFunction(() => document.querySelector('#research-notes')?.value === 'Second draft');
 
   // A backend failure must arrive as a plain sentence, without Electron's IPC prefix.
+  // Clear the success notice first so the check cannot read it instead of the error.
+  await page.getByRole('button', { name: 'Dismiss notification' }).click();
+  await toast(page).waitFor({ state: 'detached' });
   await page.getByRole('button', { name: 'Redo', exact: true }).click();
-  await toast(page).waitFor();
-  const message = await toast(page).innerText();
+  const error = page.locator('.toast.toast-error');
+  await error.waitFor();
+  const message = await error.innerText();
   assert.match(message, /There is no undone change to restore\./);
   assert.doesNotMatch(message, /Error invoking remote method|Error:/);
   await page.getByRole('button', { name: 'Dismiss notification' }).click();

@@ -61,3 +61,37 @@ jobs:
           file="$(sed -n 's/^path: //p' "$manifest")"
           test -f "release/$file" || { echo "::error::$manifest points at $file, which was not built"; exit 1; }
           echo "$manifest -> $file"
+
+  # Builds the Android app the way a release does, but debug-signed, and runs Android lint.
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: android-actions/setup-android@v3
+      - run: npm ci
+      - run: npm run build:android
+      - name: Build and lint
+        working-directory: android
+        run: ./gradlew --no-daemon assembleDebug lintDebug
+      - name: Check the APK carries the package.json version
+        run: |
+          apk=android/app/build/outputs/apk/debug/app-debug.apk
+          aapt="$(ls "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -1)"
+          version="$("$aapt" dump badging "$apk" | sed -n "s/.*versionName='\([^']*\)'.*/\1/p")"
+          expected="$(node -p "require('./package.json').version")"
+          echo "APK version $version"
+          test "$version" = "$expected" || { echo "::error::APK version $version does not match package.json $expected"; exit 1; }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-lint
+          path: android/app/build/reports/lint-results-debug.html
+          if-no-files-found: ignore

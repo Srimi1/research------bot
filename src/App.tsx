@@ -41,7 +41,8 @@ import type {
   Settings,
   Source,
 } from './shared/types';
-import { isBrowserPreview } from './browser-api';
+import { isBrowserPreview, platform } from './platform';
+import { onBack } from './back';
 import { buildAgentInput } from './shared/agent-input';
 
 const api = () => window.research;
@@ -131,8 +132,10 @@ function Modal({
       }
     };
     document.addEventListener('keydown', listener);
+    const removeBack = onBack(() => closeRef.current());
     return () => {
       cancelAnimationFrame(frame);
+      removeBack();
       document.removeEventListener('keydown', listener);
       previous?.focus();
     };
@@ -302,7 +305,9 @@ function AccountSettings({
           <p className="muted">
             {account?.signedIn
               ? account.email || 'Requests use your eligible ChatGPT plan.'
-              : 'Use your eligible plan with the desktop app.'}
+              : isBrowserPreview
+                ? 'Use your eligible plan with the desktop or Android app.'
+                : 'Sign in through your browser to use your eligible ChatGPT plan.'}
           </p>
         </div>
         {account?.signedIn && <span className="tag green">Connected</span>}
@@ -402,8 +407,10 @@ function AccountSettings({
             Check for updates automatically
           </label>
           <p className="help">
-            Downloads new versions of Research Bot from its GitHub Releases page and asks before restarting. Only the
-            app version is checked; nothing about your research is sent.
+            {platform === 'android'
+              ? 'Downloads new versions of Research Bot from its GitHub Releases page, checks they are signed by the same key, and asks before installing.'
+              : 'Downloads new versions of Research Bot from its GitHub Releases page and asks before restarting.'}{' '}
+            Only the app version is checked; nothing about your research is sent.
           </p>
         </>
       )}
@@ -1109,6 +1116,7 @@ export default function App() {
   const [selectedRun, setSelectedRun] = useState<string | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
   const [mobileSidebar, setMobileSidebar] = useState(false);
+  useEffect(() => (mobileSidebar ? onBack(() => setMobileSidebar(false)) : undefined), [mobileSidebar]);
   const versions = useRef(new Map<string, number>());
   const saved = useRef(new Map<string, string>());
   const saveQueue = useRef<Promise<unknown>>(Promise.resolve());
@@ -1226,11 +1234,17 @@ export default function App() {
         persist().catch(error => setError(errorText(error)));
       }
     };
+    // Phones rarely unload a page; they hide it and may stop the app later. Save on the way out.
+    const hidden = () => {
+      if (document.visibilityState === 'hidden') persist().catch(error => setError(errorText(error)));
+    };
     window.addEventListener('beforeunload', unload);
     window.addEventListener('keydown', keyboard);
+    document.addEventListener('visibilitychange', hidden);
     return () => {
       window.removeEventListener('beforeunload', unload);
       window.removeEventListener('keydown', keyboard);
+      document.removeEventListener('visibilitychange', hidden);
     };
   }, [persist]);
   const selectProject = async (id: string) => {
@@ -1495,7 +1509,9 @@ export default function App() {
         </div>
         {isBrowserPreview && (
           <div className="preview-banner">
-            <span>Desktop preview · Projects save in this browser. ChatGPT agents require the desktop app.</span>
+            <span>
+              Browser preview · Projects save in this browser. ChatGPT agents require the desktop or Android app.
+            </span>
             <button onClick={() => setSettingsOpen(true)}>
               Account details
               <ArrowRight size={12} />
@@ -2153,7 +2169,7 @@ export default function App() {
         <footer className="app-footer">
           <Leaf size={13} />
           <span>Research is a practice. Take your time.</span>
-          <span>Research Bot · {isBrowserPreview ? 'Preview' : 'Desktop'}</span>
+          <span>Research Bot · {isBrowserPreview ? 'Preview' : platform === 'android' ? 'Android' : 'Desktop'}</span>
         </footer>
       </main>
       {(error || notice) && (

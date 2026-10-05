@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#24503F</color>
+    <color name="colorPrimaryDark">#1C3B30</color>
+    <color name="colorAccent">#476344</color>
+    <!-- Matches the interface's paper background (src/styles.css). -->
+    <color name="paper">#F6F5EF</color>
+</resources>

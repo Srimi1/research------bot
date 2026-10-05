@@ -3,7 +3,7 @@ import { crossrefSearchUrl, parseCrossref } from './shared/crossref';
 import { markdownExport } from './shared/export';
 import { canonicalSourceUrl, normalizeDoi } from './shared/source-keys';
 
-export const isBrowserPreview = !window.research;
+export { isBrowserPreview } from './platform';
 const KEY = 'research-bot-preview-v1';
 interface Store {
   projects: ProjectDetail[];
@@ -39,7 +39,7 @@ const account: Account = {
   signedIn: false,
   storageAvailable: false,
   message:
-    'This is a browser preview. Install the desktop app to sign in with ChatGPT. Projects here are stored in this browser.',
+    'This is a browser preview. Install the desktop or Android app to sign in with ChatGPT. Projects here are stored in this browser.',
 };
 const iso = () => new Date().toISOString();
 const listeners = new Set<(event: RunEvent) => void>();

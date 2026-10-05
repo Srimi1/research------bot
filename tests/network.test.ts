@@ -10,14 +10,23 @@ test('missing, unreadable or non-PEM CA bundles are skipped with a warning inste
   const directory = mkdtempSync(join(tmpdir(), 'research-ca-'));
   try {
     const system = getCACertificates('default').length;
-    const valid = join(directory, 'corporate.pem'); writeFileSync(valid, getCACertificates('default')[0]);
-    const junk = join(directory, 'junk.txt'); writeFileSync(junk, 'not a certificate');
+    const valid = join(directory, 'corporate.pem');
+    writeFileSync(valid, getCACertificates('default')[0]);
+    const junk = join(directory, 'junk.txt');
+    writeFileSync(junk, 'not a certificate');
     const warnings: string[] = [];
-    const certificates = loadCertificates([join(directory, 'missing.pem'), junk, valid, directory], undefined, message => warnings.push(message));
+    const certificates = loadCertificates(
+      [join(directory, 'missing.pem'), junk, valid, directory],
+      undefined,
+      message => warnings.push(message),
+    );
     assert.equal(certificates.length, system + 1);
     assert.equal(warnings.length, 3);
-    assert.match(warnings[0], /missing\.pem/); assert.match(warnings[1], /no PEM certificates/);
-  } finally { rmSync(directory, { recursive: true, force: true }); }
+    assert.match(warnings[0], /missing\.pem/);
+    assert.match(warnings[1], /no PEM certificates/);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 test('with no extra paths only the system roots are used', () => {

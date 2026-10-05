@@ -14,18 +14,29 @@ function label(issue: ZodIssue): string {
 
 function describeIssue(issue: ZodIssue): string {
   const field = label(issue);
-  const detail = issue as ZodIssue & { origin?: string; maximum?: number | bigint; minimum?: number | bigint; format?: string };
+  const detail = issue as ZodIssue & {
+    origin?: string;
+    maximum?: number | bigint;
+    minimum?: number | bigint;
+    format?: string;
+  };
   switch (issue.code) {
     case 'too_big':
       if (detail.origin === 'string') return `${field} is too long. The limit is ${detail.maximum} characters.`;
       if (detail.origin === 'array') return `${field} has too many items. The limit is ${detail.maximum}.`;
       return `${field} must be at most ${detail.maximum}.`;
     case 'too_small':
-      if (detail.origin === 'string') return Number(detail.minimum) <= 1 ? `${field} cannot be empty.` : `${field} must be at least ${detail.minimum} characters.`;
-      if (detail.origin === 'array') return `${field} needs at least ${detail.minimum} item${Number(detail.minimum) === 1 ? '' : 's'}.`;
+      if (detail.origin === 'string')
+        return Number(detail.minimum) <= 1
+          ? `${field} cannot be empty.`
+          : `${field} must be at least ${detail.minimum} characters.`;
+      if (detail.origin === 'array')
+        return `${field} needs at least ${detail.minimum} item${Number(detail.minimum) === 1 ? '' : 's'}.`;
       return `${field} must be at least ${detail.minimum}.`;
     case 'invalid_format':
-      return detail.format === 'uuid' ? 'That item is no longer valid. Reload the project and try again.' : `${field} is not in a valid format.`;
+      return detail.format === 'uuid'
+        ? 'That item is no longer valid. Reload the project and try again.'
+        : `${field} is not in a valid format.`;
     case 'invalid_type':
       return `${field} is missing or has the wrong type.`;
     case 'custom':
@@ -46,6 +57,9 @@ export function describeError(error: unknown): string {
 }
 
 export async function toResult<T>(action: () => T | Promise<T>): Promise<IpcResult<T>> {
-  try { return { ok: true, value: await action() }; }
-  catch (error) { return { ok: false, message: describeError(error) }; }
+  try {
+    return { ok: true, value: await action() };
+  } catch (error) {
+    return { ok: false, message: describeError(error) };
+  }
 }

@@ -6,4 +6,8 @@ import './styles.css';
 
 if (!window.research) window.research = browserAPI;
 
-createRoot(document.getElementById('root')!).render(<React.StrictMode><App /></React.StrictMode>);
+createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+);

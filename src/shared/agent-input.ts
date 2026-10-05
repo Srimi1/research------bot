@@ -1,8 +1,16 @@
 import { MAX_AGENT_INPUT, MAX_SEARCH_QUERY } from './limits';
 import type { Role } from './types';
 
-export interface AgentDraft { question: string; notes: string; taskInput: string; }
-export interface AgentInput { text: string; /** Shown to the researcher when part of their notes was not shared. */ notice?: string; }
+export interface AgentDraft {
+  question: string;
+  notes: string;
+  taskInput: string;
+}
+export interface AgentInput {
+  text: string;
+  /** Shown to the researcher when part of their notes was not shared. */
+  notice?: string;
+}
 
 const count = (value: number) => value.toLocaleString('en-US');
 const FALLBACK_QUERY = 500;
@@ -38,7 +46,9 @@ export function buildAgentInput(role: Role, draft: AgentDraft): AgentInput {
     if (!notes.trim()) throw new Error('Write a few sentences in your notes before reviewing grammar.');
     // A grammar review rewrites the notes from the reviewed text, so it must never see a partial copy.
     if (notes.length > MAX_AGENT_INPUT) {
-      throw new Error(`Your notes are ${count(notes.length)} characters long, and grammar review can check up to ${count(MAX_AGENT_INPUT)} at a time. Trim or split your notes, then try again.`);
+      throw new Error(
+        `Your notes are ${count(notes.length)} characters long, and grammar review can check up to ${count(MAX_AGENT_INPUT)} at a time. Trim or split your notes, then try again.`,
+      );
     }
     return { text: notes };
   }
@@ -46,7 +56,9 @@ export function buildAgentInput(role: Role, draft: AgentDraft): AgentInput {
   if (role === 'evidence') {
     const explicit = instruction || question;
     if (explicit.length > MAX_SEARCH_QUERY) {
-      throw new Error(`Search queries can be up to ${count(MAX_SEARCH_QUERY)} characters. Shorten your search or your research question.`);
+      throw new Error(
+        `Search queries can be up to ${count(MAX_SEARCH_QUERY)} characters. Shorten your search or your research question.`,
+      );
     }
     const query = explicit || cutAt(notes.replace(/\s+/g, ' ').trim(), FALLBACK_QUERY);
     if (!query) throw new Error('Add a question, rough notes, or an instruction to begin.');
@@ -58,10 +70,13 @@ export function buildAgentInput(role: Role, draft: AgentDraft): AgentInput {
   const full = [head, notes ? `${NOTES_LABEL}${notes}` : ''].filter(Boolean).join('\n\n');
   if (full.length <= MAX_AGENT_INPUT) return { text: full };
 
-  const reserved = (head ? head.length + 2 : 0) + NOTES_LABEL.length + 2 + truncationMarker(MAX_AGENT_INPUT, notes.length).length;
+  const reserved =
+    (head ? head.length + 2 : 0) + NOTES_LABEL.length + 2 + truncationMarker(MAX_AGENT_INPUT, notes.length).length;
   const room = MAX_AGENT_INPUT - reserved;
   if (room < MIN_NOTES) {
-    throw new Error(`Your instruction and research question are too long to share with your notes. Keep them under ${count(MAX_AGENT_INPUT - MIN_NOTES - 1_000)} characters in total.`);
+    throw new Error(
+      `Your instruction and research question are too long to share with your notes. Keep them under ${count(MAX_AGENT_INPUT - MIN_NOTES - 1_000)} characters in total.`,
+    );
   }
   const kept = cutAt(notes, room);
   return {

@@ -58,4 +58,4 @@ OpenAI currently documents plan usage for local/open-source apps; paid or remote
 - [Implementation roadmap and acceptance checks](docs/roadmap.md)
 - [Agent instructions](agents/README.md)
 
-Source repository: [Srimi1/research------bot](https://github.com/Srimi1/research------bot). The project uses the repository's [MIT license](LICENSE). Linux desktop builds are available under [Releases](https://github.com/Srimi1/research------bot/releases).
+Source repository: [Srimi1/research------bot](https://github.com/Srimi1/research------bot). The project uses the repository's [MIT license](LICENSE). Linux and Windows desktop builds are available under [Releases](https://github.com/Srimi1/research------bot/releases), and installed copies update themselves from there (see [releases and updates](docs/implementation.md#releases-and-updates)).

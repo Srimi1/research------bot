@@ -11,7 +11,11 @@ interface Store {
   redo?: Record<string, string[]>;
   settings: Settings;
 }
-const defaults = (): Store => ({ projects: [], history: {}, settings: { model: '', maxRequests: 20 } });
+const defaults = (): Store => ({
+  projects: [],
+  history: {},
+  settings: { model: '', maxRequests: 20, autoUpdate: true },
+});
 function read(): Store {
   const value = localStorage.getItem(KEY);
   if (!value) return defaults();
@@ -185,7 +189,7 @@ export const browserAPI: ResearchAPI = {
     return [];
   },
   async getSettings() {
-    return structuredClone(read().settings);
+    return { ...defaults().settings, ...structuredClone(read().settings) };
   },
   async saveSettings(settings) {
     if (!Number.isInteger(settings.maxRequests) || settings.maxRequests < 1 || settings.maxRequests > 1000)

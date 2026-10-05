@@ -36,6 +36,7 @@
     "concurrently": "^9.2.0",
     "electron": "^42.0.0",
     "electron-builder": "^26.0.0",
+    "electron-updater": "^6.8.9",
     "esbuild": "^0.25.0",
     "eslint": "^9.39.5",
     "eslint-config-prettier": "10.1.8",
@@ -56,9 +57,16 @@
     "zod": "^4.1.0"
   },
   "build": {
-    "publish": [],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Srimi1",
+        "repo": "research------bot"
+      }
+    ],
     "appId": "com.researchbot.desktop",
     "productName": "Research Bot",
+    "artifactName": "research-bot-${version}-${os}-${arch}.${ext}",
     "icon": "public/app-icon.png",
     "directories": {
       "output": "release"
@@ -94,6 +102,9 @@
       "target": [
         "dmg"
       ]
+    },
+    "nsis": {
+      "artifactName": "research-bot-${version}-win-${arch}-setup.${ext}"
     }
   }
 }

@@ -1,4 +1,5 @@
 import { app, BrowserWindow, dialog, ipcMain, safeStorage, shell } from 'electron';
+import { autoUpdater } from 'electron-updater';
 import { join } from 'node:path';
 import { writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
@@ -9,6 +10,7 @@ import { Runner } from './runner';
 import { markdownExport } from '../src/shared/export';
 import { toResult } from './ipc';
 import { MAX_AGENT_INPUT } from '../src/shared/limits';
+import { startUpdates, updateBlocker } from './updater';
 const dev = process.argv.includes('--dev');
 // Tests and portable setups can point the app at a separate data folder. Must run before the instance lock.
 if (process.env.RESEARCH_BOT_USER_DATA) app.setPath('userData', process.env.RESEARCH_BOT_USER_DATA);
@@ -194,7 +196,9 @@ app.whenReady().then(() => {
   register('settings:get', () => store.getSettings());
   register('settings:save', settings =>
     store.saveSettings(
-      z.object({ model: z.string().max(200), maxRequests: z.number().int().min(1).max(1000) }).parse(settings),
+      z
+        .object({ model: z.string().max(200), maxRequests: z.number().int().min(1).max(1000), autoUpdate: z.boolean() })
+        .parse(settings),
     ),
   );
   register('agents:run', input =>
@@ -217,6 +221,27 @@ app.whenReady().then(() => {
   register('external:open', value => shell.openExternal(safeExternal(z.string().max(3000).parse(value))));
   if (dev) void win.loadURL('http://127.0.0.1:5173');
   else void win.loadFile(join(app.getAppPath(), 'dist/index.html'));
+
+  const blocker = updateBlocker({ isPackaged: app.isPackaged, dev, platform: process.platform, env: process.env });
+  if (blocker) console.info(`Automatic updates are off: ${blocker}.`);
+  else
+    startUpdates(autoUpdater, {
+      enabled: () => store.getSettings().autoUpdate,
+      askToRestart: async version => {
+        if (win.isDestroyed()) return false;
+        const { response } = await dialog.showMessageBox(win, {
+          type: 'info',
+          buttons: ['Restart now', 'Later'],
+          defaultId: 0,
+          cancelId: 1,
+          title: 'Update ready',
+          message: `Research Bot ${version} is ready to install.`,
+          detail: 'Restart to finish updating. If you choose Later, the update installs the next time you quit.',
+        });
+        return response === 0;
+      },
+      log: message => console.warn(message),
+    });
 });
 app.on('window-all-closed', () => {
   runner?.stop();

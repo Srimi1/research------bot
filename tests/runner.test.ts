@@ -116,7 +116,7 @@ test('runner stores suggestions without changing accepted notes, enforces sessio
   const store = new Store(join(dir, 'test.sqlite'));
   try {
     const detail = store.createProject({ title: 'A', topic: 'Food' });
-    store.saveSettings({ model: 'eligible-model', maxRequests: 1 });
+    store.saveSettings({ model: 'eligible-model', maxRequests: 1, autoUpdate: true });
     const events: RunEvent[] = [];
     const auth = {
       account: async () => ({ signedIn: true }),
@@ -158,7 +158,7 @@ test('cancelled and failed streams are recorded without accepting a suggestion',
   const store = new Store(join(dir, 'test.sqlite'));
   try {
     const detail = store.createProject({ title: 'A', topic: '' });
-    store.saveSettings({ model: 'eligible', maxRequests: 5 });
+    store.saveSettings({ model: 'eligible', maxRequests: 5, autoUpdate: true });
     const auth = {
       account: async () => ({ signedIn: true }),
       stream: async (_m: string, _i: string, _input: string, signal: AbortSignal) => {
@@ -237,7 +237,7 @@ test('a wrongly formatted answer is retried once within the budget; policy rejec
       role: 'brainstorm' | 'grammar' = 'brainstorm',
       text = 'food waste',
     ) => {
-      store.saveSettings({ model: 'm', maxRequests });
+      store.saveSettings({ model: 'm', maxRequests, autoUpdate: true });
       let calls = 0;
       const events: RunEvent[] = [];
       const auth = {

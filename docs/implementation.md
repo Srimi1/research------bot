@@ -37,9 +37,23 @@ These need decisions or credentials from the maintainer, so they are not automat
 
 - **Code signing.** macOS needs an Apple Developer ID certificate and notarization; Windows needs a code-signing certificate. Unsigned builds trigger Gatekeeper and SmartScreen warnings. electron-builder reads `CSC_LINK`/`CSC_KEY_PASSWORD` (and `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID` for notarization) from CI secrets.
 - **App icons.** Done: `build/icon.svg` is the source and `build/icon.png` (1024 x 1024) is what electron-builder uses for every platform. After editing the SVG, run `npm run icon` to regenerate the PNG. The browser preview uses the same artwork as `public/favicon.svg`.
-- **Auto-update.** `build.publish` is empty. Choose a provider (GitHub Releases is simplest) and add `electron-updater` if in-app updates are wanted.
-- **Windows and macOS releases.** CI packages all three platforms, but `release.yml` still uploads only the Linux AppImage.
+- **Auto-update.** Done for Windows and the Linux AppImage; see [Releases and updates](#releases-and-updates). macOS cannot update itself until the app is signed.
+- **macOS releases.** `release.yml` publishes Linux and Windows. Add a macOS job once signing is set up, since an unsigned Mac app can neither pass Gatekeeper cleanly nor update itself.
 - **Linux checks.** On Ubuntu 24.04 and later, AppArmor may block the Chromium sandbox for AppImages; test a downloaded AppImage on a clean machine. Live sign-in needs a desktop keyring (GNOME Keyring or KWallet).
 - **Crossref etiquette.** Requests identify the app by its repository URL. Crossref's faster "polite" pool also wants a contact email (`mailto`) in the user agent; add one if a project contact address exists.
+
+## Releases and updates
+
+Installed copies check [GitHub Releases](https://github.com/Srimi1/research------bot/releases) about 15 seconds after launch and every six hours. A newer version downloads in the background; the app then asks whether to restart now. Choosing **Later** installs it the next time the app quits. Updates never interrupt work: if a check fails (offline, rate limited), it is only logged.
+
+- **Where it works:** Windows (NSIS installer) and Linux (AppImage). Other Linux formats and unsigned macOS builds cannot replace themselves, so the updater stays off there.
+- **Turning it off:** clear **Check for updates automatically** in Account & preferences, or set `RESEARCH_BOT_DISABLE_UPDATES=1`.
+- **Privacy:** a check downloads the release manifest from GitHub. GitHub sees the request and its IP address, as with any download; nothing about projects, notes, or the ChatGPT account is sent.
+
+To publish a new version:
+
+1. Bump `version` in `package.json` (for example to `0.2.0`) and merge it to `main`. Auto-update only offers versions higher than the installed one.
+2. Create a GitHub release whose tag is `v` plus that version (`v0.2.0`). The release workflow refuses a tag that does not match.
+3. The workflow builds the AppImage and Windows installer and attaches them with `latest-linux.yml`, `latest.yml`, block maps, per-platform `SHA256SUMS` files, and the source archive. Installed apps pick the release up on their next check.
 
 Source and development history are maintained in [Srimi1/research------bot](https://github.com/Srimi1/research------bot). The repository's initial commit and MIT license are preserved. Desktop binaries and the source archive are attached to GitHub releases.

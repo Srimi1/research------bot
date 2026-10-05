@@ -6,7 +6,7 @@ import type { EvidenceResult, PlanStep, Project, ProjectDetail, Run, Settings, S
 import { canonicalSourceUrl, normalizeDoi } from '../src/shared/source-keys';
 
 type Row = Record<string, string | number | null>;
-const DEFAULT_SETTINGS: Settings = { model: '', maxRequests: 20 };
+const DEFAULT_SETTINGS: Settings = { model: '', maxRequests: 20, autoUpdate: true };
 const SCHEMA_VERSION = 2;
 /** Autosave writes a revision after most pauses, so history is bounded per project. */
 export const NOTE_HISTORY_LIMIT = 50;
@@ -380,16 +380,22 @@ export class Store {
 
   getSettings(): Settings {
     const row = this.db.prepare('SELECT data FROM settings WHERE id = 1').get() as Row | undefined;
-    return row ? (JSON.parse(String(row.data)) as Settings) : { ...DEFAULT_SETTINGS };
+    // Settings saved before a field existed pick up its default.
+    return row
+      ? { ...DEFAULT_SETTINGS, ...(JSON.parse(String(row.data)) as Partial<Settings>) }
+      : { ...DEFAULT_SETTINGS };
   }
 
   saveSettings(settings: Settings): void {
     text(settings.model, 'Model', 200);
     if (!Number.isSafeInteger(settings.maxRequests) || settings.maxRequests < 1 || settings.maxRequests > 1000)
       throw new Error('Request budget must be an integer between 1 and 1,000.');
+    if (typeof settings.autoUpdate !== 'boolean') throw new Error('Automatic updates must be on or off.');
     this.db
       .prepare('INSERT INTO settings(id, data) VALUES (1, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data')
-      .run(JSON.stringify({ model: settings.model, maxRequests: settings.maxRequests }));
+      .run(
+        JSON.stringify({ model: settings.model, maxRequests: settings.maxRequests, autoUpdate: settings.autoUpdate }),
+      );
   }
 
   getCache(key: string): EvidenceResult | undefined {

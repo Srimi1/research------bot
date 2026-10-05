@@ -71,7 +71,7 @@ test('projects, annotations, plans, runs, settings and source cache survive a re
     createdAt: '2026-10-05T00:00:00.000Z',
   };
   store.saveRun(run);
-  store.saveSettings({ model: 'account-authorized-model', maxRequests: 12 });
+  store.saveSettings({ model: 'account-authorized-model', maxRequests: 12, autoUpdate: true });
   const evidence: EvidenceResult = {
     kind: 'evidence',
     sources: [source],
@@ -86,7 +86,7 @@ test('projects, annotations, plans, runs, settings and source cache survive a re
   const reopened = new Store(path);
   t.after(() => reopened.close());
   assert.deepEqual(reopened.getProject(initial.id), snapshot);
-  assert.deepEqual(reopened.getSettings(), { model: 'account-authorized-model', maxRequests: 12 });
+  assert.deepEqual(reopened.getSettings(), { model: 'account-authorized-model', maxRequests: 12, autoUpdate: true });
   assert.deepEqual(reopened.getCache('crossref:building sustainability'), { ...evidence, cached: true });
   assert.equal(statSync(path).mode & 0o777, 0o600);
 });
@@ -368,4 +368,17 @@ test('runs left running by a crash are marked failed at startup; finished runs a
   assert.equal(runs.finished.status, 'completed');
   assert.equal(runs.finished.error, undefined);
   assert.equal(reopened.failInterruptedRuns(), 0);
+});
+
+test('settings saved before automatic updates existed default to on, and the choice persists', t => {
+  const { store, path } = diskStore(t);
+  const direct = new DatabaseSync(path);
+  direct
+    .prepare('INSERT INTO settings(id, data) VALUES (1, ?)')
+    .run(JSON.stringify({ model: 'older', maxRequests: 7 }));
+  direct.close();
+  assert.deepEqual(store.getSettings(), { model: 'older', maxRequests: 7, autoUpdate: true });
+  store.saveSettings({ model: 'older', maxRequests: 7, autoUpdate: false });
+  assert.equal(store.getSettings().autoUpdate, false);
+  assert.throws(() => store.saveSettings({ model: '', maxRequests: 7, autoUpdate: 'yes' as never }), /on or off/);
 });

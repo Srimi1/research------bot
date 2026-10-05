@@ -22,16 +22,28 @@ jobs:
       - run: npm run test:ui
       - run: xvfb-run -a npm run test:electron
 
-  # Windows and macOS installers have never been built in CI. This catches packaging breakage
-  # early; it produces unsigned, unpacked apps and publishes nothing.
+  # Builds what a release ships (unsigned, publishes nothing): the AppImage and NSIS installer
+  # with their auto-update manifests, plus an unpacked macOS app. Catches packaging and
+  # update-manifest breakage before a release is tagged.
   package:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            target: --linux AppImage
+            manifest: latest-linux.yml
+          - os: windows-latest
+            target: --win nsis
+            manifest: latest.yml
+          - os: macos-latest
+            target: --mac --dir
     runs-on: ${{ matrix.os }}
     env:
       CSC_IDENTITY_AUTO_DISCOVERY: false
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -39,4 +51,13 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: npm run package
+      - run: npm run build
+      - run: npx electron-builder ${{ matrix.target }} --publish never
+      - name: Check the update manifest names a built file
+        if: matrix.manifest
+        run: |
+          manifest="release/${{ matrix.manifest }}"
+          test -f "$manifest" || { echo "::error::$manifest was not generated"; exit 1; }
+          file="$(sed -n 's/^path: //p' "$manifest")"
+          test -f "release/$file" || { echo "::error::$manifest points at $file, which was not built"; exit 1; }
+          echo "$manifest -> $file"

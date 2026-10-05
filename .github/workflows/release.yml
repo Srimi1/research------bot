@@ -1,5 +1,7 @@
-name: Publish desktop beta
+name: Publish desktop release
 
+# Publishing a GitHub release builds the installers and attaches them together with the
+# update manifests (latest-linux.yml, latest.yml) that installed copies of the app read.
 on:
   release:
     types: [published]
@@ -18,11 +20,24 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  linux:
-    runs-on: ubuntu-latest
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            target: --linux AppImage
+          - os: windows-latest
+            platform: windows
+            target: --win nsis
+    runs-on: ${{ matrix.os }}
     env:
       RESEARCH_RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
       GH_TOKEN: ${{ github.token }}
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
         with:
@@ -31,21 +46,33 @@ jobs:
         with:
           node-version: 24
           cache: npm
-      - run: npm ci
-      - run: npm test
-      - run: npm run build
-      - name: Package Linux app
-        run: npx electron-builder --linux AppImage --publish never
-      - name: Prepare source and checksums
+      # Installed apps compare the version in the update manifest, which comes from package.json.
+      # A tag that disagrees would publish a release that auto-update never offers.
+      - name: Check the tag matches package.json
         run: |
-          for research_image in release/*.AppImage; do
-            research_normalized="${research_image// /-}"
-            if [ "$research_image" != "$research_normalized" ]; then
-              mv -- "$research_image" "$research_normalized"
-            fi
-          done
-          git archive --format=zip --prefix=research-bot/ --output=release/research-bot.zip HEAD
-          cd release
-          sha256sum -- *.AppImage research-bot.zip > SHA256SUMS.txt
+          expected="v$(node -p "require('./package.json').version")"
+          if [ "$expected" != "$RESEARCH_RELEASE_TAG" ]; then
+            echo "::error::Release tag $RESEARCH_RELEASE_TAG does not match package.json ($expected). Bump the version, then tag."
+            exit 1
+          fi
+      - run: npm ci
+      # The full suite runs in CI on Linux; one of its checks reads Unix file permissions.
+      - if: matrix.platform == 'linux'
+        run: npm test
+      - run: npm run build
+      - name: Package
+        run: npx electron-builder ${{ matrix.target }} --publish never
+      - name: Collect release files
+        run: |
+          mkdir upload
+          # Installers, their block maps, and the update manifests. Names come from build.artifactName
+          # and contain no spaces, so the manifests point at exactly the uploaded files.
+          cp release/research-bot-* release/latest*.yml upload/
+          if [ "${{ matrix.platform }}" = linux ]; then
+            git archive --format=zip --prefix=research-bot/ --output=upload/research-bot.zip HEAD
+          fi
+          cd upload
+          sha256sum -- * > "SHA256SUMS-${{ matrix.platform }}.txt"
+          ls -l
       - name: Upload release files
-        run: gh release upload "$RESEARCH_RELEASE_TAG" release/*.AppImage release/research-bot.zip release/SHA256SUMS.txt --repo "$GITHUB_REPOSITORY" --clobber
+        run: gh release upload "$RESEARCH_RELEASE_TAG" upload/* --repo "$GITHUB_REPOSITORY" --clobber

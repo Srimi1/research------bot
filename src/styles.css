@@ -791,6 +791,20 @@ h1 {
   font-size: 10px;
   font-weight: 400;
 }
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 17px 0 7px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #66775b;
+}
+.check-row input {
+  width: auto;
+  margin: 0;
+  accent-color: var(--green);
+}
 .task-form .field-label {
   font-size: 10px;
   margin-top: 0;

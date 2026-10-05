@@ -2,7 +2,7 @@ import type { Account, ProjectDetail, ResearchAPI, Run, RunEvent, Settings, Sour
 
 export const isBrowserPreview = !window.research;
 const KEY = 'research-bot-preview-v1';
-interface Store { projects: ProjectDetail[]; history: Record<string, string[]>; settings: Settings; }
+interface Store { projects: ProjectDetail[]; history: Record<string, string[]>; redo?: Record<string, string[]>; settings: Settings; }
 const defaults = (): Store => ({ projects: [], history: {}, settings: { model: '', maxRequests: 20 } });
 function read(): Store {
   const value = localStorage.getItem(KEY);
@@ -43,11 +43,12 @@ export const browserAPI: ResearchAPI = {
     if (detail.project.version !== input.version) throw new Error('This project changed in another window. Reopen it before saving to protect your work.');
     if (detail.project.notes !== input.notes) {
       store.history[input.id] = [...(store.history[input.id] || []), detail.project.notes].slice(-30);
+      if (store.redo) delete store.redo[input.id];
     }
     detail.project = { ...detail.project, ...input, version: input.version + 1, updatedAt: iso() };
     write(store); return structuredClone(detail.project);
   },
-  async deleteProject(id) { const store = read(); store.projects = store.projects.filter(detail => detail.project.id !== id); delete store.history[id]; write(store); },
+  async deleteProject(id) { const store = read(); store.projects = store.projects.filter(detail => detail.project.id !== id); delete store.history[id]; if (store.redo) delete store.redo[id]; write(store); },
   async saveSource(id, source) {
     if (!source.title.trim()) throw new Error('A source title is required.');
     const url = new URL(source.url);
@@ -62,7 +63,14 @@ export const browserAPI: ResearchAPI = {
   async undoNotes(id) {
     const store = read(); const detail = project(store, id); const history = store.history[id] || [];
     if (!history.length) throw new Error('There is no earlier saved version of these notes.');
+    store.redo = { ...store.redo, [id]: [...(store.redo?.[id] || []), detail.project.notes].slice(-30) };
     detail.project.notes = history.pop()!; detail.project.version++; detail.project.updatedAt = iso(); write(store); return structuredClone(detail.project);
+  },
+  async redoNotes(id) {
+    const store = read(); const detail = project(store, id); const redo = store.redo?.[id] || [];
+    if (!redo.length) throw new Error('There is no undone change to restore.');
+    store.history[id] = [...(store.history[id] || []), detail.project.notes].slice(-30);
+    detail.project.notes = redo.pop()!; detail.project.version++; detail.project.updatedAt = iso(); write(store); return structuredClone(detail.project);
   },
   async exportProject(id, format) {
     const detail = project(read(), id); const data = format === 'json' ? JSON.stringify(detail, null, 2) : markdown(detail);

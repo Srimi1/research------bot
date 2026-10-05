@@ -54,6 +54,10 @@ try{
   await page.locator('.save-indicator').filter({hasText:'Saved'}).waitFor();
   await page.getByRole('button',{name:'Undo last saved change',exact:true}).click();
   await page.waitForFunction(()=>document.querySelector('#research-notes')?.value==='He go to university.\n');
+  await page.getByRole('button',{name:'Redo',exact:true}).click();
+  await page.waitForFunction(()=>document.querySelector('#research-notes')?.value==='He goes to university.\n');
+  await page.getByRole('button',{name:'Undo last saved change',exact:true}).click();
+  await page.waitForFunction(()=>document.querySelector('#research-notes')?.value==='He go to university.\n');
   await page.getByRole('button',{name:'New project',exact:true}).click();
   await page.locator('#project-title').fill('Second project');
   await page.getByRole('button',{name:'Create project',exact:true}).click();
@@ -70,5 +74,5 @@ try{
   await page.setViewportSize({width:390,height:844});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true);
   assert.deepEqual(errors,[]);
-  console.log('UI smoke passed: persistence, source notes, plan, settings, grammar review/undo, project isolation, export, and narrow viewport.');
+  console.log('UI smoke passed: persistence, source notes, plan, settings, grammar review/undo/redo, project isolation, export, and narrow viewport.');
 }finally{await browser?.close();server.kill();}

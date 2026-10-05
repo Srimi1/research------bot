@@ -7,6 +7,8 @@ import { Store } from './store';
 import { AuthService } from './auth';
 import { Runner } from './runner';
 import { markdownExport } from './export';
+import { toResult } from './ipc';
+import { MAX_AGENT_INPUT } from '../src/shared/limits';
 const dev=process.argv.includes('--dev');
 if(!app.requestSingleInstanceLock())app.quit();
 app.on('second-instance',()=>{if(win&&!win.isDestroyed()){if(win.isMinimized())win.restore();win.focus();}});
@@ -15,7 +17,7 @@ const sourceSchema=z.object({id,title:z.string().min(1).max(2000),authors:z.arra
 const stepSchema=z.object({id,title:text,purpose:text,output:text,dependsOn:text,check:text,done:z.boolean()});
 let win:BrowserWindow;let store:Store;let auth:AuthService;let runner:Runner;
 function safeExternal(url:string){const parsed=new URL(url);if(!['https:','http:'].includes(parsed.protocol)||parsed.username||parsed.password)throw new Error('Only public HTTP or HTTPS links can be opened.');const host=parsed.hostname.toLowerCase();if(host==='localhost'||host.endsWith('.localhost')||/^127\.|^10\.|^192\.168\.|^169\.254\.|^172\.(1[6-9]|2\d|3[01])\./.test(host)||host==='[::1]')throw new Error('Local network links are not supported.');return parsed.toString();}
-function register(channel:string,handler:(...args:any[])=>unknown){ipcMain.handle(channel,(event,...args)=>{const url=event.senderFrame?.url;if(event.sender!==win.webContents||!url||(dev?new URL(url).origin!=='http://127.0.0.1:5173':url!==pathToFileURL(join(app.getAppPath(),'dist/index.html')).href))throw new Error('Untrusted application request.');return handler(...args);});}
+function register(channel:string,handler:(...args:any[])=>unknown){ipcMain.handle(channel,(event,...args)=>toResult(()=>{const url=event.senderFrame?.url;if(event.sender!==win.webContents||!url||(dev?new URL(url).origin!=='http://127.0.0.1:5173':url!==pathToFileURL(join(app.getAppPath(),'dist/index.html')).href))throw new Error('Untrusted application request.');return handler(...args);}));}
 app.whenReady().then(()=>{
   store=new Store(join(app.getPath('userData'),'research.sqlite'));
   const credentials={available:()=>safeStorage.isEncryptionAvailable()&&(process.platform!=='linux'||safeStorage.getSelectedStorageBackend()!=='basic_text'),encrypt:(s:string)=>safeStorage.encryptString(s),decrypt:(b:Buffer)=>safeStorage.decryptString(b)};
@@ -33,12 +35,12 @@ app.whenReady().then(()=>{
   register('projects:delete',value=>{const projectId=id.parse(value);runner.cancelProject(projectId);store.deleteProject(projectId);});
   register('sources:save',(projectId,source)=>{safeExternal(sourceSchema.parse(source).url);return store.saveSource(id.parse(projectId),sourceSchema.parse(source));});
   register('sources:delete',(projectId,sourceId)=>store.deleteSource(id.parse(projectId),id.parse(sourceId)));
-  register('steps:save',(projectId,steps)=>store.saveSteps(id.parse(projectId),z.array(stepSchema).max(100).parse(steps)));
-  register('notes:undo',value=>store.undoNotes(id.parse(value)));
+  register('steps:save',(projectId,steps)=>store.saveSteps(id.parse(projectId),z.array(stepSchema).max(200).parse(steps)));
+  register('notes:undo',value=>store.undoNotes(id.parse(value)));register('notes:redo',value=>store.redoNotes(id.parse(value)));
   register('projects:export',async(value,format)=>{const detail=store.getProject(id.parse(value));const kind=z.enum(['json','markdown']).parse(format);const output=await dialog.showSaveDialog(win,{defaultPath:`${detail.project.title.replace(/[^a-zA-Z0-9_-]/g,'_')}.${kind==='json'?'json':'md'}`,filters:[{name:kind==='json'?'JSON':'Markdown',extensions:[kind==='json'?'json':'md']}]});if(output.canceled||!output.filePath)return {saved:false};await writeFile(output.filePath,kind==='json'?JSON.stringify(detail,null,2):markdownExport(detail),'utf8');return {saved:true,path:output.filePath};});
   register('auth:account',()=>auth.account());register('auth:signin',()=>auth.signIn());register('auth:cancel',()=>auth.cancelSignIn());register('auth:signout',async()=>{runner.stop();await auth.signOut();store.saveSettings({...store.getSettings(),model:''});});register('auth:models',()=>auth.models());
   register('settings:get',()=>store.getSettings());register('settings:save',settings=>store.saveSettings(z.object({model:z.string().max(200),maxRequests:z.number().int().min(1).max(1000)}).parse(settings)));
-  register('agents:run',input=>runner.run(z.object({projectId:id,role:z.enum(['methods','evidence','grammar','brainstorm']),text:z.string().min(1).max(30000).refine(value=>Boolean(value.trim()),'Enter a research question or passage.'),refresh:z.boolean().optional()}).parse(input)));
+  register('agents:run',input=>runner.run(z.object({projectId:id,role:z.enum(['methods','evidence','grammar','brainstorm']),text:z.string().min(1).max(MAX_AGENT_INPUT).refine(value=>Boolean(value.trim()),'Enter a research question or passage.'),refresh:z.boolean().optional()}).parse(input)));
   register('agents:cancel',value=>runner.cancel(id.parse(value)));register('external:open',value=>shell.openExternal(safeExternal(z.string().max(3000).parse(value))));
   if(dev)void win.loadURL('http://127.0.0.1:5173');else void win.loadFile(join(app.getAppPath(),'dist/index.html'));
 });

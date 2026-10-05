@@ -11,7 +11,21 @@ test('grammar requires exact original offsets and no undisclosed changes',()=>{
   const valid=validateGrammar('He go home.',{proposed:'He goes home.',edits:[{before:'go',after:'goes',start:3,reason:'Subject agreement'}]});
   assert.equal(valid.edits[0].end,5);
   assert.throws(()=>validateGrammar('He go home.',{proposed:'He goes home. A new idea.',edits:[{before:'go',after:'goes',start:3,reason:'Subject agreement'}]}));
-  assert.throws(()=>validateGrammar('He go home.',{proposed:'He goes home.',edits:[{before:'go',after:'goes',start:0,reason:'Subject agreement'}]}));
+  assert.throws(()=>validateGrammar('He go home.',{proposed:'He goes home.',edits:[{before:'went',after:'goes',start:3,reason:'Subject agreement'}]}));
+});
+test('grammar anchors edits to the real text when the model miscounts offsets',()=>{
+  const fixed=validateGrammar('He go home.',{proposed:'He goes home.',edits:[{before:'go',after:'goes',start:0,reason:'Subject agreement'}]});
+  assert.deepEqual([fixed.edits[0].start,fixed.edits[0].end],[3,5]);assert.equal(fixed.proposed,'He goes home.');
+  const text='I go. You go. We go.';
+  const nearest=validateGrammar(text,{proposed:'I go. You goes. We go.',edits:[{before:'go',after:'goes',start:9,reason:'x'}]});
+  assert.equal(nearest.edits[0].start,10);
+  const both=validateGrammar(text,{proposed:'I goes. You go. We goes.',edits:[{before:'go',after:'goes',start:0,reason:'x'},{before:'go',after:'goes',start:100,reason:'x'}]});
+  assert.deepEqual(both.edits.map(e=>e.start),[2,17]);
+  const drifted='Café 😀 😀 😀 teh result.';
+  const emoji=validateGrammar(drifted,{proposed:'Café 😀 😀 😀 the result.',edits:[{before:'teh',after:'the',start:drifted.indexOf('teh')-5,reason:'Spelling'}]});
+  assert.equal(emoji.original.slice(emoji.edits[0].start,emoji.edits[0].end),'teh');
+  assert.throws(()=>validateGrammar(text,{proposed:'I go. You go. We go.',edits:[{before:'went',after:'goes',start:0,reason:'x'}]}),/do not match the original/);
+  assert.throws(()=>validateGrammar(text,{proposed:'I go. You go. We go. Extra.',edits:[{before:'go',after:'goes',start:2,reason:'x'}]}),/outside its edit list/);
 });
 test('grammar rejects changed numbers, citations, and overlapping edits',()=>{
   assert.throws(()=>validateGrammar('We tested 12 cases.',{proposed:'We tested 21 cases.',edits:[{before:'12',after:'21',start:10,reason:'x'}]}));

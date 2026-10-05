@@ -3,7 +3,7 @@
 ## Implemented
 
 - Electron desktop shell with an isolated, sandboxed renderer and narrow validated IPC.
-- SQLite project storage with version checks, note history/undo, independent projects, cascading deletion, source deduplication, run history, and a 24-hour source-search cache.
+- SQLite project storage with version checks, note history with undo and redo (the newest 50 revisions per project, within a 10 million character budget), independent projects, cascading deletion, source deduplication, run history, and a 24-hour source-search cache.
 - Official system-browser OAuth sign-in with PKCE, state, nonce, JWT issuer/audience/signature validation, stable host identity, encrypted credentials, serialized refresh, revocation, and cancellation. No API-key fallback.
 - Account-specific model discovery and Responses streaming with explicit inputs, `store: false`, and success only after a completion event.
 - Four selectable roles sharing task progress, cancellation, structured outputs, and an AI request limit per application session.

@@ -12,21 +12,38 @@ const grammarSchema = z.object({ proposed: text, clarification: text.default('')
 const methodsSchema = z.object({ question: text, assumptions: z.array(text).max(20), explanation: text, options: z.array(z.object({name:text,rationale:text,limitations:text})).max(10), steps: z.array(z.object({title:text,purpose:text,output:text,dependsOn:text,check:text})).min(1).max(30) });
 const brainstormSchema = z.object({ ideas: z.array(z.object({ title:text,explanation:text,assumptions:text,evidenceNeeded:text,nextStep:text })).min(1).max(12) });
 
+/**
+ * Models are unreliable at counting UTF-16 offsets, especially after emoji or accents. Treat the claimed
+ * offset as a hint and anchor each edit to the real text, preferring the occurrence nearest the claim.
+ */
+function locate(original: string, before: string, claimed: number, floor: number): number {
+  if (claimed >= floor && original.startsWith(before, claimed)) return claimed;
+  let best = -1;
+  for (let at = original.indexOf(before, floor); at !== -1; at = original.indexOf(before, at + 1)) {
+    if (best === -1 || Math.abs(at - claimed) < Math.abs(best - claimed)) best = at;
+    if (at > claimed) break;
+  }
+  return best;
+}
+
 export function validateGrammar(original: string, data: unknown): GrammarResult {
   const parsed = grammarSchema.parse(data);
-  const edits = parsed.edits.map(e=>({...e,id:randomUUID(),end:e.start+e.before.length})).sort((a,b)=>a.start-b.start);
-  let previousEnd = 0;
-  for (const edit of edits) {
-    if (edit.start < previousEnd || original.slice(edit.start,edit.end)!==edit.before) throw new Error('Grammar edits do not match the original passage. Nothing was changed.');
-    if ((edit.before.match(/\d+(?:[.,]\d+)*/g)||[]).join('|') !== (edit.after.match(/\d+(?:[.,]\d+)*/g)||[]).join('|')) throw new Error('A grammar suggestion changed a number. Nothing was changed.');
-    if (/https?:\/\/|\[[\d,\s-]+\]/.test(edit.before+edit.after)) throw new Error('A grammar suggestion changes a link or citation. Please edit this passage manually.');
-    if (edit.before.length>300 || edit.after.length>edit.before.length+80) throw new Error('A grammar suggestion rewrites too much text. Please select a shorter passage.');
-    previousEnd=edit.end;
+  const edits: GrammarResult['edits'] = [];
+  let floor = 0;
+  for (const claimed of [...parsed.edits].sort((a, b) => a.start - b.start)) {
+    const start = locate(original, claimed.before, claimed.start, floor);
+    if (start === -1) throw new Error('Grammar edits do not match the original passage. Nothing was changed.');
+    const edit = { ...claimed, id: randomUUID(), start, end: start + claimed.before.length };
+    if ((edit.before.match(/\d+(?:[.,]\d+)*/g) || []).join('|') !== (edit.after.match(/\d+(?:[.,]\d+)*/g) || []).join('|')) throw new Error('A grammar suggestion changed a number. Nothing was changed.');
+    if (/https?:\/\/|\[[\d,\s-]+\]/.test(edit.before + edit.after)) throw new Error('A grammar suggestion changes a link or citation. Please edit this passage manually.');
+    if (edit.before.length > 300 || edit.after.length > edit.before.length + 80) throw new Error('A grammar suggestion rewrites too much text. Please select a shorter passage.');
+    floor = edit.end;
+    edits.push(edit);
   }
-  let proposed=original;
-  for (const edit of [...edits].reverse()) proposed=proposed.slice(0,edit.start)+edit.after+proposed.slice(edit.end);
-  if (proposed!==parsed.proposed) throw new Error('Grammar response contains changes outside its edit list. Nothing was changed.');
-  return {kind:'grammar',original,proposed,edits,clarification:parsed.clarification};
+  let proposed = original;
+  for (const edit of [...edits].reverse()) proposed = proposed.slice(0, edit.start) + edit.after + proposed.slice(edit.end);
+  if (proposed !== parsed.proposed) throw new Error('Grammar response contains changes outside its edit list. Nothing was changed.');
+  return { kind: 'grammar', original, proposed, edits, clarification: parsed.clarification };
 }
 
 export function parseResult(role: RunRequest['role'], input: string, raw: string): AgentResult {

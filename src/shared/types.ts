@@ -24,6 +24,7 @@ export interface ResearchAPI {
   deleteSource(projectId: string, sourceId: string): Promise<void>;
   saveSteps(projectId: string, steps: PlanStep[]): Promise<void>;
   undoNotes(projectId: string): Promise<Project>;
+  redoNotes(projectId: string): Promise<Project>;
   exportProject(projectId: string, format: 'json'|'markdown'): Promise<{saved: boolean; path?: string}>;
   account(): Promise<Account>;
   signIn(): Promise<Account>;

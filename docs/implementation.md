@@ -36,7 +36,7 @@ Only one desktop instance is permitted to protect rotating credentials. Linux re
 These need decisions or credentials from the maintainer, so they are not automated yet:
 
 - **Code signing.** macOS needs an Apple Developer ID certificate and notarization; Windows needs a code-signing certificate. Unsigned builds trigger Gatekeeper and SmartScreen warnings. electron-builder reads `CSC_LINK`/`CSC_KEY_PASSWORD` (and `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID` for notarization) from CI secrets.
-- **App icons.** Add `build/icon.png` (1024 x 1024); electron-builder derives the platform formats. Builds currently use the default Electron icon.
+- **App icons.** Done: `build/icon.svg` is the source and `build/icon.png` (1024 x 1024) is what electron-builder uses for every platform. After editing the SVG, run `npm run icon` to regenerate the PNG. The browser preview uses the same artwork as `public/favicon.svg`.
 - **Auto-update.** `build.publish` is empty. Choose a provider (GitHub Releases is simplest) and add `electron-updater` if in-app updates are wanted.
 - **Windows and macOS releases.** CI packages all three platforms, but `release.yml` still uploads only the Linux AppImage.
 - **Linux checks.** On Ubuntu 24.04 and later, AppArmor may block the Chromium sandbox for AppImages; test a downloaded AppImage on a clean machine. Live sign-in needs a desktop keyring (GNOME Keyring or KWallet).

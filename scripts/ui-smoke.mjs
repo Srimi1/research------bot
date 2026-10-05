@@ -10,7 +10,7 @@ try{
     try{const response=await fetch('http://127.0.0.1:5175');if(response.ok)break;}catch{}
     await new Promise(resolve=>setTimeout(resolve,200));
   }
-  browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||(existsSync('/usr/bin/chromium')?'/usr/bin/chromium':undefined),headless:true,args:['--no-sandbox']});
+  browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||(!process.env.CI&&existsSync('/usr/bin/chromium')?'/usr/bin/chromium':undefined),headless:true,args:['--no-sandbox']});
   const page=await browser.newPage({viewport:{width:1440,height:1000}});
   const errors=[];page.on('pageerror',error=>errors.push(error.message));
   await page.route('https://api.crossref.org/works**',route=>route.fulfill({contentType:'application/json',body:JSON.stringify({status:'ok',message:{items:[{DOI:'10.1234/ui-fixture',title:['UI test source'],author:[{given:'Test',family:'Author'}],published:{'date-parts':[[2025]]},type:'journal-article'}]}})}));
@@ -54,6 +54,10 @@ try{
   await page.locator('.save-indicator').filter({hasText:'Saved'}).waitFor();
   await page.getByRole('button',{name:'Undo last saved change',exact:true}).click();
   await page.waitForFunction(()=>document.querySelector('#research-notes')?.value==='He go to university.\n');
+  await page.getByRole('button',{name:'Redo',exact:true}).click();
+  await page.waitForFunction(()=>document.querySelector('#research-notes')?.value==='He goes to university.\n');
+  await page.getByRole('button',{name:'Undo last saved change',exact:true}).click();
+  await page.waitForFunction(()=>document.querySelector('#research-notes')?.value==='He go to university.\n');
   await page.getByRole('button',{name:'New project',exact:true}).click();
   await page.locator('#project-title').fill('Second project');
   await page.getByRole('button',{name:'Create project',exact:true}).click();
@@ -70,5 +74,5 @@ try{
   await page.setViewportSize({width:390,height:844});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true);
   assert.deepEqual(errors,[]);
-  console.log('UI smoke passed: persistence, source notes, plan, settings, grammar review/undo, project isolation, export, and narrow viewport.');
+  console.log('UI smoke passed: persistence, source notes, plan, settings, grammar review/undo/redo, project isolation, export, and narrow viewport.');
 }finally{await browser?.close();server.kill();}

@@ -230,6 +230,9 @@ export class AuthService {
     if (!this.credentialStore.available()) throw new Error('Encrypted system credential storage is unavailable. Enable an OS keychain before signing in.');
     if (this.pending) throw new Error('A ChatGPT sign-in is already in progress.');
     const previous = this.registration;
+    // After sign-out (or an invalid_grant reset) the saved registration keeps only its client ID.
+    // The account is pinned only while its credentials are live, so a signed-out user may pick a different account.
+    const live = Boolean(previous?.accessToken || previous?.refreshToken);
     const requestedClientId = previous?.clientId ?? this.recoveryClientId;
     const state = randomSecret(); const nonce = randomSecret(); const verifier = randomSecret();
     const controller = new AbortController();
@@ -270,7 +273,7 @@ export class AuthService {
           }
           if (!tokens.id_token) throw new Error('ChatGPT did not return an identity token.');
           const identity = await this.verifyIdentity(tokens.id_token, clientId, nonce);
-          if (previous && identity.sub !== previous.subject) throw new Error('The signed-in ChatGPT account does not match this saved registration.');
+          if (previous && live && identity.sub !== previous.subject) throw new Error('The signed-in ChatGPT account does not match this saved registration.');
           const registration: Registration = {
             issuer: ISSUER, subject: identity.sub!, clientId,
             ...(typeof identity.name === 'string' ? { name: identity.name } : {}),
@@ -307,7 +310,7 @@ export class AuthService {
       state, nonce, code_challenge_method: 'S256', code_challenge: createHash('sha256').update(verifier).digest('base64url'),
       ...(requestedClientId ? {} : { agent_name_hint: 'Research Bot' }),
       ...(previous?.idToken ? { id_token_hint: previous.idToken } : {}),
-      ...(previous?.email ? { login_hint: previous.email } : {}),
+      ...(live && previous?.email ? { login_hint: previous.email } : {}),
     }).toString();
     try {
       try { await this.openBrowser(authorize.toString()); }
@@ -435,7 +438,9 @@ export class AuthService {
     function consume(block: string): void {
       const data = block.split(/\r?\n/).filter(line => line.startsWith('data:')).map(line => line.slice(5).trimStart()).join('\n');
       if (!data || data === '[DONE]') return;
-      const event = JSON.parse(data) as { type?: string; delta?: string; error?: { code?: string }; code?: string; response?: { error?: { code?: string }; usage?: { input_tokens?: number; output_tokens?: number } } };
+      let parsed: unknown;
+      try { parsed = JSON.parse(data); } catch { throw new Error('ChatGPT returned an unreadable response stream. Your input remains saved; retry the assistant.'); }
+      const event = parsed as { type?: string; delta?: string; error?: { code?: string }; code?: string; response?: { error?: { code?: string }; usage?: { input_tokens?: number; output_tokens?: number } } };
       if (event.type === 'response.output_text.delta') {
         if (completed || typeof event.delta !== 'string') throw new Error('ChatGPT returned an invalid response stream.');
         text += event.delta;

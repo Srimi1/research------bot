@@ -18,8 +18,11 @@ npm run dev
 In Settings, choose **Continue with ChatGPT**, authorize eligible plan usage in the system browser, and select a model from your account's catalog. An OS keychain is required for credential storage; Linux plaintext keyring fallback is rejected. Scholarly source discovery works without AI sign-in.
 
 ```sh
+npm run lint      # ESLint (TypeScript and React Hooks rules)
 npm test          # Backend and protocol regression tests
 npm run test:ui   # Browser workflows; install Playwright Chromium first if needed
+npm run test:electron       # Drives the real desktop app (use xvfb-run on headless Linux)
+npm run test:electron-node  # SQLite tests inside Electron's bundled Node
 npm run build    # Type check and production bundles
 npm run package  # Unpacked desktop application for the current OS
 npm run dist     # Installer for the current OS
@@ -32,7 +35,7 @@ For a browser preview, run `npm run dev:web`. This preview stores projects in th
 | Agent | What it helps with | Boundary |
 | --- | --- | --- |
 | Grammar editor | Correct grammar, spelling, and punctuation in your writing | Preserve vocabulary, meaning, voice, and claims; never add ideas |
-| Evidence finder | Locate articles, documents, and relevant discussions; organize a literature-review matrix | Provide traceable sources; never invent citations or imply it read inaccessible full text |
+| Evidence finder | Search scholarly metadata (Crossref) for articles and reports; you add documents and forum discussions yourself; organize a literature-review matrix | Provide traceable sources; never invent citations or imply it read inaccessible full text |
 | Brainstorming partner | Explore questions, alternative explanations, and possible directions | Mark suggestions as ideas, not established findings |
 | Methods coach and planner | Teach research methods and turn rough thoughts into an ordered plan | Explain choices and limitations; leave research decisions to you |
 

@@ -114,6 +114,24 @@ test('returning sign-in cannot replace the saved subject with a different accoun
   finally { await f.close(); }
 });
 
+test('after sign-out a different ChatGPT account can sign in, and the new account is pinned again', async () => {
+  const f = await fixture();
+  try {
+    await f.auth.signIn();
+    f.pool.intercept({ path: '/api/accounts/oauth/revoke', method: 'POST' }).reply(200, '');
+    await f.auth.signOut();
+    f.state.subject = 'different-subject';
+    assert.equal((await f.auth.signIn()).signedIn, true);
+    assert.equal(f.authorizations[1].searchParams.get('login_hint'), null);
+    assert.equal(f.authorizations[1].searchParams.get('client_id'), clientId);
+    const saved = JSON.parse(f.credentialStore.decrypt(await readFile(join(f.directory, 'account.enc'))));
+    assert.equal(saved.subject, 'different-subject');
+    f.state.subject = 'subject-1';
+    await assert.rejects(f.auth.signIn(), /does not match/);
+    assert.equal((await f.auth.account()).signedIn, true);
+  } finally { await f.close(); }
+});
+
 test('granted token scopes determine plan permission; callback scope cannot authorize inference', async () => {
   const f = await fixture();
   try { f.state.scope = 'openid profile email'; const account = await f.auth.signIn(); assert.match(account.message!, /plan usage is not authorized/); await assert.rejects(f.auth.models(), /not authorized/); }
@@ -158,6 +176,8 @@ test('Responses uses supported HTTP fields, streams deltas, and succeeds only af
     await assert.rejects(f.auth.stream('model-a', '', 'input', new AbortController().signal, () => {}), /before completion/);
     f.api.intercept({ path: '/v1/responses', method: 'POST' }).reply(200, 'data: {"type":"response.output_text.delta","delta":"partial"}\n\ndata: {"type":"response.failed","response":{"error":{"code":"subscription_sharing_usage_limit_exceeded"}}}\n\n');
     await assert.rejects(f.auth.stream('model-a', '', 'input', new AbortController().signal, () => {}), /usage allowance/);
+    f.api.intercept({ path: '/v1/responses', method: 'POST' }).reply(200, 'data: {"type":"response.output_text.delta","delta":"par\n\n');
+    await assert.rejects(f.auth.stream('model-a', '', 'input', new AbortController().signal, () => {}), error => { assert.match((error as Error).message, /unreadable response stream/); assert.doesNotMatch((error as Error).message, /JSON|Unexpected/); return true; });
   } finally { await f.close(); }
 });
 

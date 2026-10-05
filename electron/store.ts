@@ -3,9 +3,14 @@ import { chmodSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import type { EvidenceResult, PlanStep, Project, ProjectDetail, Run, Settings, Source } from '../src/shared/types';
+import { canonicalSourceUrl, normalizeDoi } from '../src/shared/source-keys';
 
 type Row = Record<string, string | number | null>;
 const DEFAULT_SETTINGS: Settings = { model: '', maxRequests: 20 };
+const SCHEMA_VERSION = 2;
+/** Autosave writes a revision after most pauses, so history is bounded per project. */
+export const NOTE_HISTORY_LIMIT = 50;
+export const NOTE_HISTORY_CHARS = 10_000_000;
 const now = () => new Date().toISOString();
 
 function text(value: unknown, name: string, max = 100_000, required = false): string {
@@ -13,29 +18,6 @@ function text(value: unknown, name: string, max = 100_000, required = false): st
     throw new Error(`${name} must be ${required ? 'a nonempty' : 'a'} string of at most ${max} characters.`);
   }
   return value;
-}
-
-export function normalizeDoi(value: string): string {
-  const doi = value.trim().replace(/^(?:https?:\/\/(?:dx\.)?doi\.org\/|doi:\s*)/i, '').toLowerCase();
-  if (!doi) return '';
-  if (!/^10\.\d{4,9}\/\S+$/i.test(doi) || doi.length > 2_000) throw new Error('The DOI is invalid.');
-  return doi;
-}
-
-export function canonicalSourceUrl(value: string): string {
-  if (!value.trim()) return '';
-  let url: URL;
-  try { url = new URL(value); } catch { throw new Error('The source URL is invalid.'); }
-  if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password) {
-    throw new Error('Source URLs must be public HTTP or HTTPS links without credentials.');
-  }
-  url.hash = '';
-  for (const key of [...url.searchParams.keys()]) {
-    if (/^utm_/i.test(key) || /^(fbclid|gclid|msclkid)$/i.test(key)) url.searchParams.delete(key);
-  }
-  url.searchParams.sort();
-  if (url.pathname !== '/') url.pathname = url.pathname.replace(/\/+$/, '');
-  return url.toString();
 }
 
 function projectFromRow(row: Row): Project {
@@ -59,7 +41,7 @@ export class Store {
     try {
       this.db.exec('PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;');
       const version = Number((this.db.prepare('PRAGMA user_version').get() as Row).user_version);
-      if (version > 1) throw new Error('This database was created by a newer Research Bot version.');
+      if (version > SCHEMA_VERSION) throw new Error('This database was created by a newer Research Bot version.');
       if (version < 1) this.transaction(() => {
         this.db.exec(`
           CREATE TABLE projects (
@@ -90,6 +72,18 @@ export class Store {
           PRAGMA user_version = 1;
         `);
       });
+      if (version < 2) this.transaction(() => {
+        this.db.exec(`
+          ALTER TABLE note_history ADD COLUMN size INTEGER NOT NULL DEFAULT 0;
+          UPDATE note_history SET size = LENGTH(notes);
+          CREATE TABLE note_redo (
+            id INTEGER PRIMARY KEY, project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+            notes TEXT NOT NULL, saved_at TEXT NOT NULL
+          );
+          CREATE INDEX note_redo_project ON note_redo(project_id, id);
+          PRAGMA user_version = 2;
+        `);
+      });
       if (path !== ':memory:') {
         chmodSync(path, 0o600);
         this.db.exec('PRAGMA journal_mode = WAL; PRAGMA synchronous = FULL;');
@@ -108,6 +102,22 @@ export class Store {
     const row = this.db.prepare('SELECT * FROM projects WHERE id = ?').get(id) as Row | undefined;
     if (!row) throw new Error('Project not found.');
     return projectFromRow(row);
+  }
+
+  private pushHistory(projectId: string, notes: string): void {
+    this.db.prepare('INSERT INTO note_history(project_id, notes, size, saved_at) VALUES (?, ?, ?, ?)').run(projectId, notes, notes.length, now());
+  }
+
+  /** Keep the newest revisions that fit the count and size budgets; the newest is always kept. */
+  private pruneHistory(projectId: string): void {
+    const rows = this.db.prepare('SELECT id, size FROM note_history WHERE project_id = ? ORDER BY id DESC').all(projectId) as Row[];
+    let kept = 0; let characters = 0; const stale: number[] = [];
+    for (const row of rows) {
+      characters += Number(row.size);
+      if (kept >= NOTE_HISTORY_LIMIT || (kept > 0 && characters > NOTE_HISTORY_CHARS)) stale.push(Number(row.id)); else kept++;
+    }
+    const remove = this.db.prepare('DELETE FROM note_history WHERE id = ?');
+    for (const id of stale) remove.run(id);
   }
 
   private touch(id: string): void { this.db.prepare('UPDATE projects SET updated_at = ? WHERE id = ?').run(now(), id); }
@@ -140,7 +150,10 @@ export class Store {
       const previous = this.project(input.id);
       if (previous.version !== input.version) throw new ConcurrentEditError();
       if (previous.notes !== input.notes) {
-        this.db.prepare('INSERT INTO note_history(project_id, notes, saved_at) VALUES (?, ?, ?)').run(input.id, previous.notes, now());
+        this.pushHistory(input.id, previous.notes);
+        this.pruneHistory(input.id);
+        // A fresh edit starts a new timeline, so anything that was undone can no longer be redone.
+        this.db.prepare('DELETE FROM note_redo WHERE project_id = ?').run(input.id);
       }
       this.db.prepare('UPDATE projects SET title = ?, topic = ?, question = ?, notes = ?, version = version + 1, updated_at = ? WHERE id = ? AND version = ?')
         .run(input.title.trim(), input.topic, input.question, input.notes, now(), input.id, input.version);
@@ -213,8 +226,22 @@ export class Store {
       const project = this.project(projectId);
       const history = this.db.prepare('SELECT id, notes FROM note_history WHERE project_id = ? ORDER BY id DESC LIMIT 1').get(projectId) as Row | undefined;
       if (!history) throw new Error('There is no earlier saved version of these notes.');
+      // Keep the text being replaced so the undo itself can be reversed.
+      this.db.prepare('INSERT INTO note_redo(project_id, notes, saved_at) VALUES (?, ?, ?)').run(projectId, project.notes, now());
       this.db.prepare('UPDATE projects SET notes = ?, version = version + 1, updated_at = ? WHERE id = ?').run(history.notes, now(), project.id);
       this.db.prepare('DELETE FROM note_history WHERE id = ? AND project_id = ?').run(history.id, projectId);
+      return this.project(projectId);
+    });
+  }
+
+  redoNotes(projectId: string): Project {
+    return this.transaction(() => {
+      const project = this.project(projectId);
+      const redo = this.db.prepare('SELECT id, notes FROM note_redo WHERE project_id = ? ORDER BY id DESC LIMIT 1').get(projectId) as Row | undefined;
+      if (!redo) throw new Error('There is no undone change to restore.');
+      this.pushHistory(projectId, project.notes);
+      this.db.prepare('UPDATE projects SET notes = ?, version = version + 1, updated_at = ? WHERE id = ?').run(redo.notes, now(), project.id);
+      this.db.prepare('DELETE FROM note_redo WHERE id = ? AND project_id = ?').run(redo.id, projectId);
       return this.project(projectId);
     });
   }
@@ -229,6 +256,22 @@ export class Store {
       const existing = this.db.prepare('SELECT project_id FROM runs WHERE id = ?').get(run.id) as Row | undefined;
       if (existing && existing.project_id !== run.projectId) throw new Error('This agent run belongs to a different project.');
       this.db.prepare('INSERT INTO runs(id, project_id, created_at, data) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data').run(run.id, run.projectId, run.createdAt, data);
+    });
+  }
+
+  /**
+   * A run still marked "running" when the app starts was interrupted by a crash or forced quit.
+   * Call once at startup, before any new run begins.
+   */
+  failInterruptedRuns(): number {
+    return this.transaction(() => {
+      const rows = this.db.prepare("SELECT id, data FROM runs WHERE json_extract(data, '$.status') = 'running'").all() as Row[];
+      const update = this.db.prepare('UPDATE runs SET data = ? WHERE id = ?');
+      for (const row of rows) {
+        const run = JSON.parse(String(row.data)) as Run;
+        update.run(JSON.stringify({ ...run, status: 'failed', error: 'Research Bot closed before this task finished. Your accepted work is unchanged; run it again if you still need it.' }), row.id);
+      }
+      return rows.length;
     });
   }
 

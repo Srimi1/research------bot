@@ -6,7 +6,7 @@ const qaServer=spawn(process.execPath,['node_modules/vite/bin/vite.js','--host',
 let browser;
 try {
 for(let n=0;n<50;n++){try{if((await fetch('http://127.0.0.1:5176')).ok)break;}catch{}await new Promise(r=>setTimeout(r,200));}
-browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||(existsSync('/usr/bin/chromium')?'/usr/bin/chromium':undefined),headless:true,args:['--no-sandbox']});
+browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||(!process.env.CI&&existsSync('/usr/bin/chromium')?'/usr/bin/chromium':undefined),headless:true,args:['--no-sandbox']});
 const context=await browser.newContext({viewport:{width:1280,height:900}});
 await context.addInitScript(()=>{
 const project={id:'fixture-project',title:'Methods UI fixture',topic:'Test fixture',question:'What can I measure?',notes:'My original researcher notes.',version:0,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};

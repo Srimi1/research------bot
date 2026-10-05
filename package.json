@@ -1,0 +1,76 @@
+{
+  "name": "research-bot",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "repository": { "type": "git", "url": "https://github.com/Srimi1/research------bot.git" },
+  "description": "A human-led research workspace",
+  "main": "dist-electron/main.cjs",
+  "desktopName": "research-bot.desktop",
+  "author": "Srimi1",
+  "scripts": {
+    "dev": "npm run build:electron && concurrently -k \"vite --host 127.0.0.1\" \"wait-on http://127.0.0.1:5173 && electron . --dev\"",
+    "dev:web": "vite --host 127.0.0.1",
+    "build:electron": "node scripts/build-electron.mjs",
+    "build": "tsc --noEmit && vite build && npm run build:electron",
+    "test": "tsx --test tests/*.test.ts",
+    "test:ui": "node scripts/ui-smoke.mjs && node scripts/review-smoke.mjs",
+    "package": "npm run build && electron-builder --dir",
+    "dist": "npm run build && electron-builder"
+  },
+  "dependencies": {
+    "jose": "^6.1.0",
+    "lucide-react": "^0.468.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "undici": "^7.16.0",
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "concurrently": "^9.2.0",
+    "electron": "^42.0.0",
+    "electron-builder": "^26.0.0",
+    "esbuild": "^0.25.0",
+    "playwright": "^1.56.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0",
+    "vite": "^7.1.0",
+    "wait-on": "^9.0.0"
+  },
+  "build": {
+    "publish": [],
+    "appId": "com.researchbot.desktop",
+    "productName": "Research Bot",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**",
+      "dist-electron/**",
+      "agents/**",
+      "LICENSE",
+      "package.json"
+    ],
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Education",
+      "syncDesktopName": true
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ]
+    }
+  }
+}

@@ -1,0 +1,29 @@
+# Secrets and local account state
+.env
+.env.*
+!.env.example
+credentials/
+.auth/
+*.pem
+*.key
+
+# Dependencies and builds
+node_modules/
+dist/
+dist-electron/
+out/
+release/
+coverage/
+.playwright/
+
+# Local research content
+data/
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*
+
+# Editor and OS files
+.DS_Store
+Thumbs.db
+*.log

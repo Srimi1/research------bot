@@ -1,0 +1,265 @@
+import { randomUUID } from 'node:crypto';
+import { chmodSync, mkdirSync } from 'node:fs';
+import { dirname } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
+import type { EvidenceResult, PlanStep, Project, ProjectDetail, Run, Settings, Source } from '../src/shared/types';
+
+type Row = Record<string, string | number | null>;
+const DEFAULT_SETTINGS: Settings = { model: '', maxRequests: 20 };
+const now = () => new Date().toISOString();
+
+function text(value: unknown, name: string, max = 100_000, required = false): string {
+  if (typeof value !== 'string' || value.length > max || (required && !value.trim())) {
+    throw new Error(`${name} must be ${required ? 'a nonempty' : 'a'} string of at most ${max} characters.`);
+  }
+  return value;
+}
+
+export function normalizeDoi(value: string): string {
+  const doi = value.trim().replace(/^(?:https?:\/\/(?:dx\.)?doi\.org\/|doi:\s*)/i, '').toLowerCase();
+  if (!doi) return '';
+  if (!/^10\.\d{4,9}\/\S+$/i.test(doi) || doi.length > 2_000) throw new Error('The DOI is invalid.');
+  return doi;
+}
+
+export function canonicalSourceUrl(value: string): string {
+  if (!value.trim()) return '';
+  let url: URL;
+  try { url = new URL(value); } catch { throw new Error('The source URL is invalid.'); }
+  if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password) {
+    throw new Error('Source URLs must be public HTTP or HTTPS links without credentials.');
+  }
+  url.hash = '';
+  for (const key of [...url.searchParams.keys()]) {
+    if (/^utm_/i.test(key) || /^(fbclid|gclid|msclkid)$/i.test(key)) url.searchParams.delete(key);
+  }
+  url.searchParams.sort();
+  if (url.pathname !== '/') url.pathname = url.pathname.replace(/\/+$/, '');
+  return url.toString();
+}
+
+function projectFromRow(row: Row): Project {
+  return {
+    id: String(row.id), title: String(row.title), topic: String(row.topic), question: String(row.question),
+    notes: String(row.notes), version: Number(row.version), createdAt: String(row.created_at), updatedAt: String(row.updated_at),
+  };
+}
+
+export class ConcurrentEditError extends Error {
+  constructor() { super('This project changed since you opened it. Reload it before saving so your newer notes are preserved.'); this.name = 'ConcurrentEditError'; }
+}
+
+/** All research data stays in the local database; credentials are deliberately stored elsewhere. */
+export class Store {
+  private db: DatabaseSync;
+
+  constructor(path: string) {
+    if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
+    this.db = new DatabaseSync(path);
+    try {
+      this.db.exec('PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;');
+      const version = Number((this.db.prepare('PRAGMA user_version').get() as Row).user_version);
+      if (version > 1) throw new Error('This database was created by a newer Research Bot version.');
+      if (version < 1) this.transaction(() => {
+        this.db.exec(`
+          CREATE TABLE projects (
+            id TEXT PRIMARY KEY, title TEXT NOT NULL, topic TEXT NOT NULL, question TEXT NOT NULL DEFAULT '',
+            notes TEXT NOT NULL DEFAULT '', version INTEGER NOT NULL DEFAULT 1 CHECK(version > 0),
+            created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+          );
+          CREATE TABLE note_history (
+            id INTEGER PRIMARY KEY, project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+            notes TEXT NOT NULL, saved_at TEXT NOT NULL
+          );
+          CREATE INDEX note_history_project ON note_history(project_id, id);
+          CREATE TABLE sources (
+            id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+            doi_key TEXT, url_key TEXT, data TEXT NOT NULL,
+            UNIQUE(project_id, doi_key), UNIQUE(project_id, url_key)
+          );
+          CREATE TABLE plans (
+            project_id TEXT PRIMARY KEY REFERENCES projects(id) ON DELETE CASCADE, data TEXT NOT NULL
+          );
+          CREATE TABLE runs (
+            id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+            created_at TEXT NOT NULL, data TEXT NOT NULL
+          );
+          CREATE INDEX runs_project ON runs(project_id, created_at);
+          CREATE TABLE settings (id INTEGER PRIMARY KEY CHECK(id = 1), data TEXT NOT NULL);
+          CREATE TABLE search_cache (cache_key TEXT PRIMARY KEY, data TEXT NOT NULL, expires_at INTEGER NOT NULL);
+          PRAGMA user_version = 1;
+        `);
+      });
+      if (path !== ':memory:') {
+        chmodSync(path, 0o600);
+        this.db.exec('PRAGMA journal_mode = WAL; PRAGMA synchronous = FULL;');
+      }
+    } catch (error) { this.db.close(); throw error; }
+  }
+
+  private transaction<T>(action: () => T): T {
+    this.db.exec('BEGIN IMMEDIATE');
+    try { const result = action(); this.db.exec('COMMIT'); return result; }
+    catch (error) { this.db.exec('ROLLBACK'); throw error; }
+  }
+
+  private project(id: string): Project {
+    text(id, 'Project ID', 200, true);
+    const row = this.db.prepare('SELECT * FROM projects WHERE id = ?').get(id) as Row | undefined;
+    if (!row) throw new Error('Project not found.');
+    return projectFromRow(row);
+  }
+
+  private touch(id: string): void { this.db.prepare('UPDATE projects SET updated_at = ? WHERE id = ?').run(now(), id); }
+
+  listProjects(): Project[] {
+    return (this.db.prepare('SELECT * FROM projects ORDER BY updated_at DESC, id').all() as Row[]).map(projectFromRow);
+  }
+
+  createProject(input: { title: string; topic: string }): ProjectDetail {
+    const title = text(input.title, 'Project title', 200, true).trim();
+    const topic = text(input.topic, 'Topic', 2_000).trim();
+    const id = randomUUID(); const timestamp = now();
+    this.db.prepare('INSERT INTO projects(id, title, topic, created_at, updated_at) VALUES (?, ?, ?, ?, ?)').run(id, title, topic, timestamp, timestamp);
+    return this.getProject(id);
+  }
+
+  getProject(id: string): ProjectDetail {
+    const project = this.project(id);
+    const sources = (this.db.prepare('SELECT data FROM sources WHERE project_id = ? ORDER BY rowid').all(id) as Row[]).map(row => JSON.parse(String(row.data)) as Source);
+    const plan = this.db.prepare('SELECT data FROM plans WHERE project_id = ?').get(id) as Row | undefined;
+    const runs = (this.db.prepare('SELECT data FROM runs WHERE project_id = ? ORDER BY created_at DESC, rowid DESC').all(id) as Row[]).map(row => JSON.parse(String(row.data)) as Run);
+    return { project, sources, steps: plan ? JSON.parse(String(plan.data)) as PlanStep[] : [], runs };
+  }
+
+  saveProject(input: Pick<Project, 'id'|'title'|'topic'|'question'|'notes'|'version'>): Project {
+    text(input.title, 'Project title', 200, true); text(input.topic, 'Topic', 2_000);
+    text(input.question, 'Research question', 20_000); text(input.notes, 'Notes', 1_000_000);
+    if (!Number.isSafeInteger(input.version) || input.version < 1) throw new Error('Invalid project version.');
+    return this.transaction(() => {
+      const previous = this.project(input.id);
+      if (previous.version !== input.version) throw new ConcurrentEditError();
+      if (previous.notes !== input.notes) {
+        this.db.prepare('INSERT INTO note_history(project_id, notes, saved_at) VALUES (?, ?, ?)').run(input.id, previous.notes, now());
+      }
+      this.db.prepare('UPDATE projects SET title = ?, topic = ?, question = ?, notes = ?, version = version + 1, updated_at = ? WHERE id = ? AND version = ?')
+        .run(input.title.trim(), input.topic, input.question, input.notes, now(), input.id, input.version);
+      return this.project(input.id);
+    });
+  }
+
+  deleteProject(id: string): void {
+    this.project(id);
+    this.db.prepare('DELETE FROM projects WHERE id = ?').run(id);
+  }
+
+  saveSource(projectId: string, input: Source): Source {
+    this.project(projectId);
+    text(input.id, 'Source ID', 200, true); text(input.title, 'Source title', 5_000, true);
+    if (!Array.isArray(input.authors) || input.authors.length > 1_000) throw new Error('Invalid source authors.');
+    input.authors.forEach(author => text(author, 'Author', 2_000));
+    for (const field of ['year', 'url', 'doi', 'retrievedAt', 'query'] as const) text(input[field], field, field === 'query' ? 20_000 : 4_000);
+    for (const field of ['abstract', 'method', 'findings', 'limitations', 'notes'] as const) text(input[field], field, 100_000);
+    if (!['article', 'report', 'forum', 'document'].includes(input.category) || !['metadata', 'abstract', 'full-text', 'user-added'].includes(input.inspected)) throw new Error('Invalid source classification.');
+    const doi = normalizeDoi(input.doi); const urlKey = canonicalSourceUrl(input.url);
+    return this.transaction(() => {
+      const byId = this.db.prepare('SELECT * FROM sources WHERE id = ?').get(input.id) as Row | undefined;
+      if (byId && byId.project_id !== projectId) throw new Error('This source belongs to a different project.');
+      const matches = this.db.prepare('SELECT * FROM sources WHERE project_id = ? AND ((doi_key IS NOT NULL AND doi_key = ?) OR (url_key IS NOT NULL AND url_key = ?))').all(projectId, doi || null, urlKey || null) as Row[];
+      const ids = new Set(matches.map(row => row.id));
+      if (byId) ids.add(byId.id);
+      if (ids.size > 1) throw new Error('The DOI and URL refer to different saved sources. Review the source details before saving.');
+      const existing = byId ?? matches[0];
+      const source: Source = { ...input, authors: [...input.authors], doi, id: existing ? String(existing.id) : input.id };
+      if (existing && existing.id !== input.id) {
+        const previous = JSON.parse(String(existing.data)) as Source;
+        for (const field of ['method', 'findings', 'limitations', 'notes'] as const) if (!source[field]) source[field] = previous[field];
+        if (previous.inspected !== 'metadata' && source.inspected === 'metadata') source.inspected = previous.inspected;
+        if (!source.abstract) source.abstract = previous.abstract;
+      }
+      this.db.prepare(`INSERT INTO sources(id, project_id, doi_key, url_key, data) VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET doi_key = excluded.doi_key, url_key = excluded.url_key, data = excluded.data`)
+        .run(source.id, projectId, doi || null, urlKey || null, JSON.stringify(source));
+      this.touch(projectId);
+      return source;
+    });
+  }
+
+  deleteSource(projectId: string, sourceId: string): void {
+    this.project(projectId);
+    const result = this.db.prepare('DELETE FROM sources WHERE project_id = ? AND id = ?').run(projectId, sourceId);
+    if (Number(result.changes) !== 1) throw new Error('Source not found in this project.');
+    this.touch(projectId);
+  }
+
+  saveSteps(projectId: string, steps: PlanStep[]): void {
+    this.project(projectId);
+    if (!Array.isArray(steps) || steps.length > 200) throw new Error('A research plan supports at most 200 steps.');
+    const ids = new Set<string>();
+    for (const step of steps) {
+      text(step.id, 'Step ID', 200, true); text(step.title, 'Step title', 2_000, true);
+      for (const field of ['purpose', 'output', 'dependsOn', 'check'] as const) text(step[field], field, 20_000);
+      if (typeof step.done !== 'boolean' || ids.has(step.id)) throw new Error('Plan steps need unique IDs and a completion state.');
+      ids.add(step.id);
+    }
+    this.transaction(() => {
+      this.db.prepare('INSERT INTO plans(project_id, data) VALUES (?, ?) ON CONFLICT(project_id) DO UPDATE SET data = excluded.data').run(projectId, JSON.stringify(steps));
+      this.touch(projectId);
+    });
+  }
+
+  undoNotes(projectId: string): Project {
+    return this.transaction(() => {
+      const project = this.project(projectId);
+      const history = this.db.prepare('SELECT id, notes FROM note_history WHERE project_id = ? ORDER BY id DESC LIMIT 1').get(projectId) as Row | undefined;
+      if (!history) throw new Error('There is no earlier saved version of these notes.');
+      this.db.prepare('UPDATE projects SET notes = ?, version = version + 1, updated_at = ? WHERE id = ?').run(history.notes, now(), project.id);
+      this.db.prepare('DELETE FROM note_history WHERE id = ? AND project_id = ?').run(history.id, projectId);
+      return this.project(projectId);
+    });
+  }
+
+  saveRun(run: Run): void {
+    this.project(run.projectId); text(run.id, 'Run ID', 200, true); text(run.model, 'Model', 200);
+    text(run.input, 'Run input', 1_000_000); text(run.createdAt, 'Run timestamp', 100, true);
+    if (!['methods', 'evidence', 'grammar', 'brainstorm'].includes(run.role) || !['running', 'completed', 'cancelled', 'failed'].includes(run.status)) throw new Error('Invalid agent run.');
+    const data = JSON.stringify(run);
+    if (data.length > 4_000_000) throw new Error('The agent result is too large to save.');
+    this.transaction(() => {
+      const existing = this.db.prepare('SELECT project_id FROM runs WHERE id = ?').get(run.id) as Row | undefined;
+      if (existing && existing.project_id !== run.projectId) throw new Error('This agent run belongs to a different project.');
+      this.db.prepare('INSERT INTO runs(id, project_id, created_at, data) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data').run(run.id, run.projectId, run.createdAt, data);
+    });
+  }
+
+  getSettings(): Settings {
+    const row = this.db.prepare('SELECT data FROM settings WHERE id = 1').get() as Row | undefined;
+    return row ? JSON.parse(String(row.data)) as Settings : { ...DEFAULT_SETTINGS };
+  }
+
+  saveSettings(settings: Settings): void {
+    text(settings.model, 'Model', 200);
+    if (!Number.isSafeInteger(settings.maxRequests) || settings.maxRequests < 1 || settings.maxRequests > 1000) throw new Error('Request budget must be an integer between 1 and 1,000.');
+    this.db.prepare('INSERT INTO settings(id, data) VALUES (1, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data').run(JSON.stringify({ model: settings.model, maxRequests: settings.maxRequests }));
+  }
+
+  getCache(key: string): EvidenceResult | undefined {
+    const row = this.db.prepare('SELECT data, expires_at FROM search_cache WHERE cache_key = ?').get(key) as Row | undefined;
+    if (!row) return undefined;
+    if (Number(row.expires_at) <= Date.now()) { this.db.prepare('DELETE FROM search_cache WHERE cache_key = ?').run(key); return undefined; }
+    return { ...JSON.parse(String(row.data)) as EvidenceResult, cached: true };
+  }
+
+  setCache(key: string, value: EvidenceResult): void {
+    text(key, 'Cache key', 20_000, true);
+    const data = JSON.stringify(value);
+    if (data.length > 2_000_000 || value.kind !== 'evidence') throw new Error('Invalid evidence cache result.');
+    this.transaction(() => {
+      this.db.prepare('DELETE FROM search_cache WHERE expires_at <= ?').run(Date.now());
+      this.db.prepare('INSERT INTO search_cache(cache_key, data, expires_at) VALUES (?, ?, ?) ON CONFLICT(cache_key) DO UPDATE SET data = excluded.data, expires_at = excluded.expires_at').run(key, data, Date.now() + 24 * 60 * 60 * 1_000);
+      this.db.exec('DELETE FROM search_cache WHERE cache_key NOT IN (SELECT cache_key FROM search_cache ORDER BY expires_at DESC LIMIT 200)');
+    });
+  }
+
+  close(): void { this.db.close(); }
+}

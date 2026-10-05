@@ -99,6 +99,8 @@ export interface Account {
 export interface Settings {
   model: string;
   maxRequests: number;
+  /** Download new versions from GitHub Releases in the background. */
+  autoUpdate: boolean;
 }
 export interface RunRequest {
   projectId: string;

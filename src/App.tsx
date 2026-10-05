@@ -392,6 +392,19 @@ function AccountSettings({
             A limit of 1–1,000 bounds AI requests until the app restarts. Only your selected agent runs; source searches
             do not use this allowance.
           </p>
+          <label className="check-row">
+            <input
+              type="checkbox"
+              checked={settings.autoUpdate}
+              disabled={isBrowserPreview}
+              onChange={event => setSettings({ ...settings, autoUpdate: event.target.checked })}
+            />
+            Check for updates automatically
+          </label>
+          <p className="help">
+            Downloads new versions of Research Bot from its GitHub Releases page and asks before restarting. Only the
+            app version is checked; nothing about your research is sent.
+          </p>
         </>
       )}
       {message && (

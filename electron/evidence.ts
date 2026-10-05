@@ -1,5 +1,6 @@
 import type { EvidenceResult } from '../src/shared/types';
 import { crossrefSearchUrl, parseCrossref } from '../src/shared/crossref';
+import { version } from '../package.json';
 import { fetchNetwork, readLimited } from './network';
 
 export { parseCrossref };
@@ -19,8 +20,7 @@ export async function searchEvidence(input: string, signal: AbortSignal): Promis
       redirect: 'error',
       headers: {
         Accept: 'application/json',
-        'User-Agent':
-          'ResearchBot/0.1 (local scholarly research workspace; +https://github.com/Srimi1/research------bot)',
+        'User-Agent': `ResearchBot/${version} (local scholarly research workspace; +https://github.com/Srimi1/research------bot)`,
       },
     });
     if (!response.ok) {

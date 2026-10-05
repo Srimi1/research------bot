@@ -38,6 +38,12 @@ jobs:
         run: npx electron-builder --linux AppImage --publish never
       - name: Prepare source and checksums
         run: |
+          for research_image in release/*.AppImage; do
+            research_normalized="${research_image// /-}"
+            if [ "$research_image" != "$research_normalized" ]; then
+              mv -- "$research_image" "$research_normalized"
+            fi
+          done
           git archive --format=zip --prefix=research-bot/ --output=release/research-bot.zip HEAD
           cd release
           sha256sum -- *.AppImage research-bot.zip > SHA256SUMS.txt

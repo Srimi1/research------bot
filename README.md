@@ -18,6 +18,7 @@ npm run dev
 In Settings, choose **Continue with ChatGPT**, authorize eligible plan usage in the system browser, and select a model from your account's catalog. An OS keychain is required for credential storage; Linux plaintext keyring fallback is rejected. Scholarly source discovery works without AI sign-in.
 
 ```sh
+npm run format    # Prettier (CI runs format:check)
 npm run lint      # ESLint (TypeScript and React Hooks rules)
 npm test          # Backend and protocol regression tests
 npm run test:ui   # Browser workflows; install Playwright Chromium first if needed

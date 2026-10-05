@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { afterEach, beforeEach, test } from 'node:test';
 import { getGlobalDispatcher, MockAgent, setGlobalDispatcher } from 'undici';
 import { parseCrossref, searchEvidence } from '../electron/evidence';
+import { version } from '../package.json';
 
 const payload = {
   status: 'ok',
@@ -78,6 +79,7 @@ test('missing metadata stays blank and malformed envelopes are rejected', () => 
 
 test('scholarly search encodes the query and only contacts the fixed official Crossref endpoint', async () => {
   let requestPath = '';
+  let userAgent = '';
   mock
     .get('https://api.crossref.org')
     .intercept({
@@ -85,6 +87,10 @@ test('scholarly search encodes the query and only contacts the fixed official Cr
       path: path => {
         requestPath = path;
         return path.startsWith('/works?');
+      },
+      headers: headers => {
+        userAgent = String((headers as Record<string, string>)['user-agent'] ?? '');
+        return true;
       },
     })
     .reply(200, payload, { headers: { 'content-type': 'application/json' } });
@@ -96,6 +102,7 @@ test('scholarly search encodes the query and only contacts the fixed official Cr
   assert.match(url.searchParams.get('select') ?? '', /DOI,title/);
   assert.equal(result.sources.length, 2);
   assert.equal(result.cached, false);
+  assert.match(userAgent, new RegExp(`^ResearchBot/${version.replaceAll('.', '\\.')} `));
   mock.assertNoPendingInterceptors();
 });
 

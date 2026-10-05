@@ -1,5 +1,7 @@
 name: Check Research Bot
 on: [push, pull_request]
+permissions:
+  contents: read
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -10,5 +12,30 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - run: npm run lint
       - run: npm test
+      # The SQLite store runs on Electron's bundled Node in the real app, so test it there too.
+      - run: npm run test:electron-node
       - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:ui
+      - run: xvfb-run -a npm run test:electron
+
+  # Windows and macOS installers have never been built in CI. This catches packaging breakage
+  # early; it produces unsigned, unpacked apps and publishes nothing.
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run package

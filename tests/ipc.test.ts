@@ -20,7 +20,7 @@ test('validation failures become short sentences, never raw JSON', () => {
   assert.equal(failure({ ...valid, projectId: 'nope' }), 'That item is no longer valid. Reload the project and try again.');
   assert.equal(failure({ ...valid, text: undefined }), 'Text is missing or has the wrong type.');
   for (const message of [failure({ ...valid, text: 'x'.repeat(30001) }), failure({})]) {
-    assert.doesNotMatch(message, /[{}\[\]"]/); assert.doesNotMatch(message, /Error invoking remote method/);
+    assert.doesNotMatch(message, /[{}[\]"]/); assert.doesNotMatch(message, /Error invoking remote method/);
   }
 });
 

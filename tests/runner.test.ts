@@ -58,9 +58,8 @@ test('cancelled and failed streams are recorded without accepting a suggestion',
   const dir=mkdtempSync(join(tmpdir(),'research-cancel-'));const store=new Store(join(dir,'test.sqlite'));
   try{
     const detail=store.createProject({title:'A',topic:''});store.saveSettings({model:'eligible',maxRequests:5});
-    let runner:Runner;
-    const auth={account:async()=>({signedIn:true}),stream:async(_m:string,_i:string,_input:string,signal:AbortSignal)=>{assert.equal(signal.aborted,true);throw new Error('aborted');}} as unknown as AuthService;
-    runner=new Runner(store,auth,join(process.cwd(),'agents'),event=>{if(event.text==='running')runner.cancel(event.runId);});
+        const auth={account:async()=>({signedIn:true}),stream:async(_m:string,_i:string,_input:string,signal:AbortSignal)=>{assert.equal(signal.aborted,true);throw new Error('aborted');}} as unknown as AuthService;
+    const runner:Runner=new Runner(store,auth,join(process.cwd(),'agents'),event=>{if(event.text==='running')runner.cancel(event.runId);});
     const result=await runner.run({projectId:detail.project.id,role:'grammar',text:'He go.'});
     assert.equal(result.status,'cancelled');assert.equal(result.result,undefined);
     assert.equal(store.getProject(detail.project.id).project.notes,'');
@@ -80,5 +79,29 @@ test('cached evidence can be saved independently in two projects',async()=>{
     assert.notEqual(a.result.sources[0].id,b.result.sources[0].id);
     store.saveSource(first.project.id,a.result.sources[0]);store.saveSource(second.project.id,b.result.sources[0]);
     assert.equal(store.getProject(second.project.id).sources.length,1);
+  }finally{store.close();rmSync(dir,{recursive:true,force:true});}
+});
+test('a wrongly formatted answer is retried once within the budget; policy rejections are not',async()=>{
+  const dir=mkdtempSync(join(tmpdir(),'research-retry-'));const store=new Store(join(dir,'test.sqlite'));
+  try{
+    const project=store.createProject({title:'A',topic:''}).project;
+    const good=JSON.stringify({ideas:[{title:'Idea',explanation:'Untested',assumptions:'a',evidenceNeeded:'e',nextStep:'n'}]});
+    const runWith=async(answers:string[],maxRequests:number,role:'brainstorm'|'grammar'='brainstorm',text='food waste')=>{
+      store.saveSettings({model:'m',maxRequests});let calls=0;const events:RunEvent[]=[];
+      const auth={account:async()=>({signedIn:true}),stream:async()=>({text:answers[Math.min(calls++,answers.length-1)],usage:{input:10,output:5}})} as unknown as AuthService;
+      const run=await new Runner(store,auth,join(process.cwd(),'agents'),e=>events.push(e)).run({projectId:project.id,role,text});
+      return {run,calls,events};
+    };
+    const retried=await runWith(['Sure! Here are ideas.',good],5);
+    assert.equal(retried.run.status,'completed');assert.equal(retried.calls,2);assert.deepEqual(retried.run.usage,{input:20,output:10});
+    assert.ok(retried.events.some(e=>e.type==='status'&&/once more/.test(e.text)));
+    const twice=await runWith(['nope','still nope'],5);
+    assert.equal(twice.run.status,'failed');assert.equal(twice.calls,2);assert.match(twice.run.error!,/invalid response/);
+    const schema=await runWith(['{"ideas":[]}'],5);
+    assert.equal(schema.calls,2);assert.match(schema.run.error!,/did not match the required format/);
+    const noBudget=await runWith(['nope',good],1);
+    assert.equal(noBudget.run.status,'failed');assert.equal(noBudget.calls,1);
+    const policy=await runWith([JSON.stringify({proposed:'We tested 21 cases.',edits:[{before:'12',after:'21',start:10,reason:'x'}]})],5,'grammar','We tested 12 cases.');
+    assert.equal(policy.calls,1);assert.match(policy.run.error!,/changed a number/);
   }finally{store.close();rmSync(dir,{recursive:true,force:true});}
 });

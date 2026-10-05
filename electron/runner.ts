@@ -26,13 +26,16 @@ function locate(original: string, before: string, claimed: number, floor: number
   return best;
 }
 
+/** The model answered in the wrong shape. Worth one automatic retry, unlike a policy rejection. */
+export class FormatError extends Error {}
+
 export function validateGrammar(original: string, data: unknown): GrammarResult {
   const parsed = grammarSchema.parse(data);
   const edits: GrammarResult['edits'] = [];
   let floor = 0;
   for (const claimed of [...parsed.edits].sort((a, b) => a.start - b.start)) {
     const start = locate(original, claimed.before, claimed.start, floor);
-    if (start === -1) throw new Error('Grammar edits do not match the original passage. Nothing was changed.');
+    if (start === -1) throw new FormatError('Grammar edits do not match the original passage. Nothing was changed.');
     const edit = { ...claimed, id: randomUUID(), start, end: start + claimed.before.length };
     if ((edit.before.match(/\d+(?:[.,]\d+)*/g) || []).join('|') !== (edit.after.match(/\d+(?:[.,]\d+)*/g) || []).join('|')) throw new Error('A grammar suggestion changed a number. Nothing was changed.');
     if (/https?:\/\/|\[[\d,\s-]+\]/.test(edit.before + edit.after)) throw new Error('A grammar suggestion changes a link or citation. Please edit this passage manually.');
@@ -42,20 +45,25 @@ export function validateGrammar(original: string, data: unknown): GrammarResult 
   }
   let proposed = original;
   for (const edit of [...edits].reverse()) proposed = proposed.slice(0, edit.start) + edit.after + proposed.slice(edit.end);
-  if (proposed !== parsed.proposed) throw new Error('Grammar response contains changes outside its edit list. Nothing was changed.');
+  if (proposed !== parsed.proposed) throw new FormatError('Grammar response contains changes outside its edit list. Nothing was changed.');
   return { kind: 'grammar', original, proposed, edits, clarification: parsed.clarification };
 }
 
 export function parseResult(role: RunRequest['role'], input: string, raw: string): AgentResult {
   const cleaned=raw.trim().replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '');
   let data:unknown;
-  try { data=JSON.parse(cleaned); } catch { throw new Error('The assistant returned an invalid response. Your work is unchanged; retry the request.'); }
-  if(role==='grammar') return validateGrammar(input,data);
-  if(role==='methods') {
-    const value=methodsSchema.parse(data);
-    return {...value,kind:'methods',steps:value.steps.map(step=>({...step,id:randomUUID(),done:false}))};
+  try { data=JSON.parse(cleaned); } catch { throw new FormatError('The assistant returned an invalid response. Your work is unchanged; retry the request.'); }
+  try {
+    if(role==='grammar') return validateGrammar(input,data);
+    if(role==='methods') {
+      const value=methodsSchema.parse(data);
+      return {...value,kind:'methods',steps:value.steps.map(step=>({...step,id:randomUUID(),done:false}))};
+    }
+    if(role==='brainstorm') return {...brainstormSchema.parse(data),kind:'brainstorm'};
+  } catch (error) {
+    if (error instanceof z.ZodError) throw new FormatError('The assistant response did not match the required format. Your work is unchanged.');
+    throw error;
   }
-  if(role==='brainstorm') return {...brainstormSchema.parse(data),kind:'brainstorm'};
   throw new Error('Evidence discovery must use retrieved source metadata.');
 }
 
@@ -95,19 +103,27 @@ export class Runner {
         run.result=cached?{...cached,cached:true,sources:cached.sources.map(source=>({...source,id:randomUUID()}))}:await searchEvidence(request.text,controller.signal);
         if(!cached)this.store.setCache(key,run.result);
       }else{
-        if(this.requests>=settings.maxRequests)throw new Error('The request limit for this app session has been reached.');
-        this.requests++;
         const names={grammar:'grammar-editor.md',methods:'methods-coach.md',brainstorm:'brainstorming-partner.md'};
         const instructions=readFileSync(join(this.agentDirectory,'shared.md'),'utf8')+'\n'+readFileSync(join(this.agentDirectory,names[request.role]),'utf8')+'\n'+formats[request.role];
         const context=request.role==='grammar'?request.text:JSON.stringify({project:{title:detail.project.title,topic:detail.project.topic,question:detail.project.question},researcherInput:request.text});
-        const response=await this.auth.stream(settings.model,instructions,context,controller.signal,delta=>this.emit({runId:run.id,projectId:run.projectId,type:'delta',text:delta}));
-        run.result=parseResult(request.role,request.text,response.text);run.usage=response.usage;
+        // A wrongly shaped answer gets one more attempt, still counted against the session budget.
+        for(let attempt=1;;attempt++){
+          if(this.requests>=settings.maxRequests)throw new Error('The request limit for this app session has been reached.');
+          this.requests++;
+          const response=await this.auth.stream(settings.model,instructions,context,controller.signal,delta=>this.emit({runId:run.id,projectId:run.projectId,type:'delta',text:delta}));
+          if(response.usage)run.usage={input:(run.usage?.input??0)+response.usage.input,output:(run.usage?.output??0)+response.usage.output};
+          try{run.result=parseResult(request.role,request.text,response.text);break;}
+          catch(error){
+            if(!(error instanceof FormatError)||attempt>=2||controller.signal.aborted||this.requests>=settings.maxRequests)throw error;
+            this.emit({runId:run.id,projectId:run.projectId,type:'status',text:'The answer was not in the expected format. Asking once more…'});
+          }
+        }
       }
       if(controller.signal.aborted)throw new Error('Cancelled');
       run.status='completed';
     }catch(error){
       run.status=controller.signal.aborted?'cancelled':'failed';
-      run.error=controller.signal.aborted?'Task cancelled or timed out. Your accepted work is unchanged.':error instanceof z.ZodError?'The assistant response did not match the required format. Your work is unchanged.':error instanceof Error?error.message:'The task failed. Please retry.';
+      run.error=controller.signal.aborted?'Task cancelled or timed out. Your accepted work is unchanged.':error instanceof Error?error.message:'The task failed. Please retry.';
     }finally{
       clearTimeout(timeout);this.active.delete(run.id);
       // A project may have been deleted while its request was in flight.

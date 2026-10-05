@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { ArrowDown, ArrowRight, ArrowUp, BookOpen, Check, CheckCheck, ChevronDown, ChevronRight, CircleHelp, Download, ExternalLink, FileText, FlaskConical, Leaf, Lightbulb, LoaderCircle, MoreHorizontal, Plus, Redo2, Search, Settings2, Sparkles, Square, Trash2, Undo2, X } from 'lucide-react';
-import type { Account, AgentResult, GrammarEdit, GrammarResult, MethodsResult, PlanStep, Project, ProjectDetail, Role, Run, Settings, Source } from './shared/types';
+import type { Account, AgentResult, GrammarEdit, GrammarResult, MethodsResult, PlanStep, Project, ProjectDetail, Role, Settings, Source } from './shared/types';
 import { isBrowserPreview } from './browser-api';
 import { buildAgentInput } from './shared/agent-input';
 
@@ -112,7 +112,7 @@ export default function App() {
   const versions = useRef(new Map<string, number>()); const saved = useRef(new Map<string, string>()); const saveQueue = useRef<Promise<unknown>>(Promise.resolve()); const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null); const loadNumber = useRef(0); const navigating = useRef(false); const stepsQueue = useRef<Promise<unknown>>(Promise.resolve()); const [undoBusy, setUndoBusy] = useState(false);
   const currentRole = roles.find(item => item.id === role)!;
   const updateDetail = useCallback((update: (detail: ProjectDetail) => ProjectDetail) => { if (!detailRef.current) return; const next = update(detailRef.current); detailRef.current = next; setDetail(next); }, []);
-  const useDetail = (next: ProjectDetail) => { detailRef.current = next; setDetail(next); versions.current.set(next.project.id, next.project.version); saved.current.set(next.project.id, signature(next.project)); setSaveState('saved'); setSelectedRun(null); setTaskInput(''); };
+  const openDetail = (next: ProjectDetail) => { detailRef.current = next; setDetail(next); versions.current.set(next.project.id, next.project.version); saved.current.set(next.project.id, signature(next.project)); setSaveState('saved'); setSelectedRun(null); setTaskInput(''); };
   const persist = useCallback(async () => {
     const snapshot = detailRef.current?.project; if (!snapshot) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
@@ -141,7 +141,7 @@ export default function App() {
       if (accountResult.status === 'fulfilled') setAccount(accountResult.value); else setError(errorText(accountResult.reason));
       if (projectResult.status === 'fulfilled') {
         setProjects(projectResult.value);
-        if (projectResult.value.length) { try { const next = await api().getProject(projectResult.value[0].id); if (mounted) useDetail(next); } catch (error) { if (mounted) setError(errorText(error)); } }
+        if (projectResult.value.length) { try { const next = await api().getProject(projectResult.value[0].id); if (mounted) openDetail(next); } catch (error) { if (mounted) setError(errorText(error)); } }
       } else setError(errorText(projectResult.reason));
       if (mounted) setLoading(false);
     });
@@ -165,7 +165,7 @@ export default function App() {
     if (navigating.current) return;
     navigating.current = true; setLoading(true);
     const attempt = ++loadNumber.current;
-    try { await persist(); const next = await api().getProject(id); if (attempt !== loadNumber.current) return; useDetail(next); setView('workspace'); setMobileSidebar(false); setError(''); }
+    try { await persist(); const next = await api().getProject(id); if (attempt !== loadNumber.current) return; openDetail(next); setView('workspace'); setMobileSidebar(false); setError(''); }
     catch (error) { setError(errorText(error)); } finally { navigating.current = false; if (attempt === loadNumber.current) setLoading(false); }
   };
   const saveSource = async (source: Source) => {
@@ -236,9 +236,9 @@ export default function App() {
     </fieldset>}
     <footer className="app-footer"><Leaf size={13} /><span>Research is a practice. Take your time.</span><span>Research Bot · {isBrowserPreview ? 'Preview' : 'Desktop'}</span></footer></main>
     {(error || notice) && <div className={`toast ${error ? 'toast-error' : ''}`} role={error ? 'alert' : 'status'}><span>{error || notice}</span><button className="icon-button" aria-label="Dismiss notification" onClick={() => { setError(''); setNotice(''); }}><X size={16} /></button></div>}
-    {creating && <ProjectForm onClose={() => setCreating(false)} onSubmit={async (title, topic) => { await persist(); const next = await api().createProject({ title, topic }); setProjects(current => [next.project, ...current]); useDetail(next); setView('workspace'); setMobileSidebar(false); }} />}
+    {creating && <ProjectForm onClose={() => setCreating(false)} onSubmit={async (title, topic) => { await persist(); const next = await api().createProject({ title, topic }); setProjects(current => [next.project, ...current]); openDetail(next); setView('workspace'); setMobileSidebar(false); }} />}
     {editingProject && detail && <ProjectForm project={detail.project} onClose={() => setEditingProject(false)} onSubmit={async (title, topic) => { changeProject({ title: title.trim(), topic: topic.trim() }); await persist(); }} />}
-    {deleting && detail && <Modal title="Delete this project?" onClose={() => setDeleting(false)}><p>“{detail.project.title}” and its notes, source library, plan, and task history will be removed from this device.</p><p className="muted">Export the project first if you'd like a backup.</p><div className="modal-actions"><button className="button secondary" onClick={() => setDeleting(false)}>Keep project</button><button className="button danger-button" onClick={async () => { try { await persist(); await api().deleteProject(detail.project.id); const remaining = projects.filter(project => project.id !== detail.project.id); setProjects(remaining); if (remaining.length) useDetail(await api().getProject(remaining[0].id)); else { detailRef.current = null; setDetail(null); } setDeleting(false); setView('workspace'); setNotice('Project deleted.'); } catch (error) { setError(errorText(error)); } }}><Trash2 size={16} />Delete project</button></div></Modal>}
+    {deleting && detail && <Modal title="Delete this project?" onClose={() => setDeleting(false)}><p>“{detail.project.title}” and its notes, source library, plan, and task history will be removed from this device.</p><p className="muted">Export the project first if you'd like a backup.</p><div className="modal-actions"><button className="button secondary" onClick={() => setDeleting(false)}>Keep project</button><button className="button danger-button" onClick={async () => { try { await persist(); await api().deleteProject(detail.project.id); const remaining = projects.filter(project => project.id !== detail.project.id); setProjects(remaining); if (remaining.length) openDetail(await api().getProject(remaining[0].id)); else { detailRef.current = null; setDetail(null); } setDeleting(false); setView('workspace'); setNotice('Project deleted.'); } catch (error) { setError(errorText(error)); } }}><Trash2 size={16} />Delete project</button></div></Modal>}
     {settingsOpen && <AccountSettings account={account} setAccount={setAccount} onClose={() => setSettingsOpen(false)} />}{addingSource && <ManualSource onClose={() => setAddingSource(false)} onSave={saveSource} />}
   </div>;
 }

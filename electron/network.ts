@@ -9,9 +9,26 @@ const extraCertificatePaths = new Set([
   process.env.SSL_CERT_FILE,
   process.env.REQUESTS_CA_BUNDLE,
 ].filter((value): value is string => Boolean(value)));
-const certificates = [...getCACertificates('default')];
-for (const path of extraCertificatePaths) certificates.push(readFileSync(path, 'utf8'));
-const tlsOptions = { ca: certificates };
+
+/**
+ * A missing or unreadable bundle named by an environment variable must not stop the app from
+ * starting. Skip it with a warning; the system roots still apply.
+ */
+export function loadCertificates(paths: Iterable<string>, read: (path: string) => string = path => readFileSync(path, 'utf8'), warn: (message: string) => void = console.warn): string[] {
+  const certificates = [...getCACertificates('default')];
+  for (const path of paths) {
+    try {
+      const bundle = read(path);
+      if (!bundle.includes('-----BEGIN CERTIFICATE-----')) throw new Error('no PEM certificates found');
+      certificates.push(bundle);
+    } catch (error) {
+      warn(`Research Bot ignored the CA certificate file ${path}: ${error instanceof Error ? error.message : 'unreadable'}`);
+    }
+  }
+  return certificates;
+}
+
+const tlsOptions = { ca: loadCertificates(extraCertificatePaths) };
 setGlobalDispatcher(new EnvHttpProxyAgent({
   connect: tlsOptions,
   requestTls: tlsOptions,

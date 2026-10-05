@@ -3,6 +3,7 @@ import { chmodSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import type { EvidenceResult, PlanStep, Project, ProjectDetail, Run, Settings, Source } from '../src/shared/types';
+import { canonicalSourceUrl, normalizeDoi } from '../src/shared/source-keys';
 
 type Row = Record<string, string | number | null>;
 const DEFAULT_SETTINGS: Settings = { model: '', maxRequests: 20 };
@@ -17,29 +18,6 @@ function text(value: unknown, name: string, max = 100_000, required = false): st
     throw new Error(`${name} must be ${required ? 'a nonempty' : 'a'} string of at most ${max} characters.`);
   }
   return value;
-}
-
-export function normalizeDoi(value: string): string {
-  const doi = value.trim().replace(/^(?:https?:\/\/(?:dx\.)?doi\.org\/|doi:\s*)/i, '').toLowerCase();
-  if (!doi) return '';
-  if (!/^10\.\d{4,9}\/\S+$/i.test(doi) || doi.length > 2_000) throw new Error('The DOI is invalid.');
-  return doi;
-}
-
-export function canonicalSourceUrl(value: string): string {
-  if (!value.trim()) return '';
-  let url: URL;
-  try { url = new URL(value); } catch { throw new Error('The source URL is invalid.'); }
-  if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password) {
-    throw new Error('Source URLs must be public HTTP or HTTPS links without credentials.');
-  }
-  url.hash = '';
-  for (const key of [...url.searchParams.keys()]) {
-    if (/^utm_/i.test(key) || /^(fbclid|gclid|msclkid)$/i.test(key)) url.searchParams.delete(key);
-  }
-  url.searchParams.sort();
-  if (url.pathname !== '/') url.pathname = url.pathname.replace(/\/+$/, '');
-  return url.toString();
 }
 
 function projectFromRow(row: Row): Project {
@@ -278,6 +256,22 @@ export class Store {
       const existing = this.db.prepare('SELECT project_id FROM runs WHERE id = ?').get(run.id) as Row | undefined;
       if (existing && existing.project_id !== run.projectId) throw new Error('This agent run belongs to a different project.');
       this.db.prepare('INSERT INTO runs(id, project_id, created_at, data) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data').run(run.id, run.projectId, run.createdAt, data);
+    });
+  }
+
+  /**
+   * A run still marked "running" when the app starts was interrupted by a crash or forced quit.
+   * Call once at startup, before any new run begins.
+   */
+  failInterruptedRuns(): number {
+    return this.transaction(() => {
+      const rows = this.db.prepare("SELECT id, data FROM runs WHERE json_extract(data, '$.status') = 'running'").all() as Row[];
+      const update = this.db.prepare('UPDATE runs SET data = ? WHERE id = ?');
+      for (const row of rows) {
+        const run = JSON.parse(String(row.data)) as Run;
+        update.run(JSON.stringify({ ...run, status: 'failed', error: 'Research Bot closed before this task finished. Your accepted work is unchanged; run it again if you still need it.' }), row.id);
+      }
+      return rows.length;
     });
   }
 

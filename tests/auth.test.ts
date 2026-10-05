@@ -176,6 +176,8 @@ test('Responses uses supported HTTP fields, streams deltas, and succeeds only af
     await assert.rejects(f.auth.stream('model-a', '', 'input', new AbortController().signal, () => {}), /before completion/);
     f.api.intercept({ path: '/v1/responses', method: 'POST' }).reply(200, 'data: {"type":"response.output_text.delta","delta":"partial"}\n\ndata: {"type":"response.failed","response":{"error":{"code":"subscription_sharing_usage_limit_exceeded"}}}\n\n');
     await assert.rejects(f.auth.stream('model-a', '', 'input', new AbortController().signal, () => {}), /usage allowance/);
+    f.api.intercept({ path: '/v1/responses', method: 'POST' }).reply(200, 'data: {"type":"response.output_text.delta","delta":"par\n\n');
+    await assert.rejects(f.auth.stream('model-a', '', 'input', new AbortController().signal, () => {}), error => { assert.match((error as Error).message, /unreadable response stream/); assert.doesNotMatch((error as Error).message, /JSON|Unexpected/); return true; });
   } finally { await f.close(); }
 });
 

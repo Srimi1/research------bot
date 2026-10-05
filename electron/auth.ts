@@ -438,7 +438,9 @@ export class AuthService {
     function consume(block: string): void {
       const data = block.split(/\r?\n/).filter(line => line.startsWith('data:')).map(line => line.slice(5).trimStart()).join('\n');
       if (!data || data === '[DONE]') return;
-      const event = JSON.parse(data) as { type?: string; delta?: string; error?: { code?: string }; code?: string; response?: { error?: { code?: string }; usage?: { input_tokens?: number; output_tokens?: number } } };
+      let parsed: unknown;
+      try { parsed = JSON.parse(data); } catch { throw new Error('ChatGPT returned an unreadable response stream. Your input remains saved; retry the assistant.'); }
+      const event = parsed as { type?: string; delta?: string; error?: { code?: string }; code?: string; response?: { error?: { code?: string }; usage?: { input_tokens?: number; output_tokens?: number } } };
       if (event.type === 'response.output_text.delta') {
         if (completed || typeof event.delta !== 'string') throw new Error('ChatGPT returned an invalid response stream.');
         text += event.delta;

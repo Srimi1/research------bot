@@ -10,7 +10,7 @@ try{
     try{const response=await fetch('http://127.0.0.1:5175');if(response.ok)break;}catch{}
     await new Promise(resolve=>setTimeout(resolve,200));
   }
-  browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||(existsSync('/usr/bin/chromium')?'/usr/bin/chromium':undefined),headless:true,args:['--no-sandbox']});
+  browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||(!process.env.CI&&existsSync('/usr/bin/chromium')?'/usr/bin/chromium':undefined),headless:true,args:['--no-sandbox']});
   const page=await browser.newPage({viewport:{width:1440,height:1000}});
   const errors=[];page.on('pageerror',error=>errors.push(error.message));
   await page.route('https://api.crossref.org/works**',route=>route.fulfill({contentType:'application/json',body:JSON.stringify({status:'ok',message:{items:[{DOI:'10.1234/ui-fixture',title:['UI test source'],author:[{given:'Test',family:'Author'}],published:{'date-parts':[[2025]]},type:'journal-article'}]}})}));

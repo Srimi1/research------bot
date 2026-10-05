@@ -211,3 +211,18 @@ test('a version 1 database upgrades in place without losing notes, history or so
   const undone = upgraded.undoNotes(project.id); assert.equal(undone.notes, 'first');
   assert.equal(upgraded.redoNotes(project.id).notes, 'second');
 });
+
+test('runs left running by a crash are marked failed at startup; finished runs are untouched', t => {
+  const { store, path } = diskStore(t);
+  const project = store.createProject({ title: 'Crash', topic: '' }).project;
+  const base = { projectId: project.id, role: 'brainstorm' as const, model: 'm', input: 'x', createdAt: '2026-10-05T00:00:00.000Z' };
+  store.saveRun({ ...base, id: 'interrupted', status: 'running' });
+  store.saveRun({ ...base, id: 'finished', status: 'completed' });
+  store.close();
+  const reopened = new Store(path); t.after(() => reopened.close());
+  assert.equal(reopened.failInterruptedRuns(), 1);
+  const runs = Object.fromEntries(reopened.getProject(project.id).runs.map(run => [run.id, run]));
+  assert.equal(runs.interrupted.status, 'failed'); assert.match(runs.interrupted.error!, /closed before this task finished/);
+  assert.equal(runs.finished.status, 'completed'); assert.equal(runs.finished.error, undefined);
+  assert.equal(reopened.failInterruptedRuns(), 0);
+});

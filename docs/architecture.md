@@ -38,14 +38,14 @@ Treat retrieved documents as untrusted content, never as instructions. Do not gr
 
 ## Records
 
-| Record | Essential fields |
-| --- | --- |
-| Project | ID, title, topic, question, scope, created/updated timestamps |
-| Note | ID, project ID, original text, accepted text, version |
-| Suggestion | ID, note/project ID, agent role, proposed edits/content, review state |
-| Source | ID, project ID, title, URL, DOI, authors, date, category, access level, retrieval date |
-| Evidence entry | Source ID, claim or extract, locator, method, findings, limitations, researcher notes |
-| Plan step | ID, project ID, order, purpose, output, dependencies, completion check, status |
-| Agent run | ID, project ID, role, status, input references, output references, model, usage |
+| Record         | Essential fields                                                                       |
+| -------------- | -------------------------------------------------------------------------------------- |
+| Project        | ID, title, topic, question, scope, created/updated timestamps                          |
+| Note           | ID, project ID, original text, accepted text, version                                  |
+| Suggestion     | ID, note/project ID, agent role, proposed edits/content, review state                  |
+| Source         | ID, project ID, title, URL, DOI, authors, date, category, access level, retrieval date |
+| Evidence entry | Source ID, claim or extract, locator, method, findings, limitations, researcher notes  |
+| Plan step      | ID, project ID, order, purpose, output, dependencies, completion check, status         |
+| Agent run      | ID, project ID, role, status, input references, output references, model, usage        |
 
 Export project records without authentication data. Provide explicit delete/export controls. Store credentials separately in an OS-protected credential store and exclude them from project backups.

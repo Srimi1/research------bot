@@ -12,15 +12,15 @@ Verify authentication before investing in the full interface. Then build the wor
 
 ## Estimated effort
 
-| Delivery stage | Working days | Checkpoint |
-| --- | --- | --- |
-| Official authentication spike | 1–3 | Real sign-in and streamed request with the researcher's account |
-| Persistent local workspace | 2–3 | Two isolated projects survive restart and export correctly |
-| Methods coach and editable plan | 2–3 | Rough thoughts become a scoped question and feasible steps |
-| Evidence discovery and literature matrix | 4–6 | Retrieved sources and supported claims are traceable |
-| Grammar review | 2–3 | Minimal corrections can be accepted, rejected, and undone |
-| Brainstorming | 1–2 | Ideas are labeled and remain separate from accepted writing |
-| Integration and installer | 3–4 | A complete research session works after a clean installation |
+| Delivery stage                           | Working days | Checkpoint                                                      |
+| ---------------------------------------- | ------------ | --------------------------------------------------------------- |
+| Official authentication spike            | 1–3          | Real sign-in and streamed request with the researcher's account |
+| Persistent local workspace               | 2–3          | Two isolated projects survive restart and export correctly      |
+| Methods coach and editable plan          | 2–3          | Rough thoughts become a scoped question and feasible steps      |
+| Evidence discovery and literature matrix | 4–6          | Retrieved sources and supported claims are traceable            |
+| Grammar review                           | 2–3          | Minimal corrections can be accepted, rejected, and undone       |
+| Brainstorming                            | 1–2          | Ideas are labeled and remain separate from accepted writing     |
+| Integration and installer                | 3–4          | A complete research session works after a clean installation    |
 
 Estimate: 15–24 working days for one developer after access requirements are resolved. This is a planning range, not a delivery commitment. Authentication eligibility, provider access, and installer requirements may change it.
 

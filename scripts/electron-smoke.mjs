@@ -15,7 +15,8 @@ const args = process.env.ELECTRON_SMOKE_EXECUTABLE ? ['--no-sandbox'] : ['.', '-
 const env = { ...process.env, RESEARCH_BOT_USER_DATA: userData };
 const launch = async () => {
   const app = await electron.launch({ executablePath: executable, args, env });
-  const page = await app.firstWindow(); const errors = [];
+  const page = await app.firstWindow();
+  const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   return { app, page, errors };
 };
@@ -55,7 +56,16 @@ try {
 
   // A second launch with the same data folder must exit without opening a window.
   const second = spawn(executable, args, { env, stdio: 'ignore' });
-  const code = await new Promise((resolve, reject) => { const timer = setTimeout(() => { second.kill(); reject(new Error('Second instance did not exit')); }, 20_000); second.on('exit', value => { clearTimeout(timer); resolve(value); }); });
+  const code = await new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      second.kill();
+      reject(new Error('Second instance did not exit'));
+    }, 20_000);
+    second.on('exit', value => {
+      clearTimeout(timer);
+      resolve(value);
+    });
+  });
   assert.equal(code, 0);
   assert.equal(app.windows().length, 1);
   assert.deepEqual(errors, []);
@@ -64,8 +74,20 @@ try {
   // Simulate a crash during an assistant run, then restart.
   const db = new DatabaseSync(join(userData, 'research.sqlite'));
   const project = db.prepare('SELECT id FROM projects').get();
-  db.prepare('INSERT INTO runs(id, project_id, created_at, data) VALUES (?, ?, ?, ?)').run('crashed-run', project.id, '2026-10-05T00:00:00.000Z',
-    JSON.stringify({ id: 'crashed-run', projectId: project.id, role: 'brainstorm', status: 'running', model: 'm', input: 'interrupted', createdAt: '2026-10-05T00:00:00.000Z' }));
+  db.prepare('INSERT INTO runs(id, project_id, created_at, data) VALUES (?, ?, ?, ?)').run(
+    'crashed-run',
+    project.id,
+    '2026-10-05T00:00:00.000Z',
+    JSON.stringify({
+      id: 'crashed-run',
+      projectId: project.id,
+      role: 'brainstorm',
+      status: 'running',
+      model: 'm',
+      input: 'interrupted',
+      createdAt: '2026-10-05T00:00:00.000Z',
+    }),
+  );
   db.close();
 
   ({ app, page, errors } = await launch());
@@ -74,7 +96,9 @@ try {
   await page.getByText('Research Bot closed before this task finished', { exact: false }).waitFor();
   assert.deepEqual(errors, []);
   await app.close();
-  console.log('Electron smoke passed: IPC, persistence, undo/redo, readable errors, single instance, interrupted runs.');
+  console.log(
+    'Electron smoke passed: IPC, persistence, undo/redo, readable errors, single instance, interrupted runs.',
+  );
 } finally {
   rmSync(userData, { recursive: true, force: true });
 }

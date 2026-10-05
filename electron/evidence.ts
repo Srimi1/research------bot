@@ -15,7 +15,13 @@ export async function searchEvidence(input: string, signal: AbortSignal): Promis
   const combined = AbortSignal.any([signal, AbortSignal.timeout(20_000)]);
   try {
     const response = await fetchNetwork(url, {
-      signal: combined, redirect: 'error', headers: { Accept: 'application/json', 'User-Agent': 'ResearchBot/0.1 (local scholarly research workspace; +https://github.com/Srimi1/research------bot)' },
+      signal: combined,
+      redirect: 'error',
+      headers: {
+        Accept: 'application/json',
+        'User-Agent':
+          'ResearchBot/0.1 (local scholarly research workspace; +https://github.com/Srimi1/research------bot)',
+      },
     });
     if (!response.ok) {
       await response.body?.cancel();
@@ -24,7 +30,11 @@ export async function searchEvidence(input: string, signal: AbortSignal): Promis
     }
     const body = await readLimited(response, MAX_RESPONSE_BYTES);
     let payload: unknown;
-    try { payload = JSON.parse(body); } catch { throw new Error('Crossref returned invalid JSON. Please try again later.'); }
+    try {
+      payload = JSON.parse(body);
+    } catch {
+      throw new Error('Crossref returned invalid JSON. Please try again later.');
+    }
     return parseCrossref(payload, query);
   } catch (error) {
     if (signal.aborted) throw signal.reason;

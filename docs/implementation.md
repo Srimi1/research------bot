@@ -53,7 +53,12 @@ Installed copies check [GitHub Releases](https://github.com/Srimi1/research-----
 To publish a new version:
 
 1. Bump `version` in `package.json` (for example to `0.2.0`) and merge it to `main`. Auto-update only offers versions higher than the installed one.
-2. Create a GitHub release whose tag is `v` plus that version (`v0.2.0`). The release workflow refuses a tag that does not match.
+2. Release it, either way:
+   - **From GitHub Actions:** run **Publish desktop release** on `main` with the tag `v0.2.0`. It creates the release and its tag on that commit, using `docs/releases/v0.2.0.md` as the notes when that file exists (GitHub's generated notes otherwise).
+   - **From the Releases page:** publish a release whose tag is `v` plus that version (`v0.2.0`). Leave "Set as a pre-release" unchecked: the updater ignores pre-releases.
+
+   Either way, the workflow refuses a tag that does not match `package.json`.
+
 3. The workflow builds the AppImage and Windows installer and attaches them with `latest-linux.yml`, `latest.yml`, block maps, per-platform `SHA256SUMS` files, and the source archive. Installed apps pick the release up on their next check.
 
 Source and development history are maintained in [Srimi1/research------bot](https://github.com/Srimi1/research------bot). The repository's initial commit and MIT license are preserved. Desktop binaries and the source archive are attached to GitHub releases.

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2f6250" />
+      <stop offset="1" stop-color="#1c3b30" />
+    </linearGradient>
+    <linearGradient id="leaf" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#7fbf8e" />
+      <stop offset="1" stop-color="#b5dcaa" />
+    </linearGradient>
+  </defs>
+  <!-- Tile on the macOS icon grid: 824 px body with an even margin. -->
+  <rect x="100" y="100" width="824" height="824" rx="186" fill="url(#tile)" />
+  <g transform="translate(0 24)">
+    <!-- Open book -->
+    <path d="M512 742 C 438 700 330 690 236 712 L 236 480 C 330 456 438 466 512 510 Z" fill="#fffaf0" />
+    <path d="M512 742 C 586 700 694 690 788 712 L 788 480 C 694 456 586 466 512 510 Z" fill="#efe8d6" />
+    <path d="M512 510 L 512 742" stroke="#c9bfa6" stroke-width="10" stroke-linecap="round" />
+    <!-- Leaf growing from the spine -->
+    <path d="M512 520 C 440 428 444 292 616 220 C 670 346 648 462 512 520 Z" fill="url(#leaf)" />
+    <path d="M512 516 C 536 438 562 360 598 272" fill="none" stroke="#2f6250" stroke-width="9" stroke-linecap="round" />
+  </g>
+</svg>

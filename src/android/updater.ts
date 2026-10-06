@@ -1,4 +1,4 @@
-import { startUpdates, type Updater } from '../../electron/updater';
+import { startUpdates, type Updater } from '../../core/updates';
 import type { Fetch } from '../../core/platform';
 import { readLimited } from '../../core/platform';
 import { Native } from './native';
@@ -27,7 +27,10 @@ export function startAndroidUpdates(fetch: Fetch, enabled: () => boolean, log: (
         if (!release) return;
         if (ready !== release.version) {
           const sums = await fetch(release.sumsUrl, { signal: AbortSignal.timeout(60_000) });
-          if (!sums.ok) throw new Error(`The update checksums answered HTTP ${sums.status}.`);
+          if (!sums.ok) {
+            await sums.body?.cancel();
+            throw new Error(`The update checksums answered HTTP ${sums.status}.`);
+          }
           const sha256 = checksumFor(await readLimited(sums, 100_000), `research-bot-${release.version}-android.apk`);
           if (!sha256) throw new Error('The update has no published checksum.');
           await Native.downloadUpdate({ url: release.apkUrl, sha256 });
@@ -42,8 +45,14 @@ export function startAndroidUpdates(fetch: Fetch, enabled: () => boolean, log: (
     },
     quitAndInstall() {
       Native.installUpdate().catch(error => {
-        log(`Update install failed: ${error instanceof Error ? error.message : String(error)}`);
-        window.alert(error instanceof Error ? error.message : 'The update could not be installed.');
+        const message = error instanceof Error ? error.message : String(error);
+        log(`Update install failed: ${message}`);
+        if (/download the update first/i.test(message)) {
+          // Android cleared the cached APK. Download it again and ask once it is ready.
+          ready = undefined;
+          window.alert('The downloaded update was removed by Android. Research Bot will download it again.');
+          void updater.checkForUpdates();
+        } else window.alert(message || 'The update could not be installed.');
       });
     },
     on(event: 'update-downloaded' | 'error', listener: any) {
@@ -60,7 +69,5 @@ export function startAndroidUpdates(fetch: Fetch, enabled: () => boolean, log: (
           'If you choose Cancel, you will be asked again next time.',
       ),
     log,
-    setTimer: (callback, ms) => setTimeout(callback, ms),
-    setRepeat: (callback, ms) => setInterval(callback, ms),
   });
 }

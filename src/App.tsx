@@ -295,6 +295,19 @@ function AccountSettings({
       setSigning(false);
     }
   };
+  const signingRef = useRef(false);
+  signingRef.current = signing;
+  // Closing the dialog any way (Close, Escape, the Android back gesture) ends a sign-in still waiting
+  // on the browser, so a later "Sign in with ChatGPT" starts fresh instead of reporting a busy sign-in.
+  useEffect(
+    () => () => {
+      if (signingRef.current)
+        void api()
+          .cancelSignIn()
+          .catch(() => undefined);
+    },
+    [],
+  );
   const signInRef = useRef(signIn);
   signInRef.current = signIn;
   const autoStarted = useRef(false);

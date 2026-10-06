@@ -12,7 +12,7 @@ import {
   type FileStore,
 } from '../core/platform';
 import { createNativeFetch } from '../src/android/adapters';
-import { PersistentDatabase } from '../src/android/database';
+import { PersistentDatabase, RETRY_DELAY_MS, SAVE_DELAY_MS } from '../src/android/database';
 import { checksumFor, findUpdate, newer } from '../src/android/releases';
 import type { Run, Source } from '../src/shared/types';
 
@@ -265,4 +265,43 @@ test('native fetch refuses redirects when asked and reports aborts as aborts', a
     createNativeFetch(fakeBridge(200, []))('https://x.test', { body: new Uint8Array([1]) as any }),
     /text request bodies/,
   );
+});
+
+test('native fetch rejects an unreadable status and closes the connection', async () => {
+  const bridge = fakeBridge(-1, []);
+  await assert.rejects(createNativeFetch(bridge)('https://api.openai.com/v1/models'), {
+    name: 'TypeError',
+    message: /invalid response/,
+  });
+  assert.deepEqual(bridge.calls.closed, [bridge.calls.open[0].id]);
+});
+
+test('Android saves happen after a pause in changes and retry after a failed write', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const disk = memoryFiles();
+  let failures = 1;
+  const warnings: string[] = [];
+  const flaky: FileStore = {
+    ...disk.store,
+    write: async (name, data) => {
+      if (failures-- > 0) throw new Error('disk full');
+      await disk.store.write(name, data);
+    },
+  };
+  const db = await PersistentDatabase.open(flaky, undefined, message => warnings.push(message));
+  const store = new Store(db);
+  store.createProject({ title: 'Kept', topic: '' });
+  const settle = () => new Promise(resolve => setImmediate(resolve));
+  t.mock.timers.tick(SAVE_DELAY_MS - 1);
+  await settle();
+  assert.equal(disk.writes(), 0);
+  t.mock.timers.tick(1);
+  await settle();
+  assert.equal(disk.writes(), 0);
+  assert.match(warnings[0], /disk full/);
+  t.mock.timers.tick(RETRY_DELAY_MS);
+  await settle();
+  assert.equal(disk.writes(), 1);
+  db.close();
+  assert.equal(new Store(await PersistentDatabase.open(disk.store)).listProjects()[0].title, 'Kept');
 });

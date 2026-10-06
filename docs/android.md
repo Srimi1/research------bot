@@ -43,7 +43,7 @@ flowchart LR
 The backend in `core/` is shared with the desktop app, which supplies Node adapters from `electron/`. On Android it runs in the WebView with these adapters:
 
 - **Network:** the WebView's own `fetch` cannot reach the ChatGPT endpoints (CORS), so requests go through the native plugin, which streams response bodies back chunk by chunk. Only HTTPS is allowed, and redirects are refused wherever the desktop refuses them.
-- **Storage:** projects live in SQLite (sql.js), written atomically to app-private storage shortly after each change, before each request reports success, and whenever the app goes to the background.
+- **Storage:** projects live in SQLite (sql.js). The file is written atomically to app-private storage one second after the last change and immediately when the app goes to the background. Writes are batched because each one saves the whole file; a failed write is kept and retried.
 - **Back gesture:** closes the open dialog or project drawer first, then leaves the app.
 
 ## Build it yourself

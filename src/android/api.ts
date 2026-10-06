@@ -63,7 +63,12 @@ export function createAndroidAPI(): ResearchAPI {
       openUrl: url => Native.openUrl({ url }),
     });
     // Android may stop the app at any time once it is in the background, so write everything now.
-    void App.addListener('pause', () => void db.flush().catch(() => undefined));
+    // A failed save is logged and retried by the database itself.
+    const saveNow = () => void db.flush().catch(() => undefined);
+    void App.addListener('pause', saveNow);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') saveNow();
+    });
     void App.addListener('backButton', () => {
       if (!back()) void App.minimizeApp();
     });
@@ -72,21 +77,20 @@ export function createAndroidAPI(): ResearchAPI {
       () => store.getSettings().autoUpdate,
       message => console.warn(message),
     );
-    return { handlers, db };
+    return { handlers };
   })();
 
   const call =
     <K extends keyof Handlers>(name: K) =>
     async (...args: Parameters<Handlers[K]>): Promise<Awaited<ReturnType<Handlers[K]>>> => {
-      const { handlers, db } = await ready.catch(error => {
+      const { handlers } = await ready.catch(error => {
         throw new Error(describeError(error));
       });
       try {
+        // Changes reach the in-memory database now and the file shortly after (see database.ts).
         return await (handlers[name] as (...values: unknown[]) => any)(...args);
       } catch (error) {
         throw new Error(describeError(error));
-      } finally {
-        await db.flush();
       }
     };
 

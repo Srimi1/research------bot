@@ -2534,6 +2534,11 @@ h1 {
   padding: calc(25px + var(--inset-top)) calc(25px + var(--inset-right)) calc(25px + var(--inset-bottom))
     calc(25px + var(--inset-left));
 }
+@media (max-width: 1000px) {
+  .sidebar {
+    padding-top: calc(25px + var(--inset-top));
+  }
+}
 @media (max-width: 720px) {
   .topbar {
     height: calc(55px + var(--inset-top));

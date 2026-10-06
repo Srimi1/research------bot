@@ -37,12 +37,18 @@ export function createNativeFetch(bridge: Bridge): Fetch {
       if (signal?.aborted) throw aborted(signal);
       throw new TypeError(error instanceof Error ? error.message : 'The network request failed.');
     }
+    if (!Number.isInteger(head.status) || head.status < 200 || head.status > 599) {
+      // Response() only accepts 200-599; HttpURLConnection reports -1 for an unreadable reply.
+      release();
+      close();
+      throw new TypeError(`The server sent an invalid response (status ${head.status}).`);
+    }
     if (head.status >= 300 && head.status < 400 && init.redirect === 'error') {
       release();
       close();
       throw new TypeError('The server answered with an unexpected redirect.');
     }
-    const empty = [101, 204, 205, 304].includes(head.status) || init.method === 'HEAD';
+    const empty = [204, 205, 304].includes(head.status) || init.method === 'HEAD';
     let finished = false;
     const finish = () => {
       if (finished) return;

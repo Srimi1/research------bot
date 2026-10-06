@@ -1,5 +1,5 @@
 import type { Fetch } from '../../core/platform';
-import { readLimited } from '../../core/platform';
+import { requestJson } from '../../core/platform';
 
 const RELEASES = 'https://api.github.com/repos/Srimi1/research------bot/releases/latest';
 
@@ -38,16 +38,9 @@ export interface AndroidRelease {
 
 /** The newest published Android build, when it is newer than `current`. */
 export async function findUpdate(fetch: Fetch, current: string): Promise<AndroidRelease | undefined> {
-  const response = await fetch(RELEASES, {
-    redirect: 'error',
+  const release = await requestJson<Release>(fetch, RELEASES, {
     headers: { Accept: 'application/vnd.github+json' },
-    signal: AbortSignal.timeout(30_000),
   });
-  if (!response.ok) {
-    await response.body?.cancel();
-    throw new Error(`GitHub Releases answered HTTP ${response.status}.`);
-  }
-  const release = JSON.parse(await readLimited(response, 2_000_000)) as Release;
   if (release.draft || release.prerelease || typeof release.tag_name !== 'string') return undefined;
   const version = release.tag_name.replace(/^v/, '');
   if (!/^\d+\.\d+\.\d+$/.test(version) || !newer(version, current)) return undefined;

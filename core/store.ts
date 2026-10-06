@@ -1,5 +1,6 @@
 import type { SqlDatabase, SqlValue } from './platform';
 import type { EvidenceResult, PlanStep, Project, ProjectDetail, Run, Settings, Source } from '../src/shared/types';
+import { MAX_NOTES, MAX_QUESTION } from '../src/shared/limits';
 import { canonicalSourceUrl, normalizeDoi } from '../src/shared/source-keys';
 
 type Row = Record<string, SqlValue>;
@@ -177,8 +178,8 @@ export class Store {
   saveProject(input: Pick<Project, 'id' | 'title' | 'topic' | 'question' | 'notes' | 'version'>): Project {
     text(input.title, 'Project title', 200, true);
     text(input.topic, 'Topic', 2_000);
-    text(input.question, 'Research question', 20_000);
-    text(input.notes, 'Notes', 1_000_000);
+    text(input.question, 'Research question', MAX_QUESTION);
+    text(input.notes, 'Notes', MAX_NOTES);
     if (!Number.isSafeInteger(input.version) || input.version < 1) throw new Error('Invalid project version.');
     return this.transaction(() => {
       const previous = this.project(input.id);

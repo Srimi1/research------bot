@@ -1,66 +1,113 @@
+<p align="center">
+  <img src="public/app-icon.png" alt="Research Bot: a book, magnifying glass and leaf" width="112" />
+</p>
+
 # Research Bot
 
-<img src="public/app-icon.png" alt="Research Bot app icon: a book, magnifying glass, and leaf" width="96" />
+A personal research workspace for Android, Windows, Linux and macOS. Keep your questions, notes, sources and plans together, with four assistants whose suggestions you review before accepting.
 
-A personal research workspace for sustainability and any other subject. You lead the research; specialist AI agents help you improve grammar, find evidence, explore ideas, learn methods, and turn rough thoughts into a practical plan.
+[![Checks](https://github.com/Srimi1/research------bot/actions/workflows/check.yml/badge.svg)](https://github.com/Srimi1/research------bot/actions/workflows/check.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-254b3d.svg)](LICENSE)
+[![Android 8+](https://img.shields.io/badge/Android-8%2B-254b3d.svg)](docs/android.md)
+[![Node.js 24](https://img.shields.io/badge/Node.js-24-254b3d.svg)](CONTRIBUTING.md)
 
-## Project status
+**Beta:** local workflows and mocked authentication are tested. Live ChatGPT sign-in, account eligibility and AI output quality still need verification with a real account. See the [audit report](docs/audits/2026-10-06.md) for evidence and limits.
 
-The local desktop beta is implemented: persistent research projects, four role workflows, source discovery, literature notes, editable plans, grammar suggestion review, task cancellation, and export. The official ChatGPT sign-in flow is implemented and tested with mocked protocol responses. **Live account sign-in and AI-output fidelity still require validation with your eligible ChatGPT account.**
+## A calmer research desk
 
-## Run locally
+<p align="center">
+  <img src="docs/screenshots/android-welcome.png" alt="Illustrated phone welcome screen with four research assistants" width="250" />
+  <img src="docs/screenshots/phone-project.png" alt="Phone research project with progress, notes and bottom navigation" width="250" />
+</p>
 
-Install Node.js 24 and npm, then run:
+These are browser-rendered phone previews with synthetic data; the welcome screenshot uses a mocked Android account state. They are not photographs or real-device test results.
+
+- **Your work, on your device:** local projects, autosaved notes, undo/redo, source annotations, editable plans and Markdown/JSON export.
+- **Useful first steps:** an optional note outline, editable prompt shortcuts and a suggested next action based on your project's progress.
+- **Phone-friendly controls:** bottom navigation, clearer dialogs, keyboard-aware layout and small animations that respect reduced motion.
+- **Review before accepting:** grammar edits, ideas and proposed plans stay separate from your original notes until you choose to apply them.
+
+| Assistant             | What it does                                                     | Research boundary                                                   |
+| --------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------- |
+| Methods coach         | Explains methods, refines a question and proposes a plan         | You decide the scope and accept the steps                           |
+| Evidence finder       | Searches Crossref scholarly metadata and organizes saved sources | Metadata is not full-text verification; findings are never invented |
+| Grammar editor        | Suggests corrections to spelling, punctuation and grammar        | Review meaning and voice before accepting an edit                   |
+| Brainstorming partner | Explores ideas, assumptions and alternative explanations         | Ideas remain suggestions, not established findings                  |
+
+Crossref discovery works without signing in. AI assistants require eligible ChatGPT plan access. The app does not request copied cookies or session tokens, and does not silently switch to separately billed API usage.
+
+## Install or build
+
+Check [GitHub Releases](https://github.com/Srimi1/research------bot/releases) for the files actually attached to a release. A release's description alone does not establish APK availability. As of the October 6, 2026 audit, `v0.3.1` contains Linux and Windows installers but no APK.
+
+| Platform   | Distribution / development                                                             | Guide                                                               |
+| ---------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| Android 8+ | Signed `research-bot-<version>-android.apk` when attached; CI also uploads a debug APK | [Android setup, signing and updates](docs/android.md)               |
+| Windows    | NSIS installer                                                                         | [Releases and updates](docs/implementation.md#releases-and-updates) |
+| Linux      | AppImage; live sign-in needs a secure desktop keyring                                  | [Operating notes](docs/implementation.md#operating-notes)           |
+| macOS      | Local app builds; release signing/notarization is not configured                       | [Contribution guide](CONTRIBUTING.md)                               |
+
+For Android 16 on the OnePlus 7T Pro, use the Android build. The app targets SDK 36 and supports Android 8 or later. No local AI model is bundled. Physical-device and custom-ROM behavior still need testing on your phone.
+
+For development, install **Node.js 24**:
 
 ```sh
+git clone https://github.com/Srimi1/research------bot.git
+cd research------bot
 npm ci
-npm run dev
+npm run dev       # Electron desktop
+# or: npm run dev:web
 ```
 
-In Settings, choose **Continue with ChatGPT**, authorize eligible plan usage in the system browser, and select a model from your account's catalog. An OS keychain is required for credential storage; Linux plaintext keyring fallback is rejected. Scholarly source discovery works without AI sign-in.
+The browser preview stores its own data in localStorage and supports notes, source searches and export. Install the desktop or Android app for ChatGPT sign-in; browser data does not automatically transfer to either app.
+
+To build a debug APK, install **JDK 21** and **Android SDK 36**, set `JAVA_HOME` and `ANDROID_HOME`, then run:
 
 ```sh
-npm run format    # Prettier (CI runs format:check)
-npm run lint      # ESLint (TypeScript and React Hooks rules)
-npm test          # Backend and protocol regression tests
-npm run test:ui   # Browser workflows; install Playwright Chromium first if needed
-npm run test:electron       # Drives the real desktop app (use xvfb-run on headless Linux)
-npm run test:electron-node  # SQLite tests inside Electron's bundled Node
-npm run build    # Type check and production bundles
-npm run package  # Unpacked desktop application for the current OS
-npm run dist     # Installer for the current OS
+npm run build:android
+cd android
+./gradlew --no-daemon assembleDebug lintDebug
 ```
 
-### Android
+Output: `android/app/build/outputs/apk/debug/app-debug.apk`. Debug and release APKs use different signing keys; see the [Android guide](docs/android.md) before switching between them.
 
-Download `research-bot-<version>-android.apk` from [Releases](https://github.com/Srimi1/research------bot/releases/latest) and open it on your phone (Android 8.0 or later). The Android app runs the same backend as the desktop app and updates itself from Releases. See the [Android guide](docs/android.md) for sign-in, updates, building it yourself, and the one-time release signing setup.
+## How it works
 
-For a browser preview, run `npm run dev:web`. This preview stores projects in the browser and supports scholarly search, editing, and export. ChatGPT sign-in is available in the desktop app. Browser and desktop data are separate. See [implementation and validation notes](docs/implementation.md) for current limitations.
+```mermaid
+flowchart LR
+  UI[React research workspace] --> Desktop[Electron IPC]
+  UI --> Android[Capacitor Android bridge]
+  Desktop --> Core[Shared core: validation, store, auth, runner]
+  Android --> Core
+  Core --> DB[(Local SQLite)]
+  Core --> Crossref[Crossref metadata]
+  Core --> ChatGPT[Eligible ChatGPT requests]
+  Core --> Review[Suggestions for your review]
+```
 
-## Your research team
+`core/` contains platform-independent behavior. `electron/` supplies desktop adapters; `src/android/` and the Java native plugin supply Android networking, private files and Keystore encryption. Both apps use the same validated request handlers. Project exports exclude credentials. Research content is stored locally without additional app-level encryption. Requests send the selected task text to the provider; the app discloses excerpts when notes are too long to share in full.
 
-| Agent                     | What it helps with                                                                                                                                   | Boundary                                                                                  |
-| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| Grammar editor            | Correct grammar, spelling, and punctuation in your writing                                                                                           | Preserve vocabulary, meaning, voice, and claims; never add ideas                          |
-| Evidence finder           | Search scholarly metadata (Crossref) for articles and reports; you add documents and forum discussions yourself; organize a literature-review matrix | Provide traceable sources; never invent citations or imply it read inaccessible full text |
-| Brainstorming partner     | Explore questions, alternative explanations, and possible directions                                                                                 | Mark suggestions as ideas, not established findings                                       |
-| Methods coach and planner | Teach research methods and turn rough thoughts into an ordered plan                                                                                  | Explain choices and limitations; leave research decisions to you                          |
+Read the [architecture](docs/architecture.md), [authentication decision](docs/authentication.md) and [implementation notes](docs/implementation.md) for the exact boundaries.
 
-Each suggestion is reviewable. Your original notes remain intact until you accept a change. Agents run only when requested, with visible progress and a cancellation control.
+## Quality and contribution
 
-## ChatGPT sign-in
+```sh
+npm run format:check
+npm run lint
+npm audit --audit-level=high
+npm run test:toolchain
+npm test
+npm run test:electron-node
+npm run build
+npm run test:ui
+```
 
-The app uses the official Sign in with ChatGPT flow and eligible ChatGPT plan usage. It does not ask you to copy ChatGPT cookies or session tokens. Account eligibility and a successful real sign-in must be verified with your account.
+CI also launches Electron, builds desktop packages on Linux/Windows/macOS and compiles/lints Android. See [CONTRIBUTING.md](CONTRIBUTING.md) for prerequisites and test commands.
 
-OpenAI currently documents plan usage for local/open-source apps; paid or remotely hosted distribution requires a separate eligibility review. Ordinary API billing is separate from a ChatGPT subscription. See the [authentication decision](docs/authentication.md) before choosing a provider.
+- [Reusable top-to-bottom audit skill](.agents/skills/research-bot-audit/SKILL.md)
+- [Audit findings, fixes and validation](docs/audits/2026-10-06.md)
+- [Changelog](CHANGELOG.md) · [Brand assets](docs/branding.md)
+- [Security reporting](SECURITY.md) · [Product specification](docs/product-spec.md)
+- [Agent instructions](agents/README.md) · [Roadmap](docs/roadmap.md)
 
-## Project documents
-
-- [Product specification](docs/product-spec.md)
-- [Architecture proposal](docs/architecture.md)
-- [Authentication decision and official references](docs/authentication.md)
-- [Implementation roadmap and acceptance checks](docs/roadmap.md)
-- [Android app](docs/android.md)
-- [Agent instructions](agents/README.md)
-
-Source repository: [Srimi1/research------bot](https://github.com/Srimi1/research------bot). The project uses the repository's [MIT license](LICENSE). Linux, Windows and Android builds are available under [Releases](https://github.com/Srimi1/research------bot/releases), and installed copies update themselves from there (see [releases and updates](docs/implementation.md#releases-and-updates)).
+Maintained by [Srimi1](https://github.com/Srimi1). Licensed under [MIT](LICENSE).

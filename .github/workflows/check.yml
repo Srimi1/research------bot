@@ -14,6 +14,8 @@ jobs:
       - run: npm ci
       - run: npm run format:check
       - run: npm run lint
+      - run: npm audit --audit-level=high
+      - run: npm run test:toolchain
       - run: npm test
       # The SQLite store runs on Electron's bundled Node in the real app, so test it there too.
       - run: npm run test:electron-node
@@ -51,6 +53,7 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - run: npm run test:toolchain
       - run: npm run build
       - run: npx electron-builder ${{ matrix.target }} --publish never
       - name: Check the update manifest names a built file
@@ -92,6 +95,11 @@ jobs:
           expected="$(node -p "require('./package.json').version")"
           echo "APK version $version"
           test "$version" = "$expected" || { echo "::error::APK version $version does not match package.json $expected"; exit 1; }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: research-bot-android-debug
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
       - uses: actions/upload-artifact@v4
         if: always()
         with:

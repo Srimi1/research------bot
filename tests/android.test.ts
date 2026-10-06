@@ -276,6 +276,42 @@ test('native fetch rejects an unreadable status and closes the connection', asyn
   assert.deepEqual(bridge.calls.closed, [bridge.calls.open[0].id]);
 });
 
+test('native fetch rejects a late response after cancellation, including bodyless responses', async () => {
+  for (const status of [200, 204]) {
+    let resume!: (value: { status: number; statusText: string; headers: Record<string, string> }) => void;
+    const closed: string[] = [];
+    const bridge = {
+      httpOpen: () => new Promise<Parameters<typeof resume>[0]>(resolve => (resume = resolve)),
+      httpRead: async () => ({ done: true }),
+      httpClose: async ({ id }: { id: string }) => void closed.push(id),
+    };
+    const controller = new AbortController();
+    const pending = createNativeFetch(bridge)('https://example.org', { signal: controller.signal });
+    controller.abort();
+    // A bridge completion already queued on the native side can arrive after httpClose.
+    resume({ status, statusText: '', headers: {} });
+    await assert.rejects(pending, { name: 'AbortError' });
+    assert.ok(closed.length > 0);
+  }
+});
+
+test('native fetch discards a chunk that arrives after cancellation', async () => {
+  let resume!: (value: { done: boolean; data: string }) => void;
+  const bridge = {
+    httpOpen: async () => ({ status: 200, statusText: '', headers: {} }),
+    httpRead: () => new Promise<Parameters<typeof resume>[0]>(resolve => (resume = resolve)),
+    httpClose: async () => {},
+  };
+  const controller = new AbortController();
+  const response = await createNativeFetch(bridge)('https://example.org', { signal: controller.signal });
+  const reader = response.body!.getReader();
+  const pending = reader.read();
+  controller.abort();
+  resume({ done: false, data: Buffer.from('cancelled output').toString('base64') });
+  await assert.rejects(pending, { name: 'AbortError' });
+  reader.releaseLock();
+});
+
 test('Android saves happen after a pause in changes and retry after a failed write', async t => {
   t.mock.timers.enable({ apis: ['setTimeout'] });
   const disk = memoryFiles();

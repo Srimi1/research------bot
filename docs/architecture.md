@@ -1,6 +1,6 @@
 # Architecture
 
-## Initial deployment
+## Current implementation
 
 The beta uses a React/TypeScript interface in Electron, a Node/TypeScript main process, and SQLite for projects, notes, sources, plans, and run history. Renderer sandboxing and context isolation are enabled, renderer Node integration is disabled, and the preload exposes narrow, validated IPC methods. See [implementation notes](implementation.md) for validation and remaining limits.
 
@@ -22,29 +22,29 @@ flowchart TD
 
 ## Coordination
 
-Agents are specialized instructions with bounded inputs and outputs; they do not require separate accounts or model subscriptions. Route a selected task to the relevant agent instead of running every agent for every request. A combined planning request may call the coach and evidence finder, then present both outputs for human review. Use a concurrency limit, cancellation signal, retry cap, and per-run request budget.
+Agents are specialized instructions with bounded inputs and outputs; they do not require separate accounts or model subscriptions. The runner executes the selected role only. Evidence uses Crossref rather than an AI request; other roles use the selected eligible ChatGPT model. Up to two tasks run concurrently, with cancellation, a three-minute task deadline and a per-app-session AI request budget. A combined autonomous multi-agent workflow is not implemented.
 
 Store draft suggestions separately from accepted researcher content. Every run records its role, selected inputs, status, model, timestamps, source references, and available usage metrics. Do not log credentials. Do not claim prompts alone guarantee grammar fidelity or source accuracy; add evaluation and human review.
 
 ## Provider boundaries
 
-The main process handles authentication, credential refresh, inference, and tools. The renderer never receives bearer or refresh tokens. Keep provider-specific code behind `signIn`, `signOut`, `getAccount`, `listModels`, and `run` methods. Do not silently switch to separately billed API usage.
+On desktop, the main process handles authentication, credential refresh and inference; bearer/refresh tokens are not exposed by the preload API. On Android, the same core runs inside the app's WebView. Native Keystore methods protect credentials at rest but return decrypted values into app memory for authorized requests. Android does not have the desktop process boundary. On both platforms, project exports exclude credentials and sign-in uses the system browser with PKCE, state, nonce and verified JWTs. There is no separately billed API-key fallback.
 
-Implement multi-agent orchestration locally: the ChatGPT plan preview does not accept the Responses `multi_agent` field. Send context explicitly, use streaming, and disable server-side response storage. Hosted file-search tools are unavailable on this route; use local document extraction and retrieval. Recheck current limitations before implementing tool calls.
+The provider receives explicit selected task input and streams a structured result with `store: false`. Grammar review refuses partial notes; methods and brainstorming disclose when an excerpt was shared. Hosted file search, local document extraction and arbitrary tool execution are not implemented. Recheck provider eligibility and current API restrictions before extending this boundary.
 
 ## Evidence handling
 
-Search adapters return structured results with provenance. An initial scholarly adapter can be evaluated against Crossref or OpenAlex documentation, alongside permitted web search for reports and forums. Verify current access requirements before adopting an adapter. Distinguish metadata lookup, link resolution, full-text inspection, and claim verification.
+The implemented search adapter calls a fixed Crossref HTTPS endpoint with time and response-size limits. Results contain publisher-deposited metadata and DOI provenance. The researcher can add links to documents, reports and forums and record their own reading notes. The app does not crawl arbitrary pages, extract PDFs or automatically verify full-text claims.
 
-Treat retrieved documents as untrusted content, never as instructions. Do not grant evidence tools shell access. Restrict network retrieval to HTTP(S), block loopback/private destinations, limit response size and time, and validate redirects. Open external sources in the system browser.
+Source and model content is untrusted and rendered as text. Evidence tools have no shell access. Source URLs are opened in the system browser after shared validation of protocol, credentials and literal local-address forms, including IPv6. This link check does not perform DNS resolution and is not an arbitrary-URL fetch service. OAuth/provider requests refuse redirects; native requests use HTTPS.
 
 ## Records
 
 | Record         | Essential fields                                                                       |
 | -------------- | -------------------------------------------------------------------------------------- |
 | Project        | ID, title, topic, question, scope, created/updated timestamps                          |
-| Note           | ID, project ID, original text, accepted text, version                                  |
-| Suggestion     | ID, note/project ID, agent role, proposed edits/content, review state                  |
+| Notes/history  | Project notes, project version, bounded previous revisions and redo stack              |
+| Suggestion     | Structured result stored in its run; applied changes stored in notes or accepted plan  |
 | Source         | ID, project ID, title, URL, DOI, authors, date, category, access level, retrieval date |
 | Evidence entry | Source ID, claim or extract, locator, method, findings, limitations, researcher notes  |
 | Plan step      | ID, project ID, order, purpose, output, dependencies, completion check, status         |

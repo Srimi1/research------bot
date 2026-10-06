@@ -11,9 +11,9 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Release tag, for example v0.3.1. Must match the version in package.json.
+        description: Release tag, for example v0.3.3. Must match the version in package.json.
         required: true
-        default: v0.3.1
+        default: v0.3.3
 
 permissions:
   contents: write
@@ -43,6 +43,19 @@ jobs:
             echo "::error::Release tag $RESEARCH_RELEASE_TAG does not match package.json ($expected). Bump the version, then release."
             exit 1
           fi
+      - name: Check Android signing configuration before building or creating a release
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          for name in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
+            if [ -z "${!name}" ]; then
+              echo "::error::$name is missing. Configure release signing as described in docs/android.md."
+              exit 1
+            fi
+          done
       # A release created with the workflow token does not start this workflow again,
       # so the build jobs below run exactly once.
       - name: Create the release if it does not exist yet
@@ -55,8 +68,8 @@ jobs:
           notes="docs/releases/$RESEARCH_RELEASE_TAG.md"
           if [ -f "$notes" ]; then notes_args=(--notes-file "$notes"); else notes_args=(--generate-notes); fi
           gh release create "$RESEARCH_RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
-            --title "Research Bot ${RESEARCH_RELEASE_TAG#v}" --latest "${notes_args[@]}"
-          echo "Created release $RESEARCH_RELEASE_TAG on $GITHUB_SHA."
+            --title "Research Bot ${RESEARCH_RELEASE_TAG#v}" --draft "${notes_args[@]}"
+          echo "Created draft $RESEARCH_RELEASE_TAG on $GITHUB_SHA; it is published after all uploads succeed."
 
   build:
     needs: prepare
@@ -80,7 +93,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.release.tag_name || inputs.tag }}
+          ref: ${{ github.event.release.tag_name || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -125,7 +138,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.release.tag_name || inputs.tag }}
+          ref: ${{ github.event.release.tag_name || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -175,3 +188,18 @@ jobs:
       - name: Remove the signing key
         if: always()
         run: rm -f "$RUNNER_TEMP/release.jks"
+
+  publish:
+    needs: [build, android]
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    env:
+      RESEARCH_RELEASE_TAG: ${{ inputs.tag }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Publish the completed draft
+        run: |
+          draft="$(gh release view "$RESEARCH_RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft)"
+          if [ "$draft" = true ]; then
+            gh release edit "$RESEARCH_RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest
+          fi

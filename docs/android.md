@@ -4,7 +4,7 @@ The Android app is the same Research Bot as the desktop app: the same interface,
 
 ## Install
 
-1. On your phone, open the [latest release](https://github.com/Srimi1/research------bot/releases/latest) and download `research-bot-<version>-android.apk`.
+1. Check that the release actually contains an APK and its checksums. As of the October 6, 2026 audit, public release v0.3.1 has no APK; a locally built APK or successful CI debug artifact is an alternative. On your phone, open the [latest release](https://github.com/Srimi1/research------bot/releases/latest) and download `research-bot-<version>-android.apk`.
 2. Open the downloaded file. Android asks to allow installs from your browser or file manager the first time; allow it, then choose **Install**.
 3. Open **Research Bot**. Your projects are stored only on this phone.
 
@@ -56,11 +56,13 @@ npm run build:android                       # web bundle + Capacitor sync
 cd android && ./gradlew assembleDebug       # android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
+The debug APK is available at `android/app/build/outputs/apk/debug/app-debug.apk` and as `research-bot-android-debug` in successful CI runs. Debug, personal and official release signing certificates may differ. Android cannot install an APK over an existing app with a different certificate. Export projects before uninstalling; prefer an APK signed with the same key.
+
 `npm run icon:android` regenerates the launcher icons from `public/app-icon.png`.
 
 ## Release signing (one-time setup)
 
-Every Android release must be signed with the same key, or installed copies cannot update. The release workflow reads the key from four repository secrets. Create them once:
+Every Android release must be signed with the same key, or installed copies cannot update. The release workflow reads the key from four repository secrets. For an existing installation, use its original key. The personally signed APKs supplied to the maintainer use a separate private signing backup; do not generate a replacement key when preparing updates for those installations. Keys and passwords must stay out of Git. For a new distribution, create the secrets once:
 
 1. Generate a key on your own computer (keep the file and passwords somewhere safe; losing them means users must uninstall and reinstall):
 
@@ -75,7 +77,11 @@ Every Android release must be signed with the same key, or installed copies cann
    - `ANDROID_KEY_ALIAS`: `research-bot`
    - `ANDROID_KEY_PASSWORD`: the key password (the same as the keystore password if you pressed Enter at that prompt)
 
-3. Release as usual (see [Releases and updates](implementation.md#releases-and-updates)). The **android** job builds, lints, verifies the signature, and attaches the APK and `SHA256SUMS-android.txt` to the release.
+3. The workflow validates that all four secrets exist before creating a manual draft. It publishes the draft only after the desktop and Android uploads succeed. Release as usual (see [Releases and updates](implementation.md#releases-and-updates)). The **android** job builds, lints, verifies the signature, and attaches the APK and `SHA256SUMS-android.txt` to the release.
+
+## Android 16 and the OnePlus 7T Pro
+
+The app targets SDK 36 and supports this Android version. It bundles the interface, native adapters and SQLite, not a local AI model. The maintainer's OnePlus 7T Pro with 12 GB RAM and 256 GB storage has ample capacity for the workspace. Legion OS-specific keyboard, browser callback, background saving and installer behavior still require physical-device validation; browser phone previews do not establish custom-ROM compatibility.
 
 ## Known limits
 

@@ -6,6 +6,12 @@ credentials/
 .auth/
 *.pem
 *.key
+*.jks
+*.keystore
+*.p12
+*.pfx
+signing.json
+*signing-backup*.zip
 
 # Dependencies and builds
 node_modules/

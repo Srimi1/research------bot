@@ -1,6 +1,6 @@
 {
   "name": "research-bot",
-  "version": "0.3.1",
+  "version": "0.3.3",
   "private": true,
   "license": "MIT",
   "repository": {
@@ -24,6 +24,7 @@
     "test:ui": "node scripts/ui-smoke.mjs && node scripts/review-smoke.mjs && node scripts/mobile-smoke.mjs && node scripts/signin-smoke.mjs",
     "test:electron": "node scripts/electron-smoke.mjs",
     "test:electron-node": "node scripts/electron-node-tests.mjs",
+    "test:toolchain": "node scripts/toolchain-smoke.mjs",
     "package": "npm run build && electron-builder --dir",
     "dist": "npm run build && electron-builder",
     "build:android": "tsc --noEmit && vite build && cap sync android",
@@ -64,6 +65,17 @@
     "vite": "^7.1.0",
     "wait-on": "^9.0.0",
     "zod": "^4.1.0"
+  },
+  "overrides": {
+    "concurrently": {
+      "shell-quote": "1.12.0"
+    },
+    "xcode": {
+      "uuid": "11.1.1"
+    },
+    "@electron/get@3.1.0": {
+      "global-agent": "4.1.3"
+    }
   },
   "build": {
     "publish": [

@@ -1,0 +1,39 @@
+name: Bug report
+description: Report a reproducible problem with Research Bot
+title: '[Bug]: '
+body:
+  - type: markdown
+    attributes:
+      value: 'For security vulnerabilities, follow SECURITY.md. Do not include credentials or private research data.'
+  - type: input
+    id: version
+    attributes:
+      label: App version and installation type
+      placeholder: '0.3.3, personally signed APK / debug APK / desktop installer / browser'
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and operating system
+      placeholder: 'OnePlus 7T Pro, Android 16, Legion OS'
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Use synthetic project data where possible.
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected and actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Screenshots or logs
+      description: Remove tokens, passwords, account details and private research first.

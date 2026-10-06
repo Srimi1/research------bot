@@ -44,6 +44,8 @@ import type {
 import { isBrowserPreview, platform } from './platform';
 import { onBack } from './back';
 import { buildAgentInput } from './shared/agent-input';
+import { MAX_NOTES, MAX_QUESTION } from './shared/limits';
+import { ProjectOverview, WelcomeArtwork } from './MobileEnhancements';
 
 const api = () => window.research;
 const roles: { id: Role; title: string; label: string; description: string; icon: typeof BookOpen; action: string }[] =
@@ -1146,6 +1148,7 @@ export default function App() {
     if (window.matchMedia('(max-width: 720px)').matches) window.scrollTo({ top: 0 });
   };
   const [creating, setCreating] = useState(false);
+  const [newProjectRole, setNewProjectRole] = useState<Role | null>(null);
   const [editingProject, setEditingProject] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState<false | 'preferences' | 'signin'>(false);
@@ -1443,9 +1446,25 @@ export default function App() {
   const canRun = role === 'evidence' || !!account?.signedIn;
   const showResult = result && resultRun?.status === 'completed' && !currentActive;
   const completion = detail ? detail.steps.filter(step => step.done).length : 0;
+  const focusNotes = () => {
+    const input = document.getElementById('research-notes') as HTMLTextAreaElement | null;
+    input?.scrollIntoView({
+      block: 'center',
+      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',
+    });
+    input?.focus({ preventScroll: true });
+  };
+  const askAgent = (next: Role) => {
+    setRole(next);
+    setSelectedRun(null);
+    setTaskInput('');
+    showView('assistants');
+  };
 
   return (
-    <div className={`app-shell ${detail ? 'with-bottom-nav' : ''}`}>
+    <div
+      className={`app-shell ${detail ? 'with-bottom-nav' : ''} ${creating || editingProject || deleting || settingsOpen || addingSource ? 'has-dialog' : ''}`}
+    >
       <aside className={`sidebar ${mobileSidebar ? 'sidebar-open' : ''}`}>
         <div className="brand">
           <span className="brand-mark">
@@ -1583,18 +1602,18 @@ export default function App() {
           </div>
         ) : !detail ? (
           <div className="welcome">
-            <span className="welcome-icon">
-              <img src="./app-icon.png" alt="" width={82} height={82} />
+            <WelcomeArtwork />
+            <span className="eyebrow welcome-badge">
+              <Sparkles size={13} /> A space for curious minds
             </span>
-            <span className="eyebrow">Human-led research</span>
             <h1>
               Start with a question.
               <br />
-              See where it takes you.
+              <em>Make a discovery.</em>
             </h1>
             <p>
-              A thoughtful place to develop your ideas, discover sources,
-              <br className="desktop-break" /> and find your own path through research.
+              Collect your thoughts, follow the evidence,
+              <br className="desktop-break" /> and turn a little curiosity into something meaningful.
             </p>
             <div className="welcome-actions">
               <button className="button primary" onClick={() => setCreating(true)}>
@@ -1618,13 +1637,36 @@ export default function App() {
                 Signed in to ChatGPT{account.email || account.name ? ` as ${account.email || account.name}` : ''}.
               </p>
             )}
+            <div className="welcome-team-heading">
+              <span className="eyebrow">Meet your research team</span>
+              <span>Four ways to move an idea forward</span>
+            </div>
             <div className="welcome-agents">
               {roles.map(item => (
-                <div key={item.id}>
-                  <item.icon size={22} strokeWidth={1.5} />
+                <button
+                  key={item.id}
+                  data-agent={item.id}
+                  aria-label={`Start a project with ${item.title}`}
+                  onClick={() => {
+                    setNewProjectRole(item.id);
+                    setCreating(true);
+                  }}
+                >
+                  <span className="welcome-agent-icon">
+                    <item.icon size={22} strokeWidth={1.8} />
+                  </span>
+                  <ChevronRight className="welcome-agent-arrow" size={15} />
                   <h3>{item.title}</h3>
-                  <p>{item.description}</p>
-                </div>
+                  <p>
+                    {item.id === 'methods'
+                      ? 'A clearer question. A practical plan.'
+                      : item.id === 'evidence'
+                        ? 'Find articles. Follow the evidence.'
+                        : item.id === 'brainstorm'
+                          ? 'Fresh angles for your next idea.'
+                          : 'Polish your words, in your voice.'}
+                  </p>
+                </button>
               ))}
             </div>
             <div className="welcome-footer">
@@ -1727,8 +1769,20 @@ export default function App() {
                 <Trash2 size={15} />
               </button>
             </nav>
+            {view === 'workspace' && (
+              <ProjectOverview
+                wordCount={words(detail.project.notes)}
+                sourceCount={detail.sources.length}
+                stepCount={detail.steps.length}
+                completed={completion}
+                onNotes={focusNotes}
+                onSources={() => showView('library')}
+                onPlan={() => showView('plan')}
+                onAsk={askAgent}
+              />
+            )}
             {(view === 'workspace' || view === 'assistants') && (
-              <div className={`desk desk-focus-${view}`}>
+              <div className={`desk desk-focus-${view}`} key={`${detail.project.id}-${view}`}>
                 <section className="notes-panel" aria-labelledby="notes-heading">
                   <div className="panel-heading">
                     <div className="inline">
@@ -1760,6 +1814,7 @@ export default function App() {
                     </label>
                     <textarea
                       id="research-question"
+                      maxLength={MAX_QUESTION}
                       value={detail.project.question}
                       onChange={event => changeProject({ question: event.target.value })}
                       placeholder="What would you like to understand?"
@@ -1768,11 +1823,27 @@ export default function App() {
                     <span className="help">It's okay if this changes. Good questions evolve.</span>
                   </div>
                   <div className="notes-body">
+                    {!detail.project.notes.trim() && (
+                      <div className="notes-starter">
+                        <span className="eyebrow">Make yourself a starting point</span>
+                        <p>What have you noticed? What would you like to understand?</p>
+                        <button
+                          className="text-button"
+                          onClick={() => {
+                            changeProject({ notes: 'What I know\n\nWhat I want to understand\n\nIdeas to explore\n' });
+                            requestAnimationFrame(focusNotes);
+                          }}
+                        >
+                          <Plus size={14} /> Add a note outline
+                        </button>
+                      </div>
+                    )}
                     <label className="sr-only" htmlFor="research-notes">
                       Your research notes
                     </label>
                     <textarea
                       id="research-notes"
+                      maxLength={MAX_NOTES}
                       value={detail.project.notes}
                       onChange={event => changeProject({ notes: event.target.value })}
                       placeholder={
@@ -1801,7 +1872,7 @@ export default function App() {
                     </p>
                   </div>
                 </section>
-                <section className="assistant-panel" aria-labelledby="assistant-heading">
+                <section className="assistant-panel" aria-labelledby="assistant-heading" data-agent={role}>
                   <div className="panel-heading">
                     <div className="inline">
                       <span className="section-icon green-icon">
@@ -1815,6 +1886,7 @@ export default function App() {
                     {roles.map(item => (
                       <button
                         key={item.id}
+                        data-agent={item.id}
                         aria-pressed={role === item.id}
                         className={role === item.id ? 'active' : ''}
                         title={item.title}
@@ -1868,6 +1940,53 @@ export default function App() {
                               ? 'Searches scholarly metadata. Reports and forums can be added to your library.'
                               : 'Uses this instruction, or your research question and notes when left blank.'}
                           </p>
+                          <div className="prompt-starters" aria-label="Suggested prompts">
+                            {(role === 'evidence'
+                              ? [
+                                  {
+                                    label: 'Search my topic',
+                                    text: detail.project.question || detail.project.topic || detail.project.title,
+                                  },
+                                  {
+                                    label: 'Find review articles',
+                                    text: `${detail.project.topic || detail.project.question || detail.project.title} review`,
+                                  },
+                                ]
+                              : role === 'methods'
+                                ? [
+                                    {
+                                      label: 'Narrow my question',
+                                      text: 'Help me narrow my research question into something clear and manageable.',
+                                    },
+                                    {
+                                      label: 'Choose an approach',
+                                      text: 'Suggest a practical research approach and explain its limitations.',
+                                    },
+                                  ]
+                                : [
+                                    {
+                                      label: 'Explore new angles',
+                                      text: 'What fresh angles could I explore in this research?',
+                                    },
+                                    {
+                                      label: 'Challenge assumptions',
+                                      text: 'Which assumptions should I question, and what evidence would help me test them?',
+                                    },
+                                  ]
+                            ).map(prompt => (
+                              <button
+                                key={prompt.label}
+                                aria-pressed={taskInput === prompt.text}
+                                onClick={() => {
+                                  setTaskInput(prompt.text);
+                                  document.getElementById('task-input')?.focus({ preventScroll: true });
+                                }}
+                              >
+                                <Sparkles size={12} />
+                                {prompt.label}
+                              </button>
+                            ))}
+                          </div>
                         </>
                       ) : (
                         <p className="grammar-note">
@@ -2240,6 +2359,9 @@ export default function App() {
                     <Undo2 size={34} strokeWidth={1.3} />
                     <h3>A fresh start.</h3>
                     <p>Your completed, cancelled, and failed tasks will appear here.</p>
+                    <button className="button secondary" onClick={() => askAgent('evidence')}>
+                      <Search size={16} /> Try a source search <ArrowRight size={15} />
+                    </button>
                   </div>
                 )}
               </section>
@@ -2248,6 +2370,13 @@ export default function App() {
         )}
         {detail && (
           <nav className="bottom-nav" aria-label="Project sections">
+            <span
+              className="bottom-nav-indicator"
+              aria-hidden="true"
+              style={{
+                transform: `translateX(${['workspace', 'assistants', 'library', 'plan', 'history'].indexOf(view) * 100}%)`,
+              }}
+            />
             {(
               [
                 { id: 'workspace', label: 'Notes', icon: FileText },
@@ -2305,13 +2434,17 @@ export default function App() {
       )}
       {creating && (
         <ProjectForm
-          onClose={() => setCreating(false)}
+          onClose={() => {
+            setCreating(false);
+            setNewProjectRole(null);
+          }}
           onSubmit={async (title, topic) => {
             await persist();
             const next = await api().createProject({ title, topic });
             setProjects(current => [next.project, ...current]);
             openDetail(next);
-            setView('workspace');
+            setView(newProjectRole ? 'assistants' : 'workspace');
+            if (newProjectRole) setRole(newProjectRole);
             setMobileSidebar(false);
           }}
         />

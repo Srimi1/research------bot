@@ -5,6 +5,7 @@ import { browserAPI } from './browser-api';
 import { platform } from './platform';
 import { watchKeyboard } from './keyboard';
 import './styles.css';
+import './mobile.css';
 
 async function start() {
   // Desktop: the Electron preload already set window.research. Android loads its backend on demand

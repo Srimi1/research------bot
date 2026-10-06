@@ -2,6 +2,8 @@ import type { Account, ProjectDetail, ResearchAPI, Run, RunEvent, Settings, Sour
 import { crossrefSearchUrl, parseCrossref } from './shared/crossref';
 import { markdownExport } from './shared/export';
 import { canonicalSourceUrl, normalizeDoi } from './shared/source-keys';
+import { safeExternal } from './shared/external-url';
+import { MAX_NOTES, MAX_QUESTION } from './shared/limits';
 
 export { isBrowserPreview } from './platform';
 const KEY = 'research-bot-preview-v1';
@@ -85,6 +87,10 @@ export const browserAPI: ResearchAPI = {
     return structuredClone(project(read(), id));
   },
   async saveProject(input) {
+    if (input.notes.length > MAX_NOTES || input.question.length > MAX_QUESTION)
+      throw new Error(
+        'Your notes or research question exceed the supported size. Export a copy before shortening them.',
+      );
     const store = read();
     const detail = project(store, input.id);
     if (detail.project.version !== input.version)
@@ -106,6 +112,7 @@ export const browserAPI: ResearchAPI = {
   },
   async saveSource(id, source) {
     if (!source.title.trim()) throw new Error('A source title is required.');
+    safeExternal(source.url);
     const doi = normalizeDoi(source.doi);
     const urlKey = canonicalSourceUrl(source.url);
     const store = read();
@@ -179,9 +186,7 @@ export const browserAPI: ResearchAPI = {
     return { ...account };
   },
   async signIn() {
-    throw new Error(
-      'ChatGPT sign-in uses the desktop app and its secure local authentication flow. Browser preview cannot sign in.',
-    );
+    throw new Error('Install the desktop or Android app to sign in with ChatGPT. Browser preview cannot sign in.');
   },
   async cancelSignIn() {},
   async signOut() {},
@@ -218,7 +223,9 @@ export const browserAPI: ResearchAPI = {
     const timeout = setTimeout(() => controller.abort(new Error('Source search timed out. Please try again.')), 20000);
     try {
       if (request.role !== 'evidence')
-        throw new Error('Sign in with ChatGPT in the desktop app to use this agent. No AI request was sent.');
+        throw new Error(
+          'Sign in with ChatGPT in the desktop or Android app to use this agent. No AI request was sent.',
+        );
       if (!request.text.trim()) throw new Error('Enter a topic or research question to search.');
       const response = await fetch(crossrefSearchUrl(request.text.trim()), { signal: controller.signal });
       if (!response.ok) throw new Error(`Crossref search returned ${response.status}. Please try again.`);
@@ -244,9 +251,7 @@ export const browserAPI: ResearchAPI = {
     controllers.get(id)?.abort();
   },
   async openExternal(url) {
-    const parsed = new URL(url);
-    if (!['https:', 'http:'].includes(parsed.protocol)) throw new Error('Only web links can be opened.');
-    window.open(parsed.href, '_blank', 'noopener,noreferrer');
+    window.open(safeExternal(url), '_blank', 'noopener,noreferrer');
   },
   onRunEvent(callback) {
     listeners.add(callback);

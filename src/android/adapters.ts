@@ -37,6 +37,11 @@ export function createNativeFetch(bridge: Bridge): Fetch {
       if (signal?.aborted) throw aborted(signal);
       throw new TypeError(error instanceof Error ? error.message : 'The network request failed.');
     }
+    if (signal?.aborted) {
+      release();
+      close();
+      throw aborted(signal);
+    }
     if (!Number.isInteger(head.status) || head.status < 200 || head.status > 599) {
       // Response() only accepts 200-599; HttpURLConnection reports -1 for an unreadable reply.
       release();
@@ -67,6 +72,7 @@ export function createNativeFetch(bridge: Bridge): Fetch {
             }
             try {
               const chunk = await bridge.httpRead({ id });
+              if (signal?.aborted) throw aborted(signal);
               if (chunk.done) {
                 finish();
                 controller.close();

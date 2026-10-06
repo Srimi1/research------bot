@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import type { ResearchAPI } from '../src/shared/types';
 import { markdownExport } from '../src/shared/export';
-import { MAX_AGENT_INPUT } from '../src/shared/limits';
+import { MAX_AGENT_INPUT, MAX_NOTES, MAX_QUESTION } from '../src/shared/limits';
+import { safeExternal } from '../src/shared/external-url';
 import type { AuthService } from './auth';
 import type { Runner } from './runner';
 import type { Store } from './store';
@@ -35,20 +36,7 @@ const stepSchema = z.object({
   done: z.boolean(),
 });
 
-export function safeExternal(url: string) {
-  const parsed = new URL(url);
-  if (!['https:', 'http:'].includes(parsed.protocol) || parsed.username || parsed.password)
-    throw new Error('Only public HTTP or HTTPS links can be opened.');
-  const host = parsed.hostname.toLowerCase();
-  if (
-    host === 'localhost' ||
-    host.endsWith('.localhost') ||
-    /^127\.|^10\.|^192\.168\.|^169\.254\.|^172\.(1[6-9]|2\d|3[01])\./.test(host) ||
-    host === '[::1]'
-  )
-    throw new Error('Local network links are not supported.');
-  return parsed.toString();
-}
+export { safeExternal } from '../src/shared/external-url';
 
 export interface ExportFile {
   name: string;
@@ -84,8 +72,8 @@ export function createHandlers({ store, auth, runner, saveFile, openUrl }: ApiHo
             id,
             title: z.string().trim().min(1).max(200),
             topic: z.string().max(500),
-            question: text,
-            notes: text,
+            question: z.string().max(MAX_QUESTION),
+            notes: z.string().max(MAX_NOTES),
             version: z.number().int().nonnegative(),
           })
           .parse(input),

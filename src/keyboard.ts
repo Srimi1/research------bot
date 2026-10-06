@@ -26,15 +26,21 @@ export function watchKeyboard(root: HTMLElement = document.documentElement): () 
     update();
     setTimeout(update, 300);
   };
+  // While focus moves from one field to the next, nothing is focused for a moment, and the
+  // shortened window would be taken as the new normal. Wait until focus has landed.
+  const onBlur = () => {
+    setTimeout(update, 0);
+    setTimeout(update, 300);
+  };
   window.addEventListener('resize', update);
   window.visualViewport?.addEventListener('resize', update);
   document.addEventListener('focusin', onFocus);
-  document.addEventListener('focusout', onFocus);
+  document.addEventListener('focusout', onBlur);
   update();
   return () => {
     window.removeEventListener('resize', update);
     window.visualViewport?.removeEventListener('resize', update);
     document.removeEventListener('focusin', onFocus);
-    document.removeEventListener('focusout', onFocus);
+    document.removeEventListener('focusout', onBlur);
   };
 }

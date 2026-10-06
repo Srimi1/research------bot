@@ -115,6 +115,10 @@ try {
   await page.setViewportSize({ width: 412, height: 520 });
   await page.waitForTimeout(400);
   assert.equal(await barVisible(), false, 'the bottom bar stayed over the keyboard');
+  // Moving from one field to another keeps the keyboard up, so the bar stays hidden.
+  await page.locator('#research-question').focus();
+  await page.waitForTimeout(400);
+  assert.equal(await barVisible(), false, 'the bottom bar came back when focus moved between fields');
   await page.setViewportSize({ width: 412, height: 892 });
   await page.waitForTimeout(50);
   assert.equal(await barVisible(), true, 'the bottom bar did not come back after the keyboard closed');

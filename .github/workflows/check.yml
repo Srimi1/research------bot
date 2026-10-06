@@ -76,6 +76,9 @@ jobs:
           distribution: temurin
           java-version: 21
       - uses: android-actions/setup-android@v3
+        with:
+          # The default also asks for the retired "tools" package, which no longer exists.
+          packages: platform-tools platforms;android-36 build-tools;36.0.0
       - run: npm ci
       - run: npm run build:android
       - name: Build and lint

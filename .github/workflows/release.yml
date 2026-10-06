@@ -135,6 +135,9 @@ jobs:
           distribution: temurin
           java-version: 21
       - uses: android-actions/setup-android@v3
+        with:
+          # The default also asks for the retired "tools" package, which no longer exists.
+          packages: platform-tools platforms;android-36 build-tools;36.0.0
       # Every release must be signed with the same key, or installed copies refuse the update.
       # See docs/android.md for creating the key and adding these secrets.
       - name: Restore the signing key

@@ -83,6 +83,12 @@ const roles: { id: Role; title: string; label: string; description: string; icon
   ];
 const words = (text: string) => (text.trim() ? text.trim().split(/\s+/).length : 0);
 const signature = (p: Project) => JSON.stringify([p.title, p.topic, p.question, p.notes]);
+const MATRIX_LABELS = {
+  method: 'Method / setting',
+  findings: 'Key findings',
+  limitations: 'Limitations',
+  notes: 'Your reading notes',
+} as const;
 const errorText = (error: unknown) =>
   error instanceof Error ? error.message : 'Something went wrong. Please try again.';
 const date = (value: string) =>
@@ -170,10 +176,13 @@ function ProjectForm({
   project,
   onSubmit,
   onClose,
+  onDelete,
 }: {
   project?: Project;
   onSubmit: (title: string, topic: string) => Promise<void>;
   onClose: () => void;
+  /** Offered in the details form so phones, which hide the section tabs, can still delete a project. */
+  onDelete?: () => void;
 }) {
   const [title, setTitle] = useState(project?.title || '');
   const [topic, setTopic] = useState(project?.topic || '');
@@ -225,6 +234,12 @@ function ProjectForm({
           </p>
         )}
         <div className="modal-actions">
+          {onDelete && (
+            <button type="button" className="text-button danger modal-delete" onClick={onDelete} disabled={busy}>
+              <Trash2 size={15} />
+              Delete project
+            </button>
+          )}
           <button type="button" className="button secondary" onClick={onClose} disabled={busy}>
             Cancel
           </button>
@@ -684,7 +699,7 @@ function MatrixRow({
   }, [source]);
   return (
     <tr>
-      <td className="matrix-source">
+      <td className="matrix-source" data-label="Source & provenance">
         <span className="tag">{source.category}</span>
         <button className="source-title" onClick={() => onOpen(source.url)}>
           {source.title}
@@ -730,7 +745,7 @@ function MatrixRow({
         )}
       </td>
       {(['method', 'findings', 'limitations', 'notes'] as const).map(field => (
-        <td key={field}>
+        <td key={field} data-label={MATRIX_LABELS[field]}>
           <textarea
             disabled={busy}
             aria-label={`${field} for ${source.title}`}
@@ -1122,7 +1137,14 @@ export default function App() {
   const detailRef = useRef<ProjectDetail | null>(null);
   const [account, setAccount] = useState<Account | null>(null);
   const [role, setRole] = useState<Role>('methods');
-  const [view, setView] = useState<'workspace' | 'library' | 'plan' | 'history'>('workspace');
+  // 'assistants' is the research desk with the agents in front. Phones show notes and agents as
+  // separate screens; on wider windows both views show the whole desk.
+  const [view, setView] = useState<'workspace' | 'assistants' | 'library' | 'plan' | 'history'>('workspace');
+  const showView = (next: typeof view) => {
+    setView(next);
+    setExportOpen(false);
+    if (window.matchMedia('(max-width: 720px)').matches) window.scrollTo({ top: 0 });
+  };
   const [creating, setCreating] = useState(false);
   const [editingProject, setEditingProject] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -1678,11 +1700,8 @@ export default function App() {
               ).map(item => (
                 <button
                   key={item.id}
-                  className={view === item.id ? 'active' : ''}
-                  onClick={() => {
-                    setView(item.id);
-                    setExportOpen(false);
-                  }}
+                  className={view === item.id || (item.id === 'workspace' && view === 'assistants') ? 'active' : ''}
+                  onClick={() => showView(item.id)}
                 >
                   <item.icon size={16} />
                   {item.label}
@@ -1708,8 +1727,8 @@ export default function App() {
                 <Trash2 size={15} />
               </button>
             </nav>
-            {view === 'workspace' && (
-              <div className="desk">
+            {(view === 'workspace' || view === 'assistants') && (
+              <div className={`desk desk-focus-${view}`}>
                 <section className="notes-panel" aria-labelledby="notes-heading">
                   <div className="panel-heading">
                     <div className="inline">
@@ -2067,7 +2086,7 @@ export default function App() {
                       className="button secondary"
                       onClick={() => {
                         setRole('evidence');
-                        setView('workspace');
+                        showView('assistants');
                       }}
                     >
                       <Search size={16} />
@@ -2160,7 +2179,7 @@ export default function App() {
                       className="button secondary"
                       onClick={() => {
                         setRole('methods');
-                        setView('workspace');
+                        showView('assistants');
                       }}
                     >
                       Open methods coach
@@ -2206,7 +2225,7 @@ export default function App() {
                             onClick={() => {
                               setRole(run.role);
                               setSelectedRun(run.id);
-                              setView('workspace');
+                              showView('assistants');
                             }}
                           >
                             View
@@ -2226,6 +2245,42 @@ export default function App() {
               </section>
             )}
           </fieldset>
+        )}
+        {detail && (
+          <nav className="bottom-nav" aria-label="Project sections">
+            {(
+              [
+                { id: 'workspace', label: 'Notes', icon: FileText },
+                { id: 'assistants', label: 'Assistants', icon: Sparkles },
+                { id: 'library', label: 'Sources', icon: BookOpen },
+                { id: 'plan', label: 'Plan', icon: FlaskConical },
+                { id: 'history', label: 'History', icon: Undo2 },
+              ] as const
+            ).map(item => {
+              const badge =
+                item.id === 'library' && detail.sources.length > 0
+                  ? String(detail.sources.length)
+                  : item.id === 'plan' && detail.steps.length > 0
+                    ? `${completion}/${detail.steps.length}`
+                    : item.id === 'assistants' && activeRun?.projectId === detail.project.id
+                      ? '•'
+                      : '';
+              return (
+                <button
+                  key={item.id}
+                  className={view === item.id ? 'active' : ''}
+                  aria-current={view === item.id ? 'page' : undefined}
+                  onClick={() => showView(item.id)}
+                >
+                  <span className="bottom-nav-icon">
+                    <item.icon size={21} strokeWidth={view === item.id ? 2.2 : 1.7} />
+                    {badge && <span className="bottom-nav-badge">{badge}</span>}
+                  </span>
+                  {item.label}
+                </button>
+              );
+            })}
+          </nav>
         )}
         <footer className="app-footer">
           <Leaf size={13} />
@@ -2265,6 +2320,14 @@ export default function App() {
         <ProjectForm
           project={detail.project}
           onClose={() => setEditingProject(false)}
+          onDelete={
+            activeRun?.projectId === detail.project.id
+              ? undefined
+              : () => {
+                  setEditingProject(false);
+                  setDeleting(true);
+                }
+          }
           onSubmit={async (title, topic) => {
             changeProject({ title: title.trim(), topic: topic.trim() });
             await persist();

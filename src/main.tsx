@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import App from './App';
 import { browserAPI } from './browser-api';
 import { platform } from './platform';
+import { watchKeyboard } from './keyboard';
 import './styles.css';
 
 async function start() {
@@ -10,6 +11,7 @@ async function start() {
   // so the desktop and browser bundles do not carry SQLite or the native bridge.
   if (platform === 'android') window.research = (await import('./android/api')).createAndroidAPI();
   else if (platform === 'browser') window.research = browserAPI;
+  watchKeyboard();
   createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
       <App />

@@ -89,6 +89,13 @@ try {
   await page.getByRole('button', { name: 'Open navigation' }).click();
   await page.locator('.sidebar-open').waitFor();
   await check('drawer');
+  // The open drawer and its dimmed backdrop sit above the bottom bar, so the bar cannot be tapped.
+  const covering = await page.evaluate(() => {
+    const bar = document.querySelector('.bottom-nav').getBoundingClientRect();
+    const hit = document.elementFromPoint(bar.left + bar.width * 0.75, bar.top + bar.height / 2);
+    return Boolean(hit?.closest('.bottom-nav'));
+  });
+  assert.equal(covering, false, 'the bottom bar is drawn over the open drawer');
   await page.getByRole('button', { name: 'Close navigation' }).first().click();
   await page.locator('.sidebar-open').waitFor({ state: 'detached' });
   await page.getByRole('button', { name: 'Account and preferences' }).click();
@@ -96,6 +103,37 @@ try {
   await page.keyboard.press('Escape');
   await page.reload();
   assert.equal(await page.locator('#research-notes').inputValue(), 'He go to university.\n');
+
+  // The bottom bar only steps aside for the keyboard: a shorter window without typing (split
+  // screen) keeps it, and it returns when the keyboard closes even if the field keeps focus.
+  const barVisible = () => page.locator('.bottom-nav').isVisible();
+  await page.setViewportSize({ width: 412, height: 440 });
+  await page.waitForTimeout(50);
+  assert.equal(await barVisible(), true, 'split screen hid the bottom bar');
+  await page.setViewportSize({ width: 412, height: 892 });
+  await page.locator('#research-notes').focus();
+  await page.setViewportSize({ width: 412, height: 520 });
+  await page.waitForTimeout(400);
+  assert.equal(await barVisible(), false, 'the bottom bar stayed over the keyboard');
+  await page.setViewportSize({ width: 412, height: 892 });
+  await page.waitForTimeout(50);
+  assert.equal(await barVisible(), true, 'the bottom bar did not come back after the keyboard closed');
+  await page.locator('#research-notes').blur();
+
+  // Notifications stay on screen while they animate in (deleting the project shows one).
+  await page.getByRole('button', { name: 'Edit project details' }).click();
+  await page.getByRole('button', { name: 'Delete project' }).click();
+  await page
+    .getByRole('button', { name: /^Delete/ })
+    .last()
+    .click();
+  const toast = page.locator('.toast');
+  await toast.waitFor();
+  for (let sample = 0; sample < 4; sample++) {
+    const box = await toast.boundingBox();
+    assert.ok(box.x >= 0 && box.x + box.width <= 412, `the notification is off screen (x ${box.x})`);
+    await page.waitForTimeout(60);
+  }
   assert.deepEqual(errors, []);
   console.log('Mobile layout checks passed.');
 } finally {

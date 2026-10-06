@@ -2622,7 +2622,7 @@ h1 {
   .app-footer {
     display: none;
   }
-  .main:has(.bottom-nav) {
+  .with-bottom-nav .main {
     padding-bottom: calc(var(--bottom-nav-height) + var(--inset-bottom) + 12px);
   }
   .bottom-nav {
@@ -2631,7 +2631,8 @@ h1 {
     left: 0;
     right: 0;
     bottom: 0;
-    z-index: 30;
+    /* Under the project drawer (20) and its scrim (19), above page content. */
+    z-index: 18;
     padding: 0 calc(4px + var(--inset-right)) var(--inset-bottom) calc(4px + var(--inset-left));
     background: #fdfcf8;
     border-top: 1px solid var(--line);
@@ -2682,7 +2683,7 @@ h1 {
   .keyboard-open .bottom-nav {
     display: none;
   }
-  .keyboard-open .main:has(.bottom-nav) {
+  .keyboard-open .with-bottom-nav .main {
     padding-bottom: 12px;
   }
   .question-area textarea {
@@ -2692,7 +2693,7 @@ h1 {
     outline-offset: 2px;
   }
 
-  body:has(.bottom-nav) .toast {
+  .with-bottom-nav .toast {
     bottom: calc(var(--bottom-nav-height) + var(--inset-bottom) + 12px);
   }
 
@@ -2777,7 +2778,6 @@ h1 {
     border-radius: 18px 18px 0 0;
     border-bottom: 0;
     padding: 10px 20px calc(20px + var(--inset-bottom));
-    animation: sheet-up 0.22s ease-out;
   }
   .modal::before {
     content: '';
@@ -2804,15 +2804,10 @@ h1 {
     transform: translateY(40px);
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .modal {
-    animation: none;
-  }
-}
 
 /*
  * Motion. Short, quiet movement that confirms an action or shows where new content came from.
- * Everything here is switched off by the prefers-reduced-motion rule above.
+ * The global prefers-reduced-motion rule (all animations and transitions off) covers all of it.
  */
 :root {
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -2990,11 +2985,15 @@ button:active:not(:disabled) {
 .bottom-nav-badge {
   animation: pop-in 0.35s var(--ease-spring) both;
 }
-.plan-card.done {
-  transition: opacity 0.3s;
-}
 .toast {
-  animation: rise-in 0.28s var(--ease-out) both;
+  animation: toast-in 0.28s var(--ease-out) both;
+}
+/* The toast is centred with translateX(-50%); the entrance must keep that transform. */
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 10px);
+  }
 }
 .dropdown {
   transform-origin: top right;

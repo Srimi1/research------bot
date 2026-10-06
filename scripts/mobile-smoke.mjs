@@ -69,14 +69,22 @@ try {
   await page.locator('#research-question').fill('How can campus food waste be reduced?');
   await page.locator('.save-indicator').filter({ hasText: 'Saved' }).waitFor();
   await check('project');
+  // Phones show notes and assistants as separate screens, switched from the bottom bar.
+  const bottom = page.locator('.bottom-nav');
+  await bottom.getByRole('button', { name: 'Assistants' }).click();
+  assert.equal(await page.locator('.notes-panel').isVisible(), false);
   await page.getByRole('button', { name: 'Evidence', exact: true }).click();
   await page.locator('#task-input').fill('campus food waste');
   await page.getByRole('button', { name: 'Find sources', exact: true }).click();
   await page.getByRole('button', { name: 'Save source', exact: true }).click();
   await check('evidence');
-  await page.getByRole('button', { name: /Source library/ }).click();
+  assert.equal(await page.locator('.view-nav').isVisible(), false);
+  await bottom.getByRole('button', { name: /Sources/ }).click();
+  // Each saved source is a card with labelled fields, not a sideways-scrolling table.
+  await page.locator('.literature-matrix td[data-label="Key findings"]').first().waitFor();
+  assert.equal(await page.locator('.literature-matrix thead').isVisible(), false);
   await check('library');
-  await page.getByRole('button', { name: /Research plan/ }).click();
+  await bottom.getByRole('button', { name: /Plan/ }).click();
   await check('plan');
   await page.getByRole('button', { name: 'Open navigation' }).click();
   await page.locator('.sidebar-open').waitFor();

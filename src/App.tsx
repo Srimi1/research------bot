@@ -1445,7 +1445,7 @@ export default function App() {
   const completion = detail ? detail.steps.filter(step => step.done).length : 0;
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${detail ? 'with-bottom-nav' : ''}`}>
       <aside className={`sidebar ${mobileSidebar ? 'sidebar-open' : ''}`}>
         <div className="brand">
           <span className="brand-mark">

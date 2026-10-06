@@ -1837,7 +1837,7 @@ export default function App() {
                       </button>
                     ))}
                   </nav>
-                  <div className="assistant-content">
+                  <div className="assistant-content" key={role}>
                     <div className="agent-intro">
                       <span className="eyebrow">{currentRole.title}</span>
                       <h2>{currentRole.label}</h2>
@@ -2289,7 +2289,7 @@ export default function App() {
         </footer>
       </main>
       {(error || notice) && (
-        <div className={`toast ${error ? 'toast-error' : ''}`} role={error ? 'alert' : 'status'}>
+        <div key={error || notice} className={`toast ${error ? 'toast-error' : ''}`} role={error ? 'alert' : 'status'}>
           <span>{error || notice}</span>
           <button
             className="icon-button"

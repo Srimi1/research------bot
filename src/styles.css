@@ -2809,3 +2809,226 @@ h1 {
     animation: none;
   }
 }
+
+/*
+ * Motion. Short, quiet movement that confirms an action or shows where new content came from.
+ * Everything here is switched off by the prefers-reduced-motion rule above.
+ */
+:root {
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes pop-in {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.15);
+  }
+}
+@keyframes float {
+  50% {
+    transform: translateY(-5px);
+  }
+}
+@keyframes orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes soft-pulse {
+  50% {
+    transform: scale(1.25);
+    opacity: 0.6;
+  }
+}
+
+/* A screen, tab or result that appears slides up a little as it fades in. */
+.full-section,
+.assistant-content,
+.welcome,
+.agent-results {
+  animation: rise-in 0.32s var(--ease-out) both;
+}
+.notes-panel,
+.assistant-panel {
+  animation: rise-in 0.32s var(--ease-out) both;
+}
+.assistant-panel {
+  animation-delay: 0.05s;
+}
+
+/* Lists arrive one item after another. */
+.source-result,
+.plan-card,
+.history-card,
+.method-option,
+.idea-card,
+.literature-matrix tbody tr,
+.project-list > *,
+.welcome-agents > * {
+  animation: rise-in 0.36s var(--ease-out) both;
+}
+:is(
+  .source-result,
+  .plan-card,
+  .history-card,
+  .method-option,
+  .idea-card,
+  .literature-matrix tbody tr,
+  .project-list > *,
+  .welcome-agents > *
+):nth-child(2) {
+  animation-delay: 0.04s;
+}
+:is(
+  .source-result,
+  .plan-card,
+  .history-card,
+  .method-option,
+  .idea-card,
+  .literature-matrix tbody tr,
+  .project-list > *,
+  .welcome-agents > *
+):nth-child(3) {
+  animation-delay: 0.08s;
+}
+:is(
+  .source-result,
+  .plan-card,
+  .history-card,
+  .method-option,
+  .idea-card,
+  .literature-matrix tbody tr,
+  .project-list > *,
+  .welcome-agents > *
+):nth-child(4) {
+  animation-delay: 0.12s;
+}
+:is(
+  .source-result,
+  .plan-card,
+  .history-card,
+  .method-option,
+  .idea-card,
+  .literature-matrix tbody tr,
+  .project-list > *,
+  .welcome-agents > *
+):nth-child(n + 5) {
+  animation-delay: 0.16s;
+}
+
+/* Cards respond to the pointer; everything pressable gives under a finger. */
+.source-result,
+.plan-card,
+.history-card,
+.method-option,
+.idea-card,
+.project-list button {
+  transition:
+    transform 0.18s var(--ease-out),
+    box-shadow 0.18s var(--ease-out),
+    background 0.16s,
+    border-color 0.16s,
+    opacity 0.2s;
+}
+@media (hover: hover) {
+  .source-result:hover,
+  .plan-card:hover,
+  .history-card:hover,
+  .method-option:hover,
+  .idea-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 22px #23401612;
+  }
+}
+button {
+  transition:
+    background 0.16s,
+    color 0.16s,
+    border-color 0.16s,
+    transform 0.12s var(--ease-out),
+    box-shadow 0.16s;
+}
+button:active:not(:disabled) {
+  transform: scale(0.96);
+}
+.role-tabs button.active,
+.view-nav > button.active {
+  animation: fade-in 0.2s ease-out;
+}
+
+/* Empty states feel alive: the icon floats and a small moon circles it. */
+.empty-orbit,
+.welcome-icon,
+.section-empty > svg:first-child {
+  animation: float 4.5s ease-in-out infinite;
+}
+.empty-orbit::after {
+  transform-origin: -14px 25px;
+  animation: orbit 6s linear infinite;
+}
+.welcome-icon img {
+  animation: pop-in 0.5s var(--ease-spring) both;
+}
+
+/* Confirmations */
+.save-indicator.saved svg,
+.step-check svg,
+.bottom-nav-badge {
+  animation: pop-in 0.35s var(--ease-spring) both;
+}
+.plan-card.done {
+  transition: opacity 0.3s;
+}
+.toast {
+  animation: rise-in 0.28s var(--ease-out) both;
+}
+.dropdown {
+  transform-origin: top right;
+  animation: rise-in 0.18s var(--ease-out) both;
+}
+.sidebar-scrim {
+  animation: fade-in 0.2s ease-out both;
+}
+.modal-backdrop {
+  animation: fade-in 0.18s ease-out both;
+}
+.modal {
+  animation: rise-in 0.24s var(--ease-out) both;
+}
+/* Dots that wait on the researcher breathe gently. */
+.auth-prompt .status-dot,
+.welcome-footer .status-dot {
+  animation: soft-pulse 2.4s ease-in-out infinite;
+}
+
+/* The bottom bar's selected pill grows into place. */
+@media (max-width: 720px) {
+  .bottom-nav-icon {
+    transition:
+      background 0.22s var(--ease-out),
+      transform 0.22s var(--ease-spring);
+  }
+  .bottom-nav > button.active .bottom-nav-icon {
+    transform: translateY(-1px);
+  }
+  .bottom-nav > button:active .bottom-nav-icon {
+    transform: scale(0.88);
+  }
+  .modal {
+    animation: sheet-up 0.26s var(--ease-out) both;
+  }
+}

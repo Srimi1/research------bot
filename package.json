@@ -21,7 +21,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "tsx --test tests/*.test.ts",
-    "test:ui": "node scripts/ui-smoke.mjs && node scripts/review-smoke.mjs && node scripts/mobile-smoke.mjs",
+    "test:ui": "node scripts/ui-smoke.mjs && node scripts/review-smoke.mjs && node scripts/mobile-smoke.mjs && node scripts/signin-smoke.mjs",
     "test:electron": "node scripts/electron-smoke.mjs",
     "test:electron-node": "node scripts/electron-node-tests.mjs",
     "package": "npm run build && electron-builder --dir",

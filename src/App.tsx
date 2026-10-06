@@ -242,10 +242,13 @@ function AccountSettings({
   account,
   setAccount,
   onClose,
+  autoSignIn = false,
 }: {
   account: Account | null;
   setAccount: (account: Account) => void;
   onClose: () => void;
+  /** Start ChatGPT sign-in as soon as the dialog opens (from a "Sign in with ChatGPT" button). */
+  autoSignIn?: boolean;
 }) {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [models, setModels] = useState<string[]>([]);
@@ -292,6 +295,15 @@ function AccountSettings({
       setSigning(false);
     }
   };
+  const signInRef = useRef(signIn);
+  signInRef.current = signIn;
+  const autoStarted = useRef(false);
+  useEffect(() => {
+    // StrictMode runs effects twice in development; sign-in must still start only once.
+    if (!autoSignIn || autoStarted.current || account?.signedIn || isBrowserPreview) return;
+    autoStarted.current = true;
+    void signInRef.current();
+  }, [autoSignIn, account?.signedIn]);
   return (
     <Modal title="Account & preferences" onClose={onClose}>
       <div className="account-box">
@@ -1101,7 +1113,8 @@ export default function App() {
   const [creating, setCreating] = useState(false);
   const [editingProject, setEditingProject] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState<false | 'preferences' | 'signin'>(false);
+  const signInPrompt = !isBrowserPreview && account !== null && !account.signedIn;
   const [addingSource, setAddingSource] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -1454,7 +1467,7 @@ export default function App() {
               </p>
             </div>
           </div>
-          <button className="account-link" onClick={() => setSettingsOpen(true)}>
+          <button className="account-link" onClick={() => setSettingsOpen('preferences')}>
             <span className="avatar">
               {account?.signedIn ? (account.name || account.email || 'R').slice(0, 1).toUpperCase() : 'R'}
             </span>
@@ -1502,7 +1515,17 @@ export default function App() {
               <span className="status-dot" />
               {isBrowserPreview ? 'Browser preview' : 'Stored on this device'}
             </span>
-            <button className="icon-button" aria-label="Account and preferences" onClick={() => setSettingsOpen(true)}>
+            {signInPrompt && (
+              <button className="button secondary topbar-signin" onClick={() => setSettingsOpen('signin')}>
+                <Sparkles size={14} />
+                <span>Sign in with ChatGPT</span>
+              </button>
+            )}
+            <button
+              className="icon-button"
+              aria-label="Account and preferences"
+              onClick={() => setSettingsOpen('preferences')}
+            >
               <Settings2 size={18} />
             </button>
           </div>
@@ -1512,7 +1535,7 @@ export default function App() {
             <span>
               Browser preview · Projects save in this browser. ChatGPT agents require the desktop or Android app.
             </span>
-            <button onClick={() => setSettingsOpen(true)}>
+            <button onClick={() => setSettingsOpen('preferences')}>
               Account details
               <ArrowRight size={12} />
             </button>
@@ -1538,10 +1561,28 @@ export default function App() {
               A thoughtful place to develop your ideas, discover sources,
               <br className="desktop-break" /> and find your own path through research.
             </p>
-            <button className="button primary" onClick={() => setCreating(true)}>
-              <Plus size={17} />
-              Create your first project
-            </button>
+            <div className="welcome-actions">
+              <button className="button primary" onClick={() => setCreating(true)}>
+                <Plus size={17} />
+                Create your first project
+              </button>
+              {signInPrompt && (
+                <button className="button secondary" onClick={() => setSettingsOpen('signin')}>
+                  <Sparkles size={17} />
+                  Sign in with ChatGPT
+                </button>
+              )}
+            </div>
+            {signInPrompt && (
+              <p className="welcome-signin-note">
+                Uses your eligible ChatGPT plan. Source search works without signing in.
+              </p>
+            )}
+            {account?.signedIn && (
+              <p className="welcome-signin-note">
+                Signed in to ChatGPT{account.email || account.name ? ` as ${account.email || account.name}` : ''}.
+              </p>
+            )}
             <div className="welcome-agents">
               {roles.map(item => (
                 <div key={item.id}>
@@ -1805,9 +1846,16 @@ export default function App() {
                       {!canRun && (
                         <div className="auth-prompt">
                           <span className="status-dot" />
-                          <p>Connect ChatGPT to use this agent.</p>
-                          <button className="text-button" onClick={() => setSettingsOpen(true)}>
-                            Set up
+                          <p>
+                            {isBrowserPreview
+                              ? 'ChatGPT agents need the desktop or Android app.'
+                              : 'Sign in with ChatGPT to use this agent.'}
+                          </p>
+                          <button
+                            className="text-button"
+                            onClick={() => setSettingsOpen(isBrowserPreview ? 'preferences' : 'signin')}
+                          >
+                            {isBrowserPreview ? 'Details' : 'Sign in with ChatGPT'}
                             <ArrowRight size={13} />
                           </button>
                         </div>
@@ -2249,7 +2297,12 @@ export default function App() {
         </Modal>
       )}
       {settingsOpen && (
-        <AccountSettings account={account} setAccount={setAccount} onClose={() => setSettingsOpen(false)} />
+        <AccountSettings
+          account={account}
+          setAccount={setAccount}
+          onClose={() => setSettingsOpen(false)}
+          autoSignIn={settingsOpen === 'signin'}
+        />
       )}
       {addingSource && <ManualSource onClose={() => setAddingSource(false)} onSave={saveSource} />}
     </div>

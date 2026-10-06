@@ -3,10 +3,16 @@ import type { FileStore, SqlDatabase, SqlStatement, SqlValue } from '../../core/
 
 const DATABASE_FILE = 'research.sqlite';
 
+/** Batches writes: one save covers every change made within this window. */
+export const SAVE_DELAY_MS = 1_000;
+/** After a failed save (for example a full disk), try again this much later. */
+export const RETRY_DELAY_MS = 5_000;
+
 /**
- * SQLite compiled to WebAssembly, kept in memory and written to app-private storage after changes.
- * Every write goes through run() or exec(); a short debounce batches them, and the API layer flushes
- * before answering each request so a saved note is on disk before the interface says "Saved".
+ * SQLite compiled to WebAssembly, kept in memory and written to app-private storage.
+ * Every write goes through run() or exec(). Saving exports the whole file, so changes are batched:
+ * the file is written one second after the last change, and immediately when the app goes to the
+ * background (see src/android/api.ts). A failed save keeps the changes pending and retries.
  */
 export class PersistentDatabase implements SqlDatabase {
   private dirty = false;
@@ -17,9 +23,14 @@ export class PersistentDatabase implements SqlDatabase {
   private constructor(
     private db: Database,
     private files: FileStore,
+    private warn: (message: string) => void,
   ) {}
 
-  static async open(files: FileStore, wasmUrl?: string): Promise<PersistentDatabase> {
+  static async open(
+    files: FileStore,
+    wasmUrl?: string,
+    warn: (message: string) => void = message => console.warn(message),
+  ): Promise<PersistentDatabase> {
     const SQL = await initSqlJs(wasmUrl ? { locateFile: () => wasmUrl } : undefined);
     const saved = await files.read(DATABASE_FILE);
     let db: Database;
@@ -28,13 +39,19 @@ export class PersistentDatabase implements SqlDatabase {
     } catch {
       throw new Error('Research Bot’s saved projects could not be opened. Your data file has not been changed.');
     }
-    return new PersistentDatabase(db, files);
+    return new PersistentDatabase(db, files, warn);
   }
 
   private changed(): void {
     this.dirty = true;
+    this.schedule(SAVE_DELAY_MS);
+  }
+
+  private schedule(ms: number): void {
     clearTimeout(this.timer);
-    this.timer = setTimeout(() => void this.flush().catch(() => undefined), 250);
+    this.timer = setTimeout(() => {
+      this.flush().catch(() => undefined);
+    }, ms);
   }
 
   exec(sql: string): void {
@@ -92,6 +109,10 @@ export class PersistentDatabase implements SqlDatabase {
           await this.files.write(DATABASE_FILE, bytes);
         } catch (error) {
           this.dirty = true;
+          this.warn(
+            `Research Bot could not save its data and will retry: ${error instanceof Error ? error.message : error}`,
+          );
+          if (!this.closed) this.schedule(RETRY_DELAY_MS);
           throw error;
         }
       });

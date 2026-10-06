@@ -96,8 +96,9 @@ export function createHandlers({ store, auth, runner, saveFile, openUrl }: ApiHo
       store.deleteProject(projectId);
     },
     saveSource: async (projectId, source) => {
-      safeExternal(sourceSchema.parse(source).url);
-      return store.saveSource(id.parse(projectId), sourceSchema.parse(source));
+      const parsed = sourceSchema.parse(source);
+      safeExternal(parsed.url);
+      return store.saveSource(id.parse(projectId), parsed);
     },
     deleteSource: async (projectId, sourceId) => store.deleteSource(id.parse(projectId), id.parse(sourceId)),
     saveSteps: async (projectId, steps) =>

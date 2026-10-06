@@ -1,7 +1,7 @@
 import { ZodError, type ZodIssue } from 'zod';
-import type { IpcResult } from '../electron/ipc-protocol';
+import type { IpcResult } from './ipc-protocol';
 
-export { unwrap, type IpcResult } from '../electron/ipc-protocol';
+export { unwrap, type IpcResult } from './ipc-protocol';
 
 const FALLBACK = 'Something went wrong. Please try again.';
 

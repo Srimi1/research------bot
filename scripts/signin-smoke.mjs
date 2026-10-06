@@ -25,6 +25,9 @@ function mockSignedOut(withProject) {
   const detail = { project, sources: [], steps: [], runs: [] };
   let account = { signedIn: false, storageAvailable: true };
   window.signInCalls = 0;
+  window.cancelCalls = 0;
+  let pending = false;
+  let cancel;
   window.research = {
     listProjects: async () => (withProject ? [project] : []),
     getProject: async () => structuredClone(detail),
@@ -38,13 +41,27 @@ function mockSignedOut(withProject) {
     redoNotes: async () => project,
     exportProject: async () => ({ saved: false }),
     account: async () => account,
+    // Like AuthService: one sign-in at a time. With window.hangSignIn set, sign-in waits for the
+    // browser until cancelled.
     signIn: async () => {
+      if (pending) throw new Error('A ChatGPT sign-in is already in progress.');
       window.signInCalls++;
-      await new Promise(resolve => setTimeout(resolve, 300));
+      pending = true;
+      try {
+        await new Promise((resolve, reject) => {
+          if (window.hangSignIn) cancel = () => reject(new Error('ChatGPT sign-in was cancelled.'));
+          else setTimeout(resolve, 300);
+        });
+      } finally {
+        pending = false;
+      }
       account = { signedIn: true, storageAvailable: true, name: 'Researcher', email: 'researcher@example.com' };
       return account;
     },
-    cancelSignIn: async () => {},
+    cancelSignIn: async () => {
+      window.cancelCalls++;
+      cancel?.();
+    },
     signOut: async () => {},
     models: async () => (account.signedIn ? ['model-a'] : []),
     getSettings: async () => ({ model: '', maxRequests: 20, autoUpdate: true }),
@@ -110,8 +127,27 @@ try {
   await agentPrompt.waitFor({ state: 'detached' });
   await desktop.locator('.topbar-signin').waitFor({ state: 'detached' });
 
+  // Closing the dialog while the browser sign-in is still open cancels it, so trying again works.
+  const closing = await browser.newPage({ viewport: { width: 412, height: 892 }, isMobile: true, hasTouch: true });
+  closing.on('pageerror', error => errors.push(error.message));
+  await closing.addInitScript(mockSignedOut, false);
+  await closing.addInitScript(() => {
+    window.hangSignIn = true;
+  });
+  await closing.goto('http://127.0.0.1:5178');
+  await closing.locator('.topbar-signin').click();
+  await closing.getByText('Waiting for sign-in…').waitFor();
+  await closing.keyboard.press('Escape');
+  await closing.waitForFunction(() => window.cancelCalls === 1);
+  await closing.locator('.topbar-signin').click();
+  await closing.getByText('Waiting for sign-in…').waitFor();
+  assert.equal(await closing.evaluate(() => window.signInCalls), 2);
+  assert.equal(await closing.getByText('already in progress').count(), 0);
+
   assert.deepEqual(errors, []);
-  console.log('Sign-in entry points passed: welcome, top bar and agent panel each start sign-in once.');
+  console.log(
+    'Sign-in entry points passed: welcome, top bar and agent panel each start sign-in once; closing the dialog cancels it.',
+  );
 } finally {
   await browser?.close();
   server.kill();

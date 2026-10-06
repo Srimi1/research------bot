@@ -10,6 +10,7 @@
 - Methods explanations and proposed steps, brainstorming ideas, and grammar edits presented for human review.
 - Crossref metadata searches with DOI links and retrieval provenance. Saved sources have editable literature-matrix fields; extracted findings are never invented from metadata.
 - Markdown/JSON export and browser-only preview with separate browser storage.
+- An Android app that runs the same backend (`core/`) in a WebView with native HTTPS streaming, a loopback sign-in callback, Android Keystore credentials, on-device SQLite and verified in-app updates. See [Android app](android.md).
 
 ## Evidence scope
 
@@ -46,7 +47,7 @@ These need decisions or credentials from the maintainer, so they are not automat
 
 Installed copies check [GitHub Releases](https://github.com/Srimi1/research------bot/releases) about 15 seconds after launch and every six hours. A newer version downloads in the background; the app then asks whether to restart now. Choosing **Later** installs it the next time the app quits. Updates never interrupt work: if a check fails (offline, rate limited), it is only logged.
 
-- **Where it works:** Windows (NSIS installer) and Linux (AppImage). Other Linux formats and unsigned macOS builds cannot replace themselves, so the updater stays off there.
+- **Where it works:** Windows (NSIS installer), Linux (AppImage) and Android (the release APK). Other Linux formats and unsigned macOS builds cannot replace themselves, so the updater stays off there.
 - **Turning it off:** clear **Check for updates automatically** in Account & preferences, or set `RESEARCH_BOT_DISABLE_UPDATES=1`.
 - **Privacy:** a check downloads the release manifest from GitHub. GitHub sees the request and its IP address, as with any download; nothing about projects, notes, or the ChatGPT account is sent.
 
@@ -54,11 +55,11 @@ To publish a new version:
 
 1. Bump `version` in `package.json` (for example to `0.2.0`) and merge it to `main`. Auto-update only offers versions higher than the installed one.
 2. Release it, either way:
-   - **From GitHub Actions:** run **Publish desktop release** on `main` with the tag `v0.2.0`. It creates the release and its tag on that commit, using `docs/releases/v0.2.0.md` as the notes when that file exists (GitHub's generated notes otherwise).
+   - **From GitHub Actions:** run **Publish release** on `main` with the tag `v0.2.0`. It creates the release and its tag on that commit, using `docs/releases/v0.2.0.md` as the notes when that file exists (GitHub's generated notes otherwise).
    - **From the Releases page:** publish a release whose tag is `v` plus that version (`v0.2.0`). Leave "Set as a pre-release" unchecked: the updater ignores pre-releases.
 
    Either way, the workflow refuses a tag that does not match `package.json`.
 
-3. The workflow builds the AppImage and Windows installer and attaches them with `latest-linux.yml`, `latest.yml`, block maps, per-platform `SHA256SUMS` files, and the source archive. Installed apps pick the release up on their next check.
+3. The workflow builds the AppImage, the Windows installer and the signed Android APK, and attaches them with `latest-linux.yml`, `latest.yml`, block maps, per-platform `SHA256SUMS` files, and the source archive. Installed apps pick the release up on their next check. The Android job needs the signing secrets described in [Android app](android.md#release-signing-one-time-setup).
 
 Source and development history are maintained in [Srimi1/research------bot](https://github.com/Srimi1/research------bot). The repository's initial commit and MIT license are preserved. Desktop binaries and the source archive are attached to GitHub releases.

@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { getCACertificates } from 'node:tls';
 import { EnvHttpProxyAgent, fetch as undiciFetch, setGlobalDispatcher } from 'undici';
+import { requestJson as coreRequestJson } from '../core/platform';
 
 // Keep proxy configuration and additional corporate CA roots in the main process.
 // Tests can replace the standard undici dispatcher with MockAgent after import.
@@ -47,35 +48,8 @@ export async function fetchNetwork(input: string | URL, init?: RequestInit): Pro
   return (await undiciFetch(input, init as Parameters<typeof undiciFetch>[1])) as unknown as Response;
 }
 
-export async function readLimited(response: Response, maxBytes = 2_000_000): Promise<string> {
-  if (!response.body) return '';
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let total = 0;
-  let result = '';
-  try {
-    for (;;) {
-      const { value, done } = await reader.read();
-      if (done) return result + decoder.decode();
-      total += value.byteLength;
-      if (total > maxBytes) throw new Error('Remote response exceeded the size limit.');
-      result += decoder.decode(value, { stream: true });
-    }
-  } finally {
-    await reader.cancel().catch(() => undefined);
-    reader.releaseLock();
-  }
-}
+export { readLimited } from '../core/platform';
 
 export async function requestJson<T>(url: string | URL, init?: RequestInit, maxBytes = 2_000_000): Promise<T> {
-  const response = await fetchNetwork(url, {
-    ...init,
-    redirect: 'error',
-    signal: init?.signal ? AbortSignal.any([init.signal, AbortSignal.timeout(30_000)]) : AbortSignal.timeout(30_000),
-  });
-  if (!response.ok) {
-    await response.body?.cancel();
-    throw new Error(`Remote request failed (HTTP ${response.status}).`);
-  }
-  return JSON.parse(await readLimited(response, maxBytes)) as T;
+  return coreRequestJson<T>(fetchNetwork, String(url), init, maxBytes);
 }

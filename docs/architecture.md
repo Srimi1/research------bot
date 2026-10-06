@@ -4,6 +4,8 @@
 
 The beta uses a React/TypeScript interface in Electron, a Node/TypeScript main process, and SQLite for projects, notes, sources, plans, and run history. Renderer sandboxing and context isolation are enabled, renderer Node integration is disabled, and the preload exposes narrow, validated IPC methods. See [implementation notes](implementation.md) for validation and remaining limits.
 
+The backend logic lives in `core/` and depends only on web standards plus small platform interfaces (`core/platform.ts`: fetch, private files, credential encryption, the loopback sign-in receiver, SQLite). The desktop supplies Node and Electron implementations in `electron/`; the [Android app](android.md) supplies WebView and native ones in `src/android/`. Request validation (`core/api.ts`) is shared, so both platforms accept and reject the same input.
+
 ```mermaid
 flowchart TD
   H[Researcher] --> UI[Research workspace]

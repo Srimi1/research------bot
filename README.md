@@ -31,6 +31,10 @@ npm run package  # Unpacked desktop application for the current OS
 npm run dist     # Installer for the current OS
 ```
 
+### Android
+
+Download `research-bot-<version>-android.apk` from [Releases](https://github.com/Srimi1/research------bot/releases/latest) and open it on your phone (Android 8.0 or later). The Android app runs the same backend as the desktop app and updates itself from Releases. See the [Android guide](docs/android.md) for sign-in, updates, building it yourself, and the one-time release signing setup.
+
 For a browser preview, run `npm run dev:web`. This preview stores projects in the browser and supports scholarly search, editing, and export. ChatGPT sign-in is available in the desktop app. Browser and desktop data are separate. See [implementation and validation notes](docs/implementation.md) for current limitations.
 
 ## Your research team
@@ -56,6 +60,7 @@ OpenAI currently documents plan usage for local/open-source apps; paid or remote
 - [Architecture proposal](docs/architecture.md)
 - [Authentication decision and official references](docs/authentication.md)
 - [Implementation roadmap and acceptance checks](docs/roadmap.md)
+- [Android app](docs/android.md)
 - [Agent instructions](agents/README.md)
 
-Source repository: [Srimi1/research------bot](https://github.com/Srimi1/research------bot). The project uses the repository's [MIT license](LICENSE). Linux and Windows desktop builds are available under [Releases](https://github.com/Srimi1/research------bot/releases), and installed copies update themselves from there (see [releases and updates](docs/implementation.md#releases-and-updates)).
+Source repository: [Srimi1/research------bot](https://github.com/Srimi1/research------bot). The project uses the repository's [MIT license](LICENSE). Linux, Windows and Android builds are available under [Releases](https://github.com/Srimi1/research------bot/releases), and installed copies update themselves from there (see [releases and updates](docs/implementation.md#releases-and-updates)).

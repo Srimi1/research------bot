@@ -1,6 +1,6 @@
 {
   "name": "research-bot",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "license": "MIT",
   "repository": {
@@ -21,17 +21,25 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "tsx --test tests/*.test.ts",
-    "test:ui": "node scripts/ui-smoke.mjs && node scripts/review-smoke.mjs",
+    "test:ui": "node scripts/ui-smoke.mjs && node scripts/review-smoke.mjs && node scripts/mobile-smoke.mjs && node scripts/signin-smoke.mjs",
     "test:electron": "node scripts/electron-smoke.mjs",
     "test:electron-node": "node scripts/electron-node-tests.mjs",
     "package": "npm run build && electron-builder --dir",
-    "dist": "npm run build && electron-builder"
+    "dist": "npm run build && electron-builder",
+    "build:android": "tsc --noEmit && vite build && cap sync android",
+    "android:apk": "npm run build:android && cd android && ./gradlew assembleRelease",
+    "icon:android": "node scripts/render-android-icons.mjs"
   },
   "devDependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/cli": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
     "@eslint/js": "^9.39.5",
     "@types/node": "^24.0.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
+    "@types/sql.js": "^1.4.11",
     "@vitejs/plugin-react": "^5.0.0",
     "concurrently": "^9.2.0",
     "electron": "^42.0.0",
@@ -48,6 +56,7 @@
     "prettier": "3.9.9",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "sql.js": "^1.14.2",
     "tsx": "^4.20.0",
     "typescript": "^5.9.0",
     "typescript-eslint": "^8.71.0",

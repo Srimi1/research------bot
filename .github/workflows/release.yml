@@ -1,7 +1,8 @@
-name: Publish desktop release
+name: Publish release
 
 # Builds the installers and attaches them, with the update manifests (latest-linux.yml,
-# latest.yml) that installed copies of the app read, to a GitHub release. Either publish a
+# latest.yml) that installed copies of the app read, to a GitHub release. The signed Android APK
+# and its SHA256SUMS-android.txt are attached too; the Android app updates itself from those. Either publish a
 # release on GitHub, or run this workflow by hand with a tag: a manual run creates the release
 # (and its tag, on the commit it runs from) when it does not exist yet.
 on:
@@ -10,9 +11,9 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Release tag, for example v0.2.0. Must match the version in package.json.
+        description: Release tag, for example v0.3.0. Must match the version in package.json.
         required: true
-        default: v0.2.0
+        default: v0.3.0
 
 permissions:
   contents: write
@@ -114,3 +115,63 @@ jobs:
           ls -l
       - name: Upload release files
         run: gh release upload "$RESEARCH_RELEASE_TAG" upload/* --repo "$GITHUB_REPOSITORY" --clobber
+
+  android:
+    needs: prepare
+    runs-on: ubuntu-latest
+    env:
+      RESEARCH_RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: android-actions/setup-android@v3
+        with:
+          # The default also asks for the retired "tools" package, which no longer exists.
+          packages: platform-tools platforms;android-36 build-tools;36.0.0
+      # Every release must be signed with the same key, or installed copies refuse the update.
+      # See docs/android.md for creating the key and adding these secrets.
+      - name: Restore the signing key
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "::error::The ANDROID_KEYSTORE_BASE64 secret is not set. Follow docs/android.md to add the signing key."
+            exit 1
+          fi
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.jks"
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+      - run: npm ci
+      - run: npm test
+      - run: npm run build:android
+      - name: Build the signed APK
+        working-directory: android
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: ./gradlew --no-daemon assembleRelease lintRelease
+      - name: Verify and collect the APK
+        run: |
+          version="${RESEARCH_RELEASE_TAG#v}"
+          mkdir upload
+          cp android/app/build/outputs/apk/release/app-release.apk "upload/research-bot-$version-android.apk"
+          apksigner="$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)"
+          "$apksigner" verify --print-certs "upload/research-bot-$version-android.apk"
+          cd upload
+          sha256sum -- * > SHA256SUMS-android.txt
+          cat SHA256SUMS-android.txt
+      - name: Upload release files
+        run: gh release upload "$RESEARCH_RELEASE_TAG" upload/* --repo "$GITHUB_REPOSITORY" --clobber
+      - name: Remove the signing key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/release.jks"

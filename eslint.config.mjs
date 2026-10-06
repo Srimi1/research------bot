@@ -5,7 +5,7 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['dist/', 'dist-electron/', 'release/', 'node_modules/'] },
+  { ignores: ['dist/', 'dist-electron/', 'release/', 'node_modules/', 'android/**'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

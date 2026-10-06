@@ -12,5 +12,5 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["src", "electron", "tests", "vite.config.ts"]
+  "include": ["src", "core", "electron", "tests", "vite.config.ts", "capacitor.config.ts"]
 }

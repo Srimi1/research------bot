@@ -1,24 +1,26 @@
 {
-  "version": "0.3.5",
-  "versionCode": 305,
+  "version": "0.3.6",
+  "versionCode": 306,
   "package": "com.researchbot.android",
   "minSdk": 26,
   "targetSdk": 36,
-  "sourceCommit": "1a462cd42ee703227d1f930c9ad4d54a7317b918",
+  "sourceCommit": "21c2bc27cad9483bc8ce231f0074c9b78c41eeb8",
   "certificateSha256": "98580ca053712555a2b8a3a8fecfc15c85d83c5d192480e3b6b09ca13a633441",
-  "apkSha256": "d3b1e346aa06abf04699cac35bfef84844c3c3e9739c7f66e3ed5b4bcb2aecdd",
-  "apkBytes": 4767775,
+  "apkSha256": "ebe0e194088890e2a686a6b34e0e9abe0d2e5efd895d504c551107769bcf1cd5",
+  "apkBytes": 4768995,
   "validation": {
-    "regressionTestsPassed": 80,
+    "regressionTestsPassed": 83,
     "productionAndroidBackendUnderCsp": "passed",
+    "productionAndroidAuthenticationUnderCsp": "passed (synthetic native services and OpenAI responses)",
     "androidReleaseBuildAndLint": "passed",
     "signatureAnd16KiBAlignment": "passed",
     "asyncNativeCallbackReplyOrdering": "passed",
-    "android16SignedApkStartupAndPersistence": "passed"
+    "safePersistentSignInDiagnostics": "passed",
+    "issuedRegistrationRetryAcrossRestart": "passed",
+    "android16SignedApkStartupAndPersistence": "pending release workflow"
   },
   "limits": [
-    "Physical OnePlus/Legion OS immediate close remains unverified",
-    "Live ChatGPT eligibility and inference untested"
-  ],
-  "githubReleaseRun": "https://github.com/Srimi1/research------bot/actions/runs/37595146294"
+    "Physical OnePlus/Legion OS behavior not reproduced",
+    "Live ChatGPT eligibility and inference untested; the original device error remains unknown"
+  ]
 }

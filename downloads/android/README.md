@@ -1,17 +1,17 @@
 # Download Research Bot for Android
 
-[**Download the signed Research Bot 0.3.5 APK**](https://github.com/Srimi1/research------bot/raw/refs/heads/main/downloads/android/research-bot-0.3.5-android.apk)
+[**Download the signed Research Bot 0.3.6 APK**](https://github.com/Srimi1/research------bot/raw/refs/heads/main/downloads/android/research-bot-0.3.6-android.apk)
 
 Supports Android 8 or later and targets Android 16. Open the downloaded APK on your phone, allow installation from your browser/file manager when prompted, and choose **Install**.
 
-This APK uses the same personal signing certificate as the previously supplied 0.3.1, 0.3.2 and released 0.3.3 and 0.3.4 APKs. Install over those builds to retain your projects. If your existing app uses another signing certificate, export projects before uninstalling it. This version is installed manually.
+This APK uses the same personal signing certificate as versions 0.3.1 through 0.3.5. Install over your existing build to retain projects. If your existing app uses another signing certificate, export projects before uninstalling it. This version is installed manually.
 
 ## Verify the download
 
 [SHA256SUMS.txt](SHA256SUMS.txt) contains the APK's SHA-256:
 
 ```text
-d3b1e346aa06abf04699cac35bfef84844c3c3e9739c7f66e3ed5b4bcb2aecdd
+ebe0e194088890e2a686a6b34e0e9abe0d2e5efd895d504c551107769bcf1cd5
 ```
 
 From this folder on a computer:
@@ -20,12 +20,12 @@ From this folder on a computer:
 sha256sum -c SHA256SUMS.txt
 ```
 
-Package: `com.researchbot.android`. Version: `0.3.5` / code `305`. Signing certificate SHA-256: `98580ca053712555a2b8a3a8fecfc15c85d83c5d192480e3b6b09ca13a633441`.
+Package: `com.researchbot.android`. Version: `0.3.6` / code `306`. Signing certificate SHA-256: `98580ca053712555a2b8a3a8fecfc15c85d83c5d192480e3b6b09ca13a633441`.
 
-Built from [1a462cd](https://github.com/Srimi1/research------bot/commit/1a462cd42ee703227d1f930c9ad4d54a7317b918), with passing regression tests, production Android SQLite/CSP checks, Android release compilation/lint and signature/alignment checks. [The release workflow](https://github.com/Srimi1/research------bot/actions/runs/37595146294) passed native launch, project creation, note saving and cold-restart checks for this actual signed APK on Android 16 before publication. The public release download was then verified against the SHA-256 above. The signing key is private and is not included in the repository. Physical-phone behavior and live ChatGPT sign-in remain unverified.
+Built from [21c2bc2](https://github.com/Srimi1/research------bot/commit/21c2bc27cad9483bc8ce231f0074c9b78c41eeb8), with passing regression tests, production Android SQLite/CSP and synthetic OAuth checks, Android release compilation/lint, and signature/alignment checks. The release workflow must pass native launch, project creation, note saving and cold-restart checks for this actual signed APK on Android 16 before publication. The signing key is private and is not included in the repository. Physical-phone behavior and live ChatGPT sign-in remain unverified.
 
 [BUILD_INFO.json](BUILD_INFO.json) records public build metadata. The release workflow can verify this APK with `node scripts/verify-release-apk.mjs` and publish it without copying the signing key to CI.
 
-See the [Android guide](../../docs/android.md), [startup investigation](../../docs/audits/2026-10-07-android-startup.md) and [complete audit](../../docs/audits/2026-10-06.md).
+Version 0.3.6 shows a safe sign-in reason near the sign-in button and on the callback page, retains that notice after restarting, and reuses an issued registration on retry. Install over your existing app, then start a new sign-in. If it still fails, share only the `RB-AUTH-…` error text. See the [sign-in failure investigation](../../docs/audits/2026-10-07-signin-diagnostics.md).
 
-Version 0.3.5 fixes the callback response race that could display “This sign-in is no longer active.” Start a new sign-in from the app after installing; do not reuse the previous localhost callback. See the [sign-in investigation and Mac release review](../../docs/audits/2026-10-07-signin-and-macos.md).
+See the [Android guide](../../docs/android.md), [startup investigation](../../docs/audits/2026-10-07-android-startup.md) and [complete audit](../../docs/audits/2026-10-06.md).

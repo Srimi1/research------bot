@@ -200,7 +200,12 @@ async function main() {
           // A real browser opens in front of the app, on a public page instead of account consent.
           return original(plugin, method, {url: 'https://auth.openai.com/.well-known/openid-configuration'});
         }
-        if (plugin === 'ResearchNative' && method === 'openUrl') return; // invalid_grant retry: stay put
+        if (plugin === 'ResearchNative' && method === 'openUrl') {
+          // The token server rejected the dummy code as invalid_grant, so the app starts one fresh
+          // authorization, as it should. That proves the exchange got an answer; stop here.
+          window.__qaResult = window.__qaResult || 'fresh attempt after invalid_grant';
+          return;
+        }
         if (plugin === 'ResearchNative' && method === 'httpOpen' &&
             options.url === 'https://auth.openai.com/api/accounts/oauth/token' && !window.__qaToken) {
           const started = Date.now();

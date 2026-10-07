@@ -34,7 +34,7 @@ function callback(url: URL): Promise<{ status: number; body: string }> {
     }).on('error', reject);
   });
 }
-async function fixture(deferredResponse = false) {
+async function fixture(deferredResponse = false, awaitForeground?: (signal: AbortSignal) => Promise<void>) {
   const directory = await mkdtemp(join(tmpdir(), 'research-bot-auth-'));
   const original = getGlobalDispatcher();
   const agent = new MockAgent();
@@ -152,6 +152,7 @@ async function fixture(deferredResponse = false) {
         files: directoryFiles(directory),
         openBrowser,
         credentials: credentialStore,
+        awaitForeground,
         startLoopback: (() => {
           let listener: Parameters<ResearchNativePlugin['addListener']>[1];
           let server: LoopbackServer;
@@ -228,6 +229,72 @@ test('asynchronous native callback replies finish before the sign-in server clos
     } finally {
       await f.close();
     }
+  }
+});
+
+test('Android answers the browser and returns to the app before exchanging the code', async () => {
+  for (const failing of [false, true]) {
+    const order: string[] = [];
+    let release!: () => void;
+    let waiting!: () => void;
+    const started = new Promise<void>(resolve => (waiting = resolve));
+    const f = await fixture(true, async signal => {
+      order.push(`foreground-wait:${f.exchanges.length}`);
+      waiting();
+      await new Promise<void>((resolve, reject) => {
+        release = resolve;
+        signal.addEventListener('abort', () => reject(signal.reason), { once: true });
+      });
+    });
+    try {
+      if (failing) f.state.tokenError = 'access-secret refresh-secret private URL';
+      const signingIn = f.auth.signIn();
+      void signingIn.catch(() => undefined);
+      await started;
+      // The browser gets its reply while the exchange is still waiting for the app to be in front.
+      const reply = await f.callbackReply!;
+      assert.equal(reply.status, 200);
+      assert.match(reply.body, /Return to Research Bot to finish/);
+      assert.deepEqual(order, ['foreground-wait:0']);
+      assert.equal(f.exchanges.length, 0);
+      assert.deepEqual(f.returnToApps, [true]);
+      release();
+      if (failing) await assert.rejects(signingIn, /RB-AUTH-REJECTED/);
+      else assert.equal((await signingIn).signedIn, true);
+      assert.equal(f.exchanges.length, 1);
+      // PKCE and the exact loopback redirect are unchanged by the deferred exchange.
+      const form = f.exchanges[0];
+      assert.equal(form.get('redirect_uri'), f.authorizations[0].searchParams.get('redirect_uri'));
+      assert.equal(
+        createHash('sha256').update(form.get('code_verifier')!).digest('base64url'),
+        f.authorizations[0].searchParams.get('code_challenge'),
+      );
+      // Only one browser reply, and it never carries the outcome.
+      assert.deepEqual(f.returnToApps, [true]);
+      assert.doesNotMatch(reply.body, /RB-AUTH|access-secret|refresh-secret|connected/);
+    } finally {
+      await f.close();
+    }
+  }
+});
+
+test('cancelling while Android waits for the app never exchanges the code', async () => {
+  let waiting!: () => void;
+  const started = new Promise<void>(resolve => (waiting = resolve));
+  const f = await fixture(true, signal => {
+    waiting();
+    return new Promise((_, reject) => signal.addEventListener('abort', () => reject(signal.reason), { once: true }));
+  });
+  try {
+    const signingIn = f.auth.signIn();
+    await started;
+    f.auth.cancelSignIn();
+    await assert.rejects(signingIn, /cancel/i);
+    assert.equal(f.exchanges.length, 0);
+    assert.equal((await f.auth.account()).signedIn, false);
+    await assert.rejects(readFile(join(f.directory, 'account.enc')), { code: 'ENOENT' });
+  } finally {
+    await f.close();
   }
 });
 

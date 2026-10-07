@@ -7,6 +7,8 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.Signature;
 import android.content.pm.SigningInfo;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
@@ -42,6 +44,7 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
 import java.security.MessageDigest;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -82,6 +85,26 @@ public class ResearchNativePlugin extends Plugin {
     private final Map<String, InputStream> bodies = new ConcurrentHashMap<>();
     private final Map<String, ServerSocket> servers = new ConcurrentHashMap<>();
     private final Map<String, Socket> callbacks = new ConcurrentHashMap<>();
+    private final List<PluginCall> foregroundWaiters = new ArrayList<>();
+    private boolean resumed;
+
+    @Override
+    protected void handleOnResume() {
+        List<PluginCall> waiting;
+        synchronized (foregroundWaiters) {
+            resumed = true;
+            waiting = new ArrayList<>(foregroundWaiters);
+            foregroundWaiters.clear();
+        }
+        for (PluginCall call : waiting) executor.execute(() -> resolveWhenNetworkAllowed(call));
+    }
+
+    @Override
+    protected void handleOnPause() {
+        synchronized (foregroundWaiters) {
+            resumed = false;
+        }
+    }
 
     @Override
     protected void handleOnDestroy() {
@@ -204,6 +227,49 @@ public class ResearchNativePlugin extends Plugin {
             : error instanceof ConnectException ? "RB_NET_CONNECT" : "RB_NET_IO";
         // Do not send exception text or attach its stack: it can contain request details.
         call.reject("The Android network request failed.", code);
+    }
+
+    // Foreground network -------------------------------------------------------------------------
+
+    /**
+     * Resolves once the activity is resumed and Android reports this app's network as usable.
+     * While the browser is in front, Android may block the app's networking (Android 15+ background
+     * restrictions, Data Saver, battery restrictions); the resolver then fails as an unknown host.
+     */
+    @PluginMethod
+    public void awaitForeground(PluginCall call) {
+        synchronized (foregroundWaiters) {
+            if (!resumed) {
+                foregroundWaiters.add(call);
+                return;
+            }
+        }
+        executor.execute(() -> resolveWhenNetworkAllowed(call));
+    }
+
+    private void resolveWhenNetworkAllowed(PluginCall call) {
+        // Network rules follow the process state asynchronously after the activity resumes.
+        long end = System.nanoTime() + 10_000_000_000L;
+        try {
+            while (!networkAllowed() && System.nanoTime() < end) Thread.sleep(100);
+        } catch (InterruptedException ignored) {
+            Thread.currentThread().interrupt();
+        }
+        // Resolve even if still blocked; the request then reports its own fixed network reason.
+        call.resolve();
+    }
+
+    @SuppressWarnings("deprecation")
+    private boolean networkAllowed() {
+        try {
+            ConnectivityManager manager = getContext().getSystemService(ConnectivityManager.class);
+            if (manager == null) return true;
+            // The active network is reported as BLOCKED (not connected) when this UID is blocked.
+            NetworkInfo info = manager.getActiveNetworkInfo();
+            return info != null && info.isConnected();
+        } catch (RuntimeException unavailable) {
+            return true;
+        }
     }
 
     // Loopback sign-in callback ----------------------------------------------------------------

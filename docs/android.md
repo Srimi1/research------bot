@@ -134,6 +134,10 @@ For the later message “ChatGPT sign-in did not complete,” use version 0.3.6 
 
 Version 0.3.7 fixes a reproduced compatibility bug: older WebView providers without `AbortSignal.any` could fail before sending any token request and display `RB-AUTH-EXCHANGE-NETWORK`. The new build supports that missing API, preserves safe Android DNS/TLS/timeout/connection reasons, and shows the app and WebView versions beside a sign-in failure. This does not establish the cause of a particular phone's failure. Keep Android System WebView current, install over the existing app and begin a fresh sign-in. Report only the error text and displayed versions if it fails. See the [transport investigation](audits/2026-10-07-android-auth-transport.md).
 
+### DNS error during sign-in, but Check connection works (fixed in 0.3.9)
+
+If sign-in shows `RB-AUTH-EXCHANGE-DNS` while **Check connection** reports HTTP results, install 0.3.9 or later over the existing app. Older versions exchanged the authorization code while the browser was still in front. Android blocks networking for background apps, so that lookup failed on every network. In 0.3.9 the browser shows "Authorization received". Research Bot then returns to the front and finishes connecting there. If Android leaves you in the browser, switch back to Research Bot yourself within five minutes. See the [investigation](audits/2026-10-07-android-background-exchange.md).
+
 ### Connection check in Android 0.3.8
 
 In **Account & preferences**, tap **Check connection** after a failed attempt. The optional check makes four bounded HTTPS requests: a direct native metadata request, metadata and signing-key requests through the app adapter, and a token POST containing a deliberately invalid fixture code/client. It does not use your account credentials. An HTTP 400 or 403 result on the dummy token request proves that request reached a responding server; it does not establish live sign-in or eligibility.

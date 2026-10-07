@@ -27,6 +27,8 @@ const files = new Map();
 const bodies = new Map();
 const authorizations = [];
 const replies = [];
+// Order of browser reply, foreground wait and token POST for the current attempt.
+let events = [];
 let mode = 'response';
 let authorization;
 let idToken;
@@ -81,11 +83,16 @@ try {
     if (method === 'loopbackClose') return {};
     if (method === 'loopbackRespond') {
       replies.push(options);
+      events.push('reply');
+      return {};
+    }
+    if (method === 'awaitForeground') {
+      events.push('foreground');
       return {};
     }
     if (method === 'appInfo') {
       if (missingInfo) throw new Error('Optional device information is unavailable.');
-      return { version: buildVersion, versionCode: 308, sdk: 36, webviewVersion: '115.0.0.0', canInstall: false };
+      return { version: buildVersion, versionCode: 309, sdk: 36, webviewVersion: '115.0.0.0', canInstall: false };
     }
     if (method === 'openUrl') {
       authorization = new URL(options.url);
@@ -131,6 +138,7 @@ try {
         data = { error: 'invalid_client' };
       } else if (options.url === `${issuer}/api/accounts/oauth/token`) {
         tokenRequests++;
+        events.push('token');
         if (mode === 'dns')
           return { __fixtureFailure: { code: 'RB_NET_DNS', message: 'private native request details' } };
         const form = new URLSearchParams(options.body);
@@ -205,6 +213,7 @@ try {
               'loopbackStart',
               'loopbackRespond',
               'loopbackClose',
+              'awaitForeground',
               'openUrl',
               'httpOpen',
               'httpRead',
@@ -260,6 +269,7 @@ try {
     ['storage', 'STORAGE'],
   ]) {
     mode = failureMode;
+    events = [];
     if (failureMode !== 'response')
       await page.getByRole('button', { name: 'Continue with ChatGPT', exact: true }).click();
     const alert = page.getByRole('alert');
@@ -271,10 +281,16 @@ try {
       box.y >= 0 && box.y + box.height < 892,
       'The complete sign-in error must be visible on a phone without scrolling',
     );
-    assert.equal(replies.at(-1).status, 400);
+    // The browser is answered and the app brought back before any token request; Android blocks
+    // networking for the app while the browser is in front. The outcome is shown only in the app.
+    assert.deepEqual(events.slice(0, 3), ['reply', 'foreground', 'token']);
+    assert.equal(replies.at(-1).status, 200);
     assert.equal(replies.at(-1).returnToApp, true);
-    assert.match(replies.at(-1).body, new RegExp(`RB-AUTH-${code}`));
-    assert.doesNotMatch(replies.at(-1).body, /synthetic-access|synthetic-refresh|private upstream|Private credential/);
+    assert.match(replies.at(-1).body, /Authorization received/);
+    assert.doesNotMatch(
+      replies.at(-1).body,
+      /RB-AUTH|synthetic-access|synthetic-refresh|private upstream|Private credential/,
+    );
     assert.equal((await page.evaluate(() => window.research.account())).signedIn, false);
     assert.equal(files.has('account.enc'), false);
     await page
@@ -303,6 +319,7 @@ try {
     }
   }
   mode = 'success';
+  events = [];
   await page.getByRole('button', { name: 'Continue with ChatGPT', exact: true }).click();
   await page.getByRole('button', { name: 'Sign out', exact: true }).waitFor();
   await Promise.race([
@@ -312,6 +329,7 @@ try {
   assert.equal(await page.getByRole('alert').count(), 0, await page.getByRole('alert').allTextContents());
   await page.getByText('Your ChatGPT account is connected.').waitFor();
   assert.equal(replies.at(-1).status, 200);
+  assert.deepEqual(events, ['reply', 'foreground', 'token']);
   assert.equal(authorizations[0].searchParams.get('client_id'), 'dynamic_agent_client');
   for (const retry of authorizations.slice(1)) {
     assert.equal(retry.searchParams.get('client_id'), clientId);
@@ -334,13 +352,14 @@ try {
   assert.equal((await page.evaluate(() => window.research.account())).signedIn, true);
   assert.deepEqual(errors, []);
   console.log(
-    `Packaged Android OAuth passed${legacyUuid ? ' without AbortSignal.any, AbortSignal.timeout or crypto.randomUUID' : legacyTimeout ? ' without AbortSignal.timeout' : legacyAbort ? ' without AbortSignal.any' : ''}${missingInfo ? ' with optional native information unavailable' : ''}: safe visible failures, safe native DNS code, WebView version, restart recovery, retained issued registration, PKCE, RSA verification, encrypted persistence and successful reconnect under production CSP. Native and OpenAI services were synthetic.`,
+    `Packaged Android OAuth passed${legacyUuid ? ' without AbortSignal.any, AbortSignal.timeout or crypto.randomUUID' : legacyTimeout ? ' without AbortSignal.timeout' : legacyAbort ? ' without AbortSignal.any' : ''}${missingInfo ? ' with optional native information unavailable' : ''}: safe visible failures, token exchange only after returning to the app, safe native DNS code, WebView version, restart recovery, retained issued registration, PKCE, RSA verification, encrypted persistence and successful reconnect under production CSP. Native and OpenAI services were synthetic.`,
   );
 } catch (error) {
   console.error('Packaged auth fixture failure:', {
     mode,
     tokenRequests,
     replyStatuses: replies.map(reply => reply.status),
+    events,
     visibleErrors: await page
       ?.getByRole('alert')
       .allTextContents()

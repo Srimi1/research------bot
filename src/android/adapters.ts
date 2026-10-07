@@ -136,6 +136,31 @@ export function createNativeLoopback(bridge: LoopbackBridge): StartLoopback {
 
 export const nativeLoopback = createNativeLoopback(Native);
 
+/**
+ * Android blocks networking for an app whose activity is behind the browser (reported as a DNS
+ * failure), so the sign-in exchange waits here until Research Bot is in front again.
+ */
+export function createForegroundWait(bridge: Pick<ResearchNativePlugin, 'awaitForeground'>) {
+  return (signal: AbortSignal): Promise<void> =>
+    new Promise((resolve, reject) => {
+      if (signal.aborted) return reject(aborted(signal));
+      const abort = () => reject(aborted(signal));
+      signal.addEventListener('abort', abort, { once: true });
+      bridge.awaitForeground().then(
+        () => {
+          signal.removeEventListener('abort', abort);
+          resolve();
+        },
+        error => {
+          signal.removeEventListener('abort', abort);
+          reject(error);
+        },
+      );
+    });
+}
+
+export const nativeForeground = createForegroundWait(Native);
+
 /** App-private files (Context.getFilesDir()/research), replaced atomically. */
 export const nativeFiles: FileStore = {
   async read(name) {

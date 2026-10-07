@@ -39,8 +39,21 @@ public class NativeAuthTransportTest {
         fail("Native auth transport test timed out: " + expression);
     }
 
+    /** Like a researcher switching back when Android does not return to the app by itself. */
+    private void returnToAppIfNeeded() throws Exception {
+        long end = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+        while (System.nanoTime() < end) {
+            if ("true".equals(evaluate("document.visibilityState === 'visible'"))) return;
+            Thread.sleep(250);
+        }
+        android.content.Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        context.startActivity(
+            new android.content.Intent(context, MainActivity.class).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+        );
+    }
+
     @Test
-    public void nativeHttpsAndTokenExchangeWhileBrowserIsOpen() throws Exception {
+    public void nativeHttpsAndTokenExchangeAfterReturningFromBrowser() throws Exception {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> webView = activity.getBridge().getWebView());
             waitFor("window.research && window.Capacitor && window.Capacitor.nativePromise", 30);
@@ -112,6 +125,9 @@ public class NativeAuthTransportTest {
                 // The pending state and loopback URI remain private to this test and are never logged.
                 String callbackJson = evaluate("JSON.stringify((() => { const u = new URL(window.__qaAuthorize); const r = new URL(u.searchParams.get('redirect_uri')); r.search = new URLSearchParams({state: u.searchParams.get('state'), code: 'synthetic-invalid-code', client_id: 'oaiapp_native_transport_fixture'}); return {port: Number(r.port), target: r.pathname + r.search}; })())");
                 JSONObject callback = new JSONObject((String) new org.json.JSONTokener(callbackJson).nextValue());
+                // A real callback only arrives after the browser has loaded consent, so wait until the
+                // browser actually covers the app; otherwise its late launch could land on top again.
+                waitFor("document.visibilityState === 'hidden'", 20);
                 // Raw loopback sockets keep the app's HTTPS-only outbound policy intact.
                 try (Socket socket = new Socket("127.0.0.1", callback.getInt("port"))) {
                     socket.setSoTimeout(45000);
@@ -120,13 +136,15 @@ public class NativeAuthTransportTest {
                     byte[] reply = socket.getInputStream().readAllBytes();
                     assertTrue("The actual callback must answer the browser", reply.length > 0);
                     String text = new String(reply, StandardCharsets.UTF_8);
-                    assertTrue("Dummy authorization must return a failed callback", text.startsWith("HTTP/1.1 400"));
-                    // Print only a fixed local reason, never the callback URL or raw provider reply.
-                    java.util.regex.Matcher reason = java.util.regex.Pattern.compile("RB-AUTH-[A-Z-]+").matcher(text);
-                    System.out.println("Native dummy exchange callback: " + (reason.find() ? reason.group() : "missing safe reason"));
+                    // The browser is answered before the exchange, which runs only once the app is in front
+                    // again (Android blocks networking for an app behind the browser). It never sees the outcome.
+                    assertTrue("A state-valid callback must be acknowledged", text.startsWith("HTTP/1.1 200"));
+                    assertTrue(text.contains("Return to Research Bot to finish"));
+                    assertFalse("The browser reply must not carry the outcome", text.contains("RB-AUTH-"));
                 }
+                returnToAppIfNeeded();
                 // invalid_grant intentionally starts one fresh attempt. Answer that attempt too.
-                waitFor("window.__qaAuthResult || window.__qaAuthorizeCount > " + attempt, 15);
+                waitFor("window.__qaAuthResult || window.__qaAuthorizeCount > " + attempt, 45);
                 if ("true".equals(evaluate("Boolean(window.__qaAuthResult)"))) break;
             }
             waitFor("window.__qaAuthResult", 15);

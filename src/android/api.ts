@@ -7,7 +7,7 @@ import { Runner } from '../../core/runner';
 import { Store } from '../../core/store';
 import type { Account, ResearchAPI, RunEvent } from '../shared/types';
 import { back } from '../back';
-import { keystoreCredentials, nativeFetch, nativeFiles, nativeLoopback } from './adapters';
+import { keystoreCredentials, nativeFetch, nativeFiles, nativeForeground, nativeLoopback } from './adapters';
 import { PersistentDatabase } from './database';
 import wasmUrl from 'sql.js/dist/sql-wasm.wasm?url';
 import { Native } from './native';
@@ -50,6 +50,7 @@ export function createAndroidAPI(): ResearchAPI {
       openBrowser: url => Native.openUrl({ url }),
       credentials: keystoreCredentials,
       startLoopback: nativeLoopback,
+      awaitForeground: nativeForeground,
     });
     const runner = new Runner(
       store,

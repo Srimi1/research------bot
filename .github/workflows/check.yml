@@ -126,6 +126,21 @@ jobs:
           script: |
             node scripts/android-startup-smoke.mjs android/app/build/outputs/apk/debug/app-debug.apk
             cd android && ./gradlew --no-daemon :app:connectedDebugAndroidTest
+      # Without instrumentation (an instrumented process counts as foreground), with a real browser
+      # in front of the app for longer than Android's background grace period.
+      - name: Sign-in token exchange after browser consent on Android 16
+        uses: ReactiveCircus/android-emulator-runner@4c44018e59b437e86cdfc41da381398f93ed8808 # v2
+        with:
+          api-level: 36
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          disable-animations: true
+          script: |
+            node scripts/android-background-exchange.mjs android/app/build/outputs/apk/debug/app-debug.apk --consent-seconds=20
+            node scripts/android-background-exchange.mjs android/app/build/outputs/apk/debug/app-debug.apk --consent-seconds=75
+            node scripts/android-background-exchange.mjs android/app/build/outputs/apk/debug/app-debug.apk --consent-seconds=20 --data-saver
       - uses: actions/upload-artifact@v4
         with:
           name: research-bot-android-debug

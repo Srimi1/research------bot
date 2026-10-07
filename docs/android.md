@@ -4,7 +4,7 @@ The Android app is the same Research Bot as the desktop app: the same interface,
 
 ## Install
 
-**0.4.0 is in release preparation.** It installs over 0.3.x with the same signing certificate, keeping your projects. The current download below is 0.3.9 until 0.4.0 is published.
+**0.4.0 is in release preparation. Install 0.4.0 over 0.3.9; no uninstall needed.** It uses the original signing certificate, keeping your projects, notes and settings. The current download below is 0.3.9 until 0.4.0 is published.
 
 1. Download the [signed Research Bot 0.3.9 APK](https://github.com/Srimi1/research------bot/releases/download/v0.3.9/research-bot-0.3.9-android.apk). It is stored in the repository's [downloads/android folder](../downloads/android/README.md).
 2. Open the downloaded file. Android asks to allow installs from your browser or file manager the first time; allow it, then choose **Install**.
@@ -62,7 +62,7 @@ npm run build:android                       # web bundle + Capacitor sync
 cd android && ./gradlew assembleDebug       # android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
-The debug APK is available at `android/app/build/outputs/apk/debug/app-debug.apk` and as `research-bot-android-debug` in successful CI runs. Debug, personal and official release signing certificates may differ. Android cannot install an APK over an existing app with a different certificate. Export projects before uninstalling; prefer an APK signed with the same key.
+The debug APK is available at `android/app/build/outputs/apk/debug/app-debug.apk` and as `research-bot-android-debug` in successful CI runs. Debug and release APKs use different signing certificates. Use a fresh emulator for debug builds and the original signed release APK to update an existing installation.
 
 `npm run icon:android` regenerates the launcher icons from `public/app-icon.png`.
 
@@ -90,7 +90,7 @@ Every Android release is signed with the same private key, so installed copies u
 
 The release workflow tolerates whitespace-wrapped base64, checks the password and alias, and refuses to build unless the key's certificate matches the committed fingerprint. It verifies the built APK against that fingerprint again and records `BUILD_INFO-android.json` from the actual APK.
 
-Keep a private backup of the keystore and its passwords outside GitHub. If the key were ever lost, `scripts/create-android-signing-key.sh` creates a replacement and its fingerprint, but every installed copy would then have to export its projects, uninstall and reinstall once.
+Keep a private backup of the original keystore and its passwords outside GitHub. If signing restoration fails, correct the four secrets using that backup. Do not generate a replacement key or change the pinned fingerprint to make a release pass.
 
 ### Publish an Android release
 
@@ -138,7 +138,7 @@ Version 0.3.7 fixes a reproduced compatibility bug: older WebView providers with
 
 ### DNS error during sign-in, but Check connection works
 
-The reproduced cause was exchanging the authorization code while the browser was still in front. Android blocked the background app's networking, producing `RB-AUTH-EXCHANGE-DNS`. The 0.3.9 source fix waits for Research Bot to return to the foreground, but it has not been confirmed on the maintainer's phone. Version 0.4.0 keeps that fix and protects the callback with the foreground service. Use the one-time installation steps above when the new signed APK is published. See the [investigation](audits/2026-10-07-android-background-exchange.md).
+The reproduced cause was exchanging the authorization code while the browser was still in front. Android blocked the background app's networking, producing `RB-AUTH-EXCHANGE-DNS`. The 0.3.9 source fix waits for Research Bot to return to the foreground, but it has not been confirmed on the maintainer's phone. Version 0.4.0 keeps that fix and protects the callback with the foreground service. Install the published 0.4.0 APK over 0.3.9 and begin a fresh sign-in. See the [investigation](audits/2026-10-07-android-background-exchange.md).
 
 ### Connection check in Android 0.3.8
 

@@ -3,10 +3,10 @@
 ## 0.4.0 (release preparation)
 
 - Keep Android ChatGPT sign-in alive with a foreground service during browser consent; retain the exchange-after-foreground fix. The service and attempt are bounded to less than three minutes and cleaned up on success, rejection, cancellation and timeout.
-- When the sign-in foreground service reaches its own deadline or Android times it out, it now tells the app, which cancels the pending sign-in with `RB-AUTH-TIMEOUT`, closes the local callback listener and stops the service, instead of only stopping the service.
+- When the sign-in foreground service reaches its own deadline or Android times it out, it now tells the app, which cancels the pending sign-in with `RB-AUTH-TIMEOUT`, closes the local callback listener and stops the service, instead of only stopping the service. An aborted foreground wait cannot overwrite the timeout notice with a generic setup failure.
 - Recover interrupted sign-in after a process kill with `RB-AUTH-INTERRUPTED` and an **Open battery settings** action. Set Research Bot's battery usage to **Unrestricted** if your ROM repeatedly closes it during consent.
 - Preserve the account dialog across browser pause/resume; explicitly closing it still cancels sign-in.
-- Signed with the same key as 0.3.x, so it installs over existing copies and keeps projects. The public certificate SHA-256 is committed in `android/release-signing-certificate.sha256` and checked before building and publishing; the restore step accepts whitespace-wrapped base64 and checks the password and alias first.
+- Install 0.4.0 over 0.3.9; no uninstall needed. The original signing key keeps projects, notes and settings. Its public certificate SHA-256 is committed in `android/release-signing-certificate.sha256` and checked before building and publishing; the restore step accepts whitespace-wrapped base64 and checks the password and alias first.
 - Add unit and production-bundle checks plus Android 16 CI cases for 75-second consent without a manual return, foreground-service process state, Data Saver and killed-attempt recovery. Phone sign-in and inference remain a separate maintainer check before Phase 2.
 
 ## 0.3.9 (2026-10-07)

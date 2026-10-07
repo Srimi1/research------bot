@@ -42,6 +42,10 @@ Crossref discovery works without signing in. AI assistants require eligible Chat
 
 ## Install or build
 
+**0.4.0 is being prepared to fix ChatGPT sign-in on Android.** It adds a short foreground service during browser consent and an `RB-AUTH-INTERRUPTED` recovery notice if Android closes the app. The signed 0.4.0 APK is pending signing-secret setup and release validation; the existing download below is still 0.3.9.
+
+The original Android key was lost. Moving from 0.3.x to 0.4.0 requires **exporting every project, verifying the saved files, uninstalling Research Bot once, then installing the new signed APK**. Uninstalling removes the phone's local database and credentials. Exports are JSON/Markdown archives; automatic project import is not available. The new public certificate SHA-256 is `a2dbefb638d2760d0b77dcb2891ee4b4fd4edd17d75906c903b97c5fc9ae0506`, recorded in [android/release-signing-certificate.sha256](android/release-signing-certificate.sha256). On Legion OS or another aggressive ROM, set **App info → Battery usage → Unrestricted** if sign-in is repeatedly interrupted. See [Android installation and signing](docs/android.md) for the steps.
+
 The signed **Android 0.3.9 APK is available in [downloads/android](downloads/android/README.md)** and through the direct download above. [Release 0.3.9](https://github.com/Srimi1/research------bot/releases/tag/v0.3.9) publishes Android assets only. Desktop installers remain available in [release 0.3.7](https://github.com/Srimi1/research------bot/releases/tag/v0.3.7), with checksums. Mac beta builds are ad hoc signed without Developer ID signing/notarization and use manual updates; see the Mac guide for installation instructions.
 
 | Platform   | Distribution / development                                                                                                                           | Guide                                                               |

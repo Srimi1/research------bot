@@ -16,6 +16,11 @@ assert.equal(info.version, version, 'APK build version must match package.json')
 assert.match(info.sourceCommit, /^[a-f0-9]{40}$/);
 assert.match(info.apkSha256, /^[a-f0-9]{64}$/);
 assert.match(info.certificateSha256, /^[a-f0-9]{64}$/);
+assert.equal(
+  info.certificateSha256,
+  readFileSync(join(root, 'android/release-signing-certificate.sha256'), 'utf8').trim(),
+  'Prebuilt APK must use the committed release signing certificate',
+);
 assert.equal(info.package, 'com.researchbot.android');
 const [major, minor, patch] = version.split('.').map(Number);
 assert.equal(info.versionCode, major * 10000 + minor * 100 + patch);

@@ -4,6 +4,8 @@ The Android app is the same Research Bot as the desktop app: the same interface,
 
 ## Install
 
+**0.4.0 is in release preparation.** Its new signed APK is pending signing-secret setup and release checks. The current download below is 0.3.9. Do not uninstall your current app until the new signed APK is available and your exports are verified.
+
 1. Download the [signed Research Bot 0.3.9 APK](https://github.com/Srimi1/research------bot/releases/download/v0.3.9/research-bot-0.3.9-android.apk). It is stored in the repository's [downloads/android folder](../downloads/android/README.md).
 2. Open the downloaded file. Android asks to allow installs from your browser or file manager the first time; allow it, then choose **Install**.
 3. Open **Research Bot**. Your projects are stored only on this phone.
@@ -12,7 +14,11 @@ To check this download, compare its SHA-256 with [downloads/android/SHA256SUMS.t
 
 ## Sign in with ChatGPT
 
-In **Account & preferences**, choose **Continue with ChatGPT**. The sign-in page opens in your browser (a Custom Tab). After you approve, the browser returns to a page on `127.0.0.1` that the app is listening on, then you switch back to Research Bot. This is the same loopback sign-in the desktop app uses (RFC 8252). Stay on the sign-in page until it says ChatGPT is connected; it times out after five minutes.
+In **Account & preferences**, choose **Continue with ChatGPT**. The sign-in page opens in your browser (a Custom Tab). After you approve, the browser returns to a page on `127.0.0.1` that the app is listening on. When it says **Authorization received**, return to Research Bot to finish connecting. The code is exchanged only after the app is back in front. This is the same loopback sign-in the desktop app uses (RFC 8252).
+
+In 0.4.0 a short foreground service keeps the callback process alive during consent. It shows a low-priority **Connecting ChatGPT…** notification and stops on every outcome. A notification permission prompt is not needed; denying notifications does not prevent the service. Android sign-in times out after 2 minutes 45 seconds, before the three-minute service limit. Desktop sign-in retains its five-minute deadline. Closing the account dialog or tapping **Cancel sign-in** cancels the attempt; returning from the browser keeps the dialog open.
+
+If Android kills the process anyway, the next launch displays **RB-AUTH-INTERRUPTED**. Choose **Open battery settings**, then **Battery usage → Unrestricted** (wording varies by ROM), and begin a fresh sign-in. On Legion OS and other aggressive ROMs this can be necessary even with the foreground service. The recovery file contains a timestamp only while an attempt is active; it never stores an authorization code, callback URL or token.
 
 Credentials are encrypted with a key held in the Android Keystore. The key cannot be exported, so app data is excluded from Android backups and device transfers. Use **Export** to keep a copy of your projects.
 
@@ -77,22 +83,33 @@ CI runs the same flow on Android 16. The release workflow additionally tests the
 
 ## Release signing (one-time setup)
 
-Every Android release must be signed with the same key, or installed copies cannot update. The release workflow reads the key from four repository secrets. For an existing installation, use its original key. The personally signed APKs supplied to the maintainer use a separate private signing backup; do not generate a replacement key when preparing updates for those installations. Keys and passwords must stay out of Git. For a new distribution, create the secrets once:
+The original 0.3.x private signing key was lost. Version 0.4.0 starts a new signing lineage. Every later Android release must use this new key so installed 0.4.x copies can update. Keys and passwords stay out of Git; only the public certificate SHA-256 is committed in [android/release-signing-certificate.sha256](../android/release-signing-certificate.sha256): `a2dbefb638d2760d0b77dcb2891ee4b4fd4edd17d75906c903b97c5fc9ae0506`.
 
-1. Generate a key on your own computer (keep the file and passwords somewhere safe; losing them means users must uninstall and reinstall):
+### Create the new key on the maintainer's Mac (Option A)
 
-   ```sh
-   keytool -genkeypair -v -keystore research-bot-release.jks -alias research-bot \
-     -keyalg RSA -keysize 4096 -validity 10000
-   ```
+This alternative is for an initial setup before a key/fingerprint exists. The 0.4.0 key is already created, so keep its supplied backup and skip key generation. For a new setup, from a checkout with JDK 21 installed, run this single Terminal block:
 
-2. In GitHub, open **Settings → Secrets and variables → Actions** for this repository and add:
-   - `ANDROID_KEYSTORE_BASE64`: the output of `base64 -w0 research-bot-release.jks` (on macOS: `base64 -i research-bot-release.jks`)
-   - `ANDROID_KEYSTORE_PASSWORD`: the keystore password
-   - `ANDROID_KEY_ALIAS`: `research-bot`
-   - `ANDROID_KEY_PASSWORD`: the key password (the same as the keystore password if you pressed Enter at that prompt)
+```sh
+bash scripts/create-android-signing-key.sh "$HOME/Research-Bot-signing-backup"
+```
 
-3. With **Android source: build**, the workflow validates that all four secrets exist before creating a manual draft. It publishes the draft only after the desktop and Android uploads succeed. Release as usual (see [Releases and updates](implementation.md#releases-and-updates)). The **android** job builds, lints, verifies the signature, and attaches the APK and `SHA256SUMS-android.txt` to the release.
+The script creates a 4096-bit RSA JKS, prints the four GitHub secret values, and writes their backup alongside `research-bot-release.jks` outside the repository. It refuses to overwrite an existing key or fingerprint. Back up that directory securely. It also creates `android/release-signing-certificate.sha256` in your checkout; share/commit that public fingerprint, never the four secret values or key.
+
+In this repository's **Settings → Secrets and variables → Actions**, set `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD` to the printed values. The release restores whitespace-wrapped base64, checks the password and alias, then requires the certificate to match the committed fingerprint. It verifies the built APK against that fingerprint again and creates `BUILD_INFO-android.json` from the actual APK. The new 0.4.0 key has now been created; configure the secrets from its private backup. Do not generate another key.
+
+Option B is generating the key in the coding environment and providing a private backup, only with the maintainer's explicit permission. Do not generate a second key if Option A has already been completed.
+
+### One-time switch from 0.3.x to 0.4.0
+
+1. In the old app, export **every project** as JSON or Markdown to storage outside Research Bot. Open the exported files and verify that your notes and sources are present. There is no automatic project import; keep the archives and recreate projects as needed.
+2. Download the published signed 0.4.0 APK. Verify its checksum and public certificate against the release build information and `android/release-signing-certificate.sha256`.
+3. Uninstall the old Research Bot. This removes its local projects and credentials; the new key cannot update a 0.3.x installation in place.
+4. Install 0.4.0, sign in with ChatGPT, and run one agent. Report whether sign-in succeeds without `RB-AUTH-EXCHANGE-DNS`; this is the physical-phone gate for Phase 2.
+5. If sign-in is interrupted, use **App info → Battery usage → Unrestricted**, then retry. Subsequent 0.4.x APKs signed with the new key can update in place.
+
+### Publish 0.4.0 after signing setup
+
+Commit the new public fingerprint, update/merge PR #12's signing restoration, and merge the verified sign-in changes. Run **Publish release** from `main` with tag `v0.4.0`, **Platforms: android**, **Android source: build**, and **Android upgrade from** empty. The workflow's fresh-install, persistence and cold-restart checks must pass on the exact signed APK before publication. Download the published APK and `BUILD_INFO-android.json`, commit them as `downloads/android/research-bot-0.4.0-android.apk` and `downloads/android/BUILD_INFO.json`, and regenerate `downloads/android/SHA256SUMS.txt`. Update the download links and release status only after publication. Emulator evidence and the maintainer's OnePlus result must be reported separately.
 
 ### Release an existing signed APK
 
@@ -126,7 +143,7 @@ Share the Research Bot exception and `Caused by` lines with the maintainer. Thos
 
 ## Sign-in says it is no longer active
 
-Install version 0.3.6 or later over your existing app, then start a fresh sign-in from Research Bot. Versions 0.3.5 and later wait for the native callback response before closing the server, fixing a race that could replace a completed reply with “This sign-in is no longer active.” Do not reuse the old localhost callback URL; authorization codes are one-use. Stay in the browser until consent finishes, and switch back to Research Bot if Android does not return automatically. Cancelling, closing the account dialog or taking longer than five minutes still ends an attempt. Live account eligibility and inference remain unverified. See the [callback investigation](audits/2026-10-07-signin-and-macos.md).
+Install version 0.3.6 or later over your existing app, then start a fresh sign-in from Research Bot. Versions 0.3.5 and later wait for the native callback response before closing the server, fixing a race that could replace a completed reply with “This sign-in is no longer active.” Do not reuse the old localhost callback URL; authorization codes are one-use. Stay in the browser until consent finishes, and switch back to Research Bot if Android does not return automatically. Cancelling, closing the account dialog or exceeding the sign-in deadline still ends an attempt. Live account eligibility and inference remain unverified. See the [callback investigation](audits/2026-10-07-signin-and-macos.md).
 
 For the later message “ChatGPT sign-in did not complete,” use version 0.3.6 or later. It displays a safe reason and `RB-AUTH-…` code near the sign-in button and on the callback page, keeps the notice after restarting, and reuses an issued registration on retry. Share only that error text if sign-in still fails. Do not share the localhost address, authorization codes or tokens. A browser page alone from an older build does not distinguish a rejected exchange, network failure, invalid identity or credential-storage problem. See the [failure investigation](audits/2026-10-07-signin-diagnostics.md).
 
@@ -134,9 +151,9 @@ For the later message “ChatGPT sign-in did not complete,” use version 0.3.6 
 
 Version 0.3.7 fixes a reproduced compatibility bug: older WebView providers without `AbortSignal.any` could fail before sending any token request and display `RB-AUTH-EXCHANGE-NETWORK`. The new build supports that missing API, preserves safe Android DNS/TLS/timeout/connection reasons, and shows the app and WebView versions beside a sign-in failure. This does not establish the cause of a particular phone's failure. Keep Android System WebView current, install over the existing app and begin a fresh sign-in. Report only the error text and displayed versions if it fails. See the [transport investigation](audits/2026-10-07-android-auth-transport.md).
 
-### DNS error during sign-in, but Check connection works (fixed in 0.3.9)
+### DNS error during sign-in, but Check connection works
 
-If sign-in shows `RB-AUTH-EXCHANGE-DNS` while **Check connection** reports HTTP results, install 0.3.9 or later over the existing app. Older versions exchanged the authorization code while the browser was still in front. Android blocks networking for background apps, so that lookup failed on every network. In 0.3.9 the browser shows "Authorization received". Research Bot then returns to the front and finishes connecting there. If Android leaves you in the browser, switch back to Research Bot yourself within five minutes. See the [investigation](audits/2026-10-07-android-background-exchange.md).
+The reproduced cause was exchanging the authorization code while the browser was still in front. Android blocked the background app's networking, producing `RB-AUTH-EXCHANGE-DNS`. The 0.3.9 source fix waits for Research Bot to return to the foreground, but it has not been confirmed on the maintainer's phone. Version 0.4.0 keeps that fix and protects the callback with the foreground service. Use the one-time installation steps above when the new signed APK is published. See the [investigation](audits/2026-10-07-android-background-exchange.md).
 
 ### Connection check in Android 0.3.8
 

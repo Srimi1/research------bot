@@ -11,9 +11,9 @@ A personal research workspace for Android, Windows, Linux and macOS. Keep your q
 [![Android 8+](https://img.shields.io/badge/Android-8%2B-254b3d.svg)](docs/android.md)
 [![Node.js 24](https://img.shields.io/badge/Node.js-24-254b3d.svg)](CONTRIBUTING.md)
 
-**Android download:** [Research Bot 0.3.6 APK](https://github.com/Srimi1/research------bot/raw/refs/heads/main/downloads/android/research-bot-0.3.6-android.apk) · [Installation and checksums](downloads/android/README.md)
+**Android download:** [Research Bot 0.3.7 APK](https://github.com/Srimi1/research------bot/raw/refs/heads/main/downloads/android/research-bot-0.3.7-android.apk) · [Installation and checksums](downloads/android/README.md)
 
-**Mac download:** [Apple Silicon DMG](https://github.com/Srimi1/research------bot/releases/download/v0.3.6/research-bot-0.3.6-mac-arm64.dmg) · [Intel DMG](https://github.com/Srimi1/research------bot/releases/download/v0.3.6/research-bot-0.3.6-mac-x64.dmg) · [Mac installation and research guide](docs/macos.md)
+**Mac download:** [Apple Silicon DMG](https://github.com/Srimi1/research------bot/releases/download/v0.3.7/research-bot-0.3.7-mac-arm64.dmg) · [Intel DMG](https://github.com/Srimi1/research------bot/releases/download/v0.3.7/research-bot-0.3.7-mac-x64.dmg) · [Mac installation and research guide](docs/macos.md)
 
 **Beta:** local workflows and mocked authentication are tested. Live ChatGPT sign-in, account eligibility and AI output quality still need verification with a real account. See the [audit report](docs/audits/2026-10-06.md) for evidence and limits.
 
@@ -42,11 +42,11 @@ Crossref discovery works without signing in. AI assistants require eligible Chat
 
 ## Install or build
 
-The signed **Android 0.3.6 APK is available in [downloads/android](downloads/android/README.md)** and through the direct download above. [Release 0.3.6](https://github.com/Srimi1/research------bot/releases/tag/v0.3.6) also includes Mac, Windows and Linux installers, with checksums. Mac beta builds are ad hoc signed without Developer ID signing/notarization and use manual updates; see the Mac guide for installation instructions.
+The signed **Android 0.3.7 APK is available in [downloads/android](downloads/android/README.md)** and through the direct download above. [Release 0.3.7](https://github.com/Srimi1/research------bot/releases/tag/v0.3.7) also includes Mac, Windows and Linux installers, with checksums. Mac beta builds are ad hoc signed without Developer ID signing/notarization and use manual updates; see the Mac guide for installation instructions.
 
 | Platform   | Distribution / development                                                                                                                                        | Guide                                                               |
 | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| Android 8+ | [Signed 0.3.6 APK](https://github.com/Srimi1/research------bot/raw/refs/heads/main/downloads/android/research-bot-0.3.6-android.apk); CI also uploads a debug APK | [Android setup, signing and updates](docs/android.md)               |
+| Android 8+ | [Signed 0.3.7 APK](https://github.com/Srimi1/research------bot/raw/refs/heads/main/downloads/android/research-bot-0.3.7-android.apk); CI also uploads a debug APK | [Android setup, signing and updates](docs/android.md)               |
 | Windows    | NSIS installer                                                                                                                                                    | [Releases and updates](docs/implementation.md#releases-and-updates) |
 | Linux      | AppImage; live sign-in needs a secure desktop keyring                                                                                                             | [Operating notes](docs/implementation.md#operating-notes)           |
 | macOS 13+  | Apple Silicon and Intel DMGs; ad hoc signed beta, manual updates                                                                                                  | [Mac installation and research](docs/macos.md)                      |

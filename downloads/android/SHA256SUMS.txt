@@ -1,1 +1,1 @@
-ebe0e194088890e2a686a6b34e0e9abe0d2e5efd895d504c551107769bcf1cd5  research-bot-0.3.6-android.apk
+3d53f4d5acd8f19b11a246a6335c8e561704c74f67013d342a7d563e9b2919fb  research-bot-0.3.7-android.apk

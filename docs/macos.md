@@ -4,12 +4,12 @@ Research Bot is a full desktop research workspace. The Mac edition includes the 
 
 ## Download and install
 
-Open [the 0.3.6 release](https://github.com/Srimi1/research------bot/releases/tag/v0.3.6) and choose the DMG that matches **Apple menu → About This Mac**:
+Open [the 0.3.7 release](https://github.com/Srimi1/research------bot/releases/tag/v0.3.7) and choose the DMG that matches **Apple menu → About This Mac**:
 
 | Your Mac                               | Installer                                                                                                                  |
 | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| Apple Silicon: M1, M2, M3, M4 or later | [Apple Silicon DMG](https://github.com/Srimi1/research------bot/releases/download/v0.3.6/research-bot-0.3.6-mac-arm64.dmg) |
-| Intel processor                        | [Intel DMG](https://github.com/Srimi1/research------bot/releases/download/v0.3.6/research-bot-0.3.6-mac-x64.dmg)           |
+| Apple Silicon: M1, M2, M3, M4 or later | [Apple Silicon DMG](https://github.com/Srimi1/research------bot/releases/download/v0.3.7/research-bot-0.3.7-mac-arm64.dmg) |
+| Intel processor                        | [Intel DMG](https://github.com/Srimi1/research------bot/releases/download/v0.3.7/research-bot-0.3.7-mac-x64.dmg)           |
 
 Use macOS 13 or later. Both installers are built and tested on macOS 15; older supported systems and physical MacBooks still need verification.
 
@@ -64,7 +64,7 @@ npm ci
 npm run build
 npx electron-builder --mac dmg --arm64 --publish never  # Apple Silicon
 # or: npx electron-builder --mac dmg --x64 --publish never
-node scripts/macos-dmg-smoke.mjs release/research-bot-0.3.6-mac-arm64.dmg
+node scripts/macos-dmg-smoke.mjs release/research-bot-0.3.7-mac-arm64.dmg
 ```
 
 Use the matching architecture for the runtime test. CI mounts each actual DMG, copies out its application, verifies the executable's architecture and icon, then launches the packaged app to check native menus, project creation, note persistence, revision undo/redo, plans, export controls, Dock reopening and interruption recovery. This validates research workflows on GitHub's Mac runners; it does not establish live ChatGPT access or notarization.

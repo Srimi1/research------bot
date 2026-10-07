@@ -1,15 +1,15 @@
 {
-  "version": "0.3.6",
-  "versionCode": 306,
+  "version": "0.3.7",
+  "versionCode": 307,
   "package": "com.researchbot.android",
   "minSdk": 26,
   "targetSdk": 36,
-  "sourceCommit": "21c2bc27cad9483bc8ce231f0074c9b78c41eeb8",
+  "sourceCommit": "7c1d61a37bff1a1b653d311969b3a50e523fa2b1",
   "certificateSha256": "98580ca053712555a2b8a3a8fecfc15c85d83c5d192480e3b6b09ca13a633441",
-  "apkSha256": "ebe0e194088890e2a686a6b34e0e9abe0d2e5efd895d504c551107769bcf1cd5",
-  "apkBytes": 4768995,
+  "apkSha256": "3d53f4d5acd8f19b11a246a6335c8e561704c74f67013d342a7d563e9b2919fb",
+  "apkBytes": 4769811,
   "validation": {
-    "regressionTestsPassed": 83,
+    "regressionTestsPassed": 86,
     "productionAndroidBackendUnderCsp": "passed",
     "productionAndroidAuthenticationUnderCsp": "passed (synthetic native services and OpenAI responses)",
     "androidReleaseBuildAndLint": "passed",
@@ -17,11 +17,14 @@
     "asyncNativeCallbackReplyOrdering": "passed",
     "safePersistentSignInDiagnostics": "passed",
     "issuedRegistrationRetryAcrossRestart": "passed",
-    "android16SignedApkStartupAndPersistence": "passed"
+    "android16SignedApkStartupAndPersistence": "pending release workflow",
+    "productionAndroidAuthenticationWithoutAbortSignalAny": "passed (synthetic native services and OpenAI responses)",
+    "safeNativeNetworkDiagnostics": "passed (serialized bridge regression and production DNS fixture)",
+    "android16NativeAuthTransport": "passed (instrumented debug app; real HTTPS and rejected dummy token exchanges)"
   },
   "limits": [
-    "Physical OnePlus/Legion OS behavior not reproduced",
-    "Live ChatGPT eligibility and inference untested; the original device error remains unknown"
+    "Physical OnePlus/Legion OS behavior not reproduced; installed WebView version unknown",
+    "Live ChatGPT sign-in, account eligibility and inference untested; reported EXCHANGE-NETWORK cause on phone unconfirmed"
   ],
-  "githubReleaseRun": "https://github.com/Srimi1/research------bot/actions/runs/37616964369"
+  "githubCheckRun": "https://github.com/Srimi1/research------bot/actions/runs/37623448889"
 }

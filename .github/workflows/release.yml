@@ -14,6 +14,14 @@ on:
         description: Release tag, for example v0.3.3. Must match the version in package.json.
         required: true
         default: v0.3.3
+      android_source:
+        description: Build with signing secrets, or verify the signed APK committed in downloads/android.
+        type: choice
+        required: true
+        default: build
+        options:
+          - build
+          - prebuilt
 
 permissions:
   contents: write
@@ -44,6 +52,7 @@ jobs:
             exit 1
           fi
       - name: Check Android signing configuration before building or creating a release
+        if: github.event_name != 'workflow_dispatch' || inputs.android_source != 'prebuilt'
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -134,11 +143,13 @@ jobs:
     runs-on: ubuntu-latest
     env:
       RESEARCH_RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      ANDROID_SOURCE: ${{ inputs.android_source || 'build' }}
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.release.tag_name || github.sha }}
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -154,6 +165,7 @@ jobs:
       # Every release must be signed with the same key, or installed copies refuse the update.
       # See docs/android.md for creating the key and adding these secrets.
       - name: Restore the signing key
+        if: env.ANDROID_SOURCE == 'build'
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
@@ -164,20 +176,32 @@ jobs:
           echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.jks"
           echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
       - run: npm ci
+        if: env.ANDROID_SOURCE == 'build'
       - run: npm test
+        if: env.ANDROID_SOURCE == 'build'
       - run: npm run build:android
+        if: env.ANDROID_SOURCE == 'build'
       - name: Build the signed APK
+        if: env.ANDROID_SOURCE == 'build'
         working-directory: android
         env:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: ./gradlew --no-daemon assembleRelease lintRelease
+      - name: Verify the committed APK and its source provenance
+        if: env.ANDROID_SOURCE == 'prebuilt'
+        run: node scripts/verify-release-apk.mjs
       - name: Verify and collect the APK
         run: |
           version="${RESEARCH_RELEASE_TAG#v}"
           mkdir upload
-          cp android/app/build/outputs/apk/release/app-release.apk "upload/research-bot-$version-android.apk"
+          if [ "$ANDROID_SOURCE" = prebuilt ]; then
+            cp "downloads/android/research-bot-$version-android.apk" upload/
+            cp downloads/android/BUILD_INFO.json upload/BUILD_INFO-android.json
+          else
+            cp android/app/build/outputs/apk/release/app-release.apk "upload/research-bot-$version-android.apk"
+          fi
           apksigner="$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)"
           "$apksigner" verify --print-certs "upload/research-bot-$version-android.apk"
           cd upload

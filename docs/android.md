@@ -77,7 +77,13 @@ Every Android release must be signed with the same key, or installed copies cann
    - `ANDROID_KEY_ALIAS`: `research-bot`
    - `ANDROID_KEY_PASSWORD`: the key password (the same as the keystore password if you pressed Enter at that prompt)
 
-3. The workflow validates that all four secrets exist before creating a manual draft. It publishes the draft only after the desktop and Android uploads succeed. Release as usual (see [Releases and updates](implementation.md#releases-and-updates)). The **android** job builds, lints, verifies the signature, and attaches the APK and `SHA256SUMS-android.txt` to the release.
+3. With **Android source: build**, the workflow validates that all four secrets exist before creating a manual draft. It publishes the draft only after the desktop and Android uploads succeed. Release as usual (see [Releases and updates](implementation.md#releases-and-updates)). The **android** job builds, lints, verifies the signature, and attaches the APK and `SHA256SUMS-android.txt` to the release.
+
+### Release an existing signed APK
+
+For a locally built and validated APK, run **Publish release** with **Android source: prebuilt**. Commit `downloads/android/research-bot-VERSION-android.apk`, `SHA256SUMS.txt` and `BUILD_INFO.json` first. The build information records the version, package, SDK levels, byte count, SHA-256, public certificate fingerprint and full build commit.
+
+The workflow verifies the hash, certificate, package/version, SDK levels and 16 KiB alignment. It also requires the recorded build commit to be an ancestor of the release and all Android app/build inputs to be unchanged. If app inputs changed, rebuild and validate the APK before updating its build information. This path uses the existing signature without uploading the private key; it attaches `BUILD_INFO-android.json` as well as the APK and checksums. Desktop installers are still built normally, and the release stays draft until every upload succeeds.
 
 ## Android 16 and the OnePlus 7T Pro
 

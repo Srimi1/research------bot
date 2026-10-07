@@ -24,4 +24,6 @@ Package: `com.researchbot.android`. Version: `0.3.3` / code `303`. Signing certi
 
 Built from [b620924](https://github.com/Srimi1/research------bot/commit/b620924841b29b161c111604514f66cf9c499e51), with passing [platform CI](https://github.com/Srimi1/research------bot/actions/runs/37508336190), Android release compilation/lint and signature/alignment checks. The signing key is private and is not included in the repository. Physical-phone behavior and live ChatGPT sign-in remain unverified.
 
+[BUILD_INFO.json](BUILD_INFO.json) records public build metadata. The release workflow can verify this APK with `node scripts/verify-release-apk.mjs` and publish it without copying the signing key to CI.
+
 See the [Android guide](../../docs/android.md) and [audit report](../../docs/audits/2026-10-06.md).

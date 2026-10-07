@@ -1,7 +1,7 @@
 // Launch the packaged APK on a real Android runtime, including the native bridge and WebView.
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdirSync, readFileSync, writeFileSync, writeSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const apk = process.argv[2];
@@ -165,7 +165,11 @@ try {
     // Flush evidence before throwing: console's pipe writes can otherwise be truncated at process exit.
     const shot = readFileSync(`${output}/failure.png`).toString('base64');
     for (let offset = 0; offset < shot.length; offset += 4_000)
-      writeSync(1, `ANDROID_FAILURE_SCREENSHOT_CHUNK:${shot.slice(offset, offset + 4_000)}\n`);
+      await new Promise((resolve, reject) =>
+        process.stdout.write(`ANDROID_FAILURE_SCREENSHOT_CHUNK:${shot.slice(offset, offset + 4_000)}\n`, error =>
+          error ? reject(error) : resolve(),
+        ),
+      );
   } catch {}
   throw error;
 }

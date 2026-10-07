@@ -4,11 +4,11 @@ The Android app is the same Research Bot as the desktop app: the same interface,
 
 ## Install
 
-1. Check that the release actually contains an APK and its checksums. As of the October 6, 2026 audit, public release v0.3.1 has no APK; a locally built APK or successful CI debug artifact is an alternative. On your phone, open the [latest release](https://github.com/Srimi1/research------bot/releases/latest) and download `research-bot-<version>-android.apk`.
+1. Download the [signed Research Bot 0.3.3 APK](https://github.com/Srimi1/research------bot/raw/refs/heads/main/downloads/android/research-bot-0.3.3-android.apk). It is stored in the repository's [downloads/android folder](../downloads/android/README.md).
 2. Open the downloaded file. Android asks to allow installs from your browser or file manager the first time; allow it, then choose **Install**.
 3. Open **Research Bot**. Your projects are stored only on this phone.
 
-To check the download, compare its SHA-256 with `SHA256SUMS-android.txt` from the same release.
+To check this download, compare its SHA-256 with [downloads/android/SHA256SUMS.txt](../downloads/android/SHA256SUMS.txt). This APK uses the same personal certificate as the previously supplied 0.3.1 and 0.3.2 APKs, so it can update those installations. Install this version manually; automatic updates require an APK and checksums attached to a newer published GitHub release.
 
 ## Sign in with ChatGPT
 

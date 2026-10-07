@@ -6,7 +6,7 @@ The Android app is the same Research Bot as the desktop app: the same interface,
 
 **0.4.0 is in release preparation.** Its new signed APK is pending key setup and release checks. The current download below is 0.3.9. Do not uninstall your current app until the new signed APK is available and your exports are verified.
 
-1. Download the [signed Research Bot 0.3.9 APK](https://github.com/Srimi1/research------bot/raw/refs/heads/main/downloads/android/research-bot-0.3.9-android.apk). It is stored in the repository's [downloads/android folder](../downloads/android/README.md).
+1. Download the [signed Research Bot 0.3.9 APK](https://github.com/Srimi1/research------bot/releases/download/v0.3.9/research-bot-0.3.9-android.apk). It is stored in the repository's [downloads/android folder](../downloads/android/README.md).
 2. Open the downloaded file. Android asks to allow installs from your browser or file manager the first time; allow it, then choose **Install**.
 3. Open **Research Bot**. Your projects are stored only on this phone.
 
@@ -143,7 +143,7 @@ Share the Research Bot exception and `Caused by` lines with the maintainer. Thos
 
 ## Sign-in says it is no longer active
 
-Install version 0.3.6 or later over your existing app, then start a fresh sign-in from Research Bot. Versions 0.3.5 and later wait for the native callback response before closing the server, fixing a race that could replace a completed reply with “This sign-in is no longer active.” Do not reuse the old localhost callback URL; authorization codes are one-use. Stay in the browser until consent finishes, and switch back to Research Bot if Android does not return automatically. Cancelling, closing the account dialog or taking longer than five minutes still ends an attempt. Live account eligibility and inference remain unverified. See the [callback investigation](audits/2026-10-07-signin-and-macos.md).
+Install version 0.3.6 or later over your existing app, then start a fresh sign-in from Research Bot. Versions 0.3.5 and later wait for the native callback response before closing the server, fixing a race that could replace a completed reply with “This sign-in is no longer active.” Do not reuse the old localhost callback URL; authorization codes are one-use. Stay in the browser until consent finishes, and switch back to Research Bot if Android does not return automatically. Cancelling, closing the account dialog or exceeding the sign-in deadline still ends an attempt. Live account eligibility and inference remain unverified. See the [callback investigation](audits/2026-10-07-signin-and-macos.md).
 
 For the later message “ChatGPT sign-in did not complete,” use version 0.3.6 or later. It displays a safe reason and `RB-AUTH-…` code near the sign-in button and on the callback page, keeps the notice after restarting, and reuses an issued registration on retry. Share only that error text if sign-in still fails. Do not share the localhost address, authorization codes or tokens. A browser page alone from an older build does not distinguish a rejected exchange, network failure, invalid identity or credential-storage problem. See the [failure investigation](audits/2026-10-07-signin-diagnostics.md).
 

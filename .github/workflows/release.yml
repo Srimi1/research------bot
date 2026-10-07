@@ -11,9 +11,9 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Release tag, for example v0.3.3. Must match the version in package.json.
+        description: Release tag, for example v0.3.4. Must match the version in package.json.
         required: true
-        default: v0.3.3
+        default: v0.3.4
       android_source:
         description: Build with signing secrets, or verify the signed APK committed in downloads/android.
         type: choice
@@ -207,8 +207,29 @@ jobs:
           cd upload
           sha256sum -- * > SHA256SUMS-android.txt
           cat SHA256SUMS-android.txt
+      - name: Enable KVM for the signed APK runtime test
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Verify the signed release APK opens and saves projects on Android 16
+        uses: ReactiveCircus/android-emulator-runner@4c44018e59b437e86cdfc41da381398f93ed8808 # v2
+        with:
+          api-level: 36
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          disable-animations: true
+          script: node scripts/android-startup-smoke.mjs "upload/research-bot-${RESEARCH_RELEASE_TAG#v}-android.apk"
       - name: Upload release files
         run: gh release upload "$RESEARCH_RELEASE_TAG" upload/* --repo "$GITHUB_REPOSITORY" --clobber
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: signed-apk-startup
+          path: android-startup-results/
+          if-no-files-found: ignore
       - name: Remove the signing key
         if: always()
         run: rm -f "$RUNNER_TEMP/release.jks"

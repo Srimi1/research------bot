@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.4 — 2026-10-07
+
+- Fixed Android SQLite initialization being blocked by the shipped content security policy. WebAssembly is allowed; JavaScript eval stays blocked.
+- Initialized the AndroidX splash screen before Capacitor/AppCompat so the declared post-splash theme is applied at startup.
+- Added a production Android backend test that opens real SQLite, saves a project and restores notes under the shipped CSP.
+- Added Android 16 emulator checks for native launch, project creation, note saving and cold restart to CI and signed APK releases. A release cannot publish until its actual signed APK passes.
+
 ## 0.3.3 — 2026-10-06
 
 - Fixed Android cancellation races involving late response headers and body chunks.

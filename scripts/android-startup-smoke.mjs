@@ -26,6 +26,67 @@ function capture(label) {
   return { log, crash };
 }
 
+function nodes(tree) {
+  return [...tree.matchAll(/<node\b([^>]+)>/g)].map(match =>
+    Object.fromEntries([...match[1].matchAll(/([\w-]+)="([^"]*)"/g)].map(attr => [attr[1], attr[2]])),
+  );
+}
+
+function bounds(node) {
+  const match = node?.bounds?.match(/^\[(\d+),(\d+)\]\[(\d+),(\d+)\]$/);
+  if (!match) return undefined;
+  const [left, top, right, bottom] = match.slice(1).map(Number);
+  return right > left && bottom > top ? { left, top, right, bottom } : undefined;
+}
+
+function treeFor(label) {
+  adb('shell', 'rm', '-f', '/sdcard/research-bot-startup.xml');
+  adb('shell', 'uiautomator', 'dump', '/sdcard/research-bot-startup.xml');
+  const dumped = spawnSync('adb', [...serialArgs, 'shell', 'test', '-s', '/sdcard/research-bot-startup.xml'], {
+    timeout: 15_000,
+  });
+  // Immediately after boot, Android can return a null accessibility root. Retry the dump.
+  if (dumped.status !== 0) return '';
+  const tree = adb('shell', 'cat', '/sdcard/research-bot-startup.xml');
+  writeFileSync(`${output}/${label}-ui.xml`, tree);
+  return tree;
+}
+
+async function waitForTree(label, expected) {
+  for (let attempt = 0; attempt < 20; attempt++) {
+    await pause(1_000);
+    const crash = adb('logcat', '-b', 'crash', '-d');
+    assert.ok(!crash.includes(`Process: ${packageName}`), `Native startup crash:\n${crash}`);
+    if (attempt % 3 !== 0) continue;
+    const tree = treeFor(label);
+    assert.ok(!tree.includes('CompileError'), 'The actual APK must initialize SQLite under its shipped CSP');
+    if (expected(tree)) return tree;
+  }
+  throw new Error(`The APK did not render the expected ${label} screen`);
+}
+
+async function tapNode(label, predicate) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const list = nodes(treeFor(label));
+    const target = list.find(node => predicate(node) && bounds(node));
+    if (target) {
+      const { left, top, right, bottom } = bounds(target);
+      adb('shell', 'input', 'tap', String(Math.round((left + right) / 2)), String(Math.round((top + bottom) / 2)));
+      return;
+    }
+    // Find coordinates from the accessibility tree; scroll and re-dump before declaring it missing.
+    const scroll = list.find(node => node.scrollable === 'true' && bounds(node));
+    assert.ok(scroll, `No visible target or scrollable region on ${label}`);
+    const { left, top, right, bottom } = bounds(scroll);
+    const x = Math.round((left + right) / 2);
+    adb('shell', 'input', 'swipe', String(x), String(bottom - 150), String(x), String(top + 150), '350');
+    await pause(500);
+  }
+  throw new Error(`The ${label} target is not visible after scrolling`);
+}
+
+const named = text => node => node.text === text || node['content-desc'] === text;
+
 try {
   console.log(adb('shell', 'getprop', 'ro.build.version.release').trim());
   console.log(adb('install', '--no-streaming', '-r', resolve(apk)).trim());
@@ -38,30 +99,32 @@ try {
     adb('shell', 'am', 'force-stop', packageName);
     adb('logcat', '-c');
     console.log(adb('shell', 'am', 'start', '-W', '-n', `${packageName}/.MainActivity`).trim());
-    let visible = false;
-    for (let attempt = 0; attempt < 20; attempt++) {
-      await pause(1_000);
-      const crash = adb('logcat', '-b', 'crash', '-d');
-      assert.ok(!crash.includes(`Process: ${packageName}`), `Native startup crash:\n${crash}`);
-      if (attempt % 3 !== 0) continue;
-      adb('shell', 'uiautomator', 'dump', '/sdcard/research-bot-startup.xml');
-      const dumped = spawnSync('adb', [...serialArgs, 'shell', 'test', '-s', '/sdcard/research-bot-startup.xml'], {
-        timeout: 15_000,
-      });
-      // Immediately after boot, Android can return a null accessibility root. Retry the dump.
-      if (dumped.status !== 0) continue;
-      const tree = adb('shell', 'cat', '/sdcard/research-bot-startup.xml');
-      writeFileSync(`${output}/${label}-ui.xml`, tree);
-      if (tree.includes('Create your first project')) {
-        visible = true;
-        break;
-      }
+    if (launch === 1) {
+      await waitForTree(label, tree => tree.includes('Create your first project'));
+      await tapNode('start-project', named('Create your first project'));
+      await waitForTree('project-form', tree => tree.includes('Project title'));
+      await tapNode('project-title', node => node.class === 'android.widget.EditText');
+      adb('shell', 'input', 'text', 'AndroidStartupTest');
+      adb('shell', 'input', 'keyevent', '4');
+      await pause(500);
+      await tapNode('create-project', named('Create project'));
+      await waitForTree(
+        'project-created',
+        tree => tree.includes('AndroidStartupTest') && tree.includes('Your research notes'),
+      );
+      await tapNode('note-outline', named('Add a note outline'));
+      await waitForTree('notes-saved', tree => tree.includes('What I know'));
+      await pause(2_000);
+      adb('shell', 'input', 'keyevent', '4');
+    } else {
+      await waitForTree(label, tree => tree.includes('AndroidStartupTest') && tree.includes('What I know'));
     }
     const { crash } = capture(label);
     assert.ok(!crash.includes(`Process: ${packageName}`), `Native startup crash:\n${crash}`);
-    assert.ok(visible, 'The APK must render the welcome screen, not remain blank or show an Android error');
     assert.ok(adb('shell', 'pidof', packageName).trim(), 'The app must remain running after its screen loads');
-    console.log(`${label}: native activity and packaged WebView welcome screen are running.`);
+    console.log(
+      `${label}: actual APK opened SQLite and ${launch === 1 ? 'created a project with saved notes' : 'restored that project and notes after a cold restart'}.`,
+    );
   }
 } catch (error) {
   try {
@@ -75,6 +138,13 @@ try {
         .join('\n'),
     );
     console.log(adb('shell', 'dumpsys', 'webviewupdate'));
+    console.log(
+      JSON.stringify(
+        nodes(treeFor('failure')).filter(
+          node => node.text || node['content-desc'] || node.class === 'android.widget.EditText',
+        ),
+      ),
+    );
     console.log(adb('shell', 'dumpsys', 'activity', 'top').slice(-12_000));
   } catch {}
   throw error;

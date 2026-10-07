@@ -57,6 +57,8 @@ cd android && ./gradlew --no-daemon assembleDebug lintDebug
 
 Install Playwright Chromium if needed. Android builds require Node.js 24, a full JDK 21 and Android SDK 36. Release APKs must use the existing signing key; never commit keys, passwords, account tokens or personal research data. A browser fixture does not establish real-device behavior or live ChatGPT eligibility.
 
+Before accepting Android readiness, test the production Android backend under the shipped CSP and install the actual APK on an Android runtime. Verify native launch, project creation, note saving and a cold restart; keep emulator evidence separate from physical-device results. Signed releases must pass the actual APK runtime test before publication.
+
 Inspect the final diff, scan staged files for secrets, and record each command's result. Fix failed relevant checks before publishing. Explain blocked checks and remaining validation limits honestly.
 
 ## Make the result professional and reviewable

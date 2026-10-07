@@ -65,7 +65,7 @@ jobs:
           test -f "release/$file" || { echo "::error::$manifest points at $file, which was not built"; exit 1; }
           echo "$manifest -> $file"
 
-  # Builds the Android app the way a release does, but debug-signed, and runs Android lint.
+  # Compile/lint, then exercise the packaged native activity, WebView and SQLite on Android 16.
   android:
     runs-on: ubuntu-latest
     steps:
@@ -95,6 +95,21 @@ jobs:
           expected="$(node -p "require('./package.json').version")"
           echo "APK version $version"
           test "$version" = "$expected" || { echo "::error::APK version $version does not match package.json $expected"; exit 1; }
+      - name: Enable KVM for the Android runtime test
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Verify APK startup and saved projects on Android 16
+        uses: ReactiveCircus/android-emulator-runner@4c44018e59b437e86cdfc41da381398f93ed8808 # v2
+        with:
+          api-level: 36
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          disable-animations: true
+          script: node scripts/android-startup-smoke.mjs android/app/build/outputs/apk/debug/app-debug.apk
       - uses: actions/upload-artifact@v4
         with:
           name: research-bot-android-debug
@@ -105,4 +120,10 @@ jobs:
         with:
           name: android-lint
           path: android/app/build/reports/lint-results-debug.html
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-startup
+          path: android-startup-results/
           if-no-files-found: ignore

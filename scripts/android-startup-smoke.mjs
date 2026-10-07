@@ -72,6 +72,14 @@ function capture(label) {
   const crash = logcat('-b', 'crash');
   writeFileSync(`${output}/${label}-logcat.txt`, log);
   writeFileSync(`${output}/${label}-crash.txt`, crash);
+  try {
+    writeFileSync(
+      `${output}/${label}-resources.txt`,
+      adb('shell', 'cat /proc/meminfo /proc/pressure/cpu /proc/pressure/memory /proc/pressure/io'),
+    );
+  } catch {
+    // Older kernels do not expose pressure counters; missing diagnostics cannot mask a failure.
+  }
   writeFileSync(
     `${output}/${label}.png`,
     execFileSync('adb', [...serialArgs, 'exec-out', 'screencap', '-p'], {

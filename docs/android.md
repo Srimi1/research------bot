@@ -4,7 +4,7 @@ The Android app is the same Research Bot as the desktop app: the same interface,
 
 ## Install
 
-**0.4.0 is in release preparation.** Its new signed APK is pending key setup and release checks. The current download below is 0.3.9. Do not uninstall your current app until the new signed APK is available and your exports are verified.
+**0.4.0 is in release preparation.** Its new signed APK is pending signing-secret setup and release checks. The current download below is 0.3.9. Do not uninstall your current app until the new signed APK is available and your exports are verified.
 
 1. Download the [signed Research Bot 0.3.9 APK](https://github.com/Srimi1/research------bot/releases/download/v0.3.9/research-bot-0.3.9-android.apk). It is stored in the repository's [downloads/android folder](../downloads/android/README.md).
 2. Open the downloaded file. Android asks to allow installs from your browser or file manager the first time; allow it, then choose **Install**.
@@ -83,11 +83,11 @@ CI runs the same flow on Android 16. The release workflow additionally tests the
 
 ## Release signing (one-time setup)
 
-The original 0.3.x private signing key was lost. Version 0.4.0 starts a new signing lineage. Every later Android release must use this new key so installed 0.4.x copies can update. Keys and passwords stay out of Git; only the public certificate SHA-256 is committed in `android/release-signing-certificate.sha256`.
+The original 0.3.x private signing key was lost. Version 0.4.0 starts a new signing lineage. Every later Android release must use this new key so installed 0.4.x copies can update. Keys and passwords stay out of Git; only the public certificate SHA-256 is committed in [android/release-signing-certificate.sha256](../android/release-signing-certificate.sha256): `a2dbefb638d2760d0b77dcb2891ee4b4fd4edd17d75906c903b97c5fc9ae0506`.
 
 ### Create the new key on the maintainer's Mac (Option A)
 
-From a checkout containing this release's changes, with JDK 21 installed, run this single Terminal block:
+This alternative is for an initial setup before a key/fingerprint exists. The 0.4.0 key is already created, so keep its supplied backup and skip key generation. For a new setup, from a checkout with JDK 21 installed, run this single Terminal block:
 
 ```sh
 bash scripts/create-android-signing-key.sh "$HOME/Research-Bot-signing-backup"
@@ -95,7 +95,7 @@ bash scripts/create-android-signing-key.sh "$HOME/Research-Bot-signing-backup"
 
 The script creates a 4096-bit RSA JKS, prints the four GitHub secret values, and writes their backup alongside `research-bot-release.jks` outside the repository. It refuses to overwrite an existing key or fingerprint. Back up that directory securely. It also creates `android/release-signing-certificate.sha256` in your checkout; share/commit that public fingerprint, never the four secret values or key.
 
-In this repository's **Settings → Secrets and variables → Actions**, set `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD` to the printed values. The release restores whitespace-wrapped base64, checks the password and alias, then requires the certificate to match the committed fingerprint. It verifies the built APK against that fingerprint again and creates `BUILD_INFO-android.json` from the actual APK. No fingerprint is available until the new key is created.
+In this repository's **Settings → Secrets and variables → Actions**, set `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD` to the printed values. The release restores whitespace-wrapped base64, checks the password and alias, then requires the certificate to match the committed fingerprint. It verifies the built APK against that fingerprint again and creates `BUILD_INFO-android.json` from the actual APK. The new 0.4.0 key has now been created; configure the secrets from its private backup. Do not generate another key.
 
 Option B is generating the key in the coding environment and providing a private backup, only with the maintainer's explicit permission. Do not generate a second key if Option A has already been completed.
 

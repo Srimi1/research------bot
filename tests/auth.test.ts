@@ -160,9 +160,15 @@ async function fixture(
         credentials: credentialStore,
         awaitForeground,
         keepAlive: keepAlive
-          ? async active => {
-              responseOrder.push(active ? 'keepAliveStart' : 'keepAliveStop');
-              await keepAlive(active);
+          ? {
+              start: async () => {
+                responseOrder.push('keepAliveStart');
+                await keepAlive.start();
+              },
+              stop: async () => {
+                responseOrder.push('keepAliveStop');
+                await keepAlive.stop();
+              },
             }
           : undefined,
         startLoopback: (() => {
@@ -233,7 +239,7 @@ test('Android keep-alive starts before the browser and stops after success or an
       async () => {
         f.responseOrder.push('foreground');
       },
-      async () => {},
+      { start: async () => {}, stop: async () => {} },
     );
     try {
       if (failed) f.state.tokenError = 'access_denied';
@@ -289,8 +295,13 @@ function waitingAndroid(overrides: Partial<AuthPlatform> = {}) {
         order.push('close');
       },
     }),
-    keepAlive: async active => {
-      order.push(active ? 'keepAliveStart' : 'keepAliveStop');
+    keepAlive: {
+      start: async () => {
+        order.push('keepAliveStart');
+      },
+      stop: async () => {
+        order.push('keepAliveStop');
+      },
     },
     openBrowser: async () => {
       order.push('browser');
@@ -335,24 +346,35 @@ test('Android stops keep-alive on cancel and timeout, including while openBrowse
   }
 });
 
-test('Android stops keep-alive when its startup or opening the browser fails', async () => {
-  for (const startup of [false, true]) {
-    const f = waitingAndroid();
-    if (startup)
-      f.platform.keepAlive = async active => {
-        f.order.push(active ? 'keepAliveStart' : 'keepAliveStop');
-        if (active) throw new Error('Cannot start service');
-      };
-    else
-      f.platform.openBrowser = async () => {
-        f.order.push('browser');
-        throw new Error('No browser');
-      };
-    f.auth = new CoreAuthService(f.platform);
-    await assert.rejects(f.auth.signIn(), startup ? /RB-AUTH-SETUP/ : /RB-AUTH-BROWSER/);
-    assert.equal(f.order.at(-1), 'keepAliveStop');
-    assert.equal(f.order.includes('browser'), !startup);
-  }
+test('Android releases a refused service and falls back to the foreground exchange path', async () => {
+  const f = waitingAndroid();
+  f.platform.keepAlive = {
+    start: async () => {
+      f.order.push('keepAliveStart');
+      throw new Error('Cannot start service');
+    },
+    stop: async () => {
+      f.order.push('keepAliveStop');
+    },
+  };
+  f.auth = new CoreAuthService(f.platform);
+  const pending = f.auth.signIn();
+  const cancelled = assert.rejects(pending, /RB-AUTH-CANCELLED/);
+  await f.browserOpened;
+  f.auth.cancelSignIn();
+  await cancelled;
+  assert.equal(f.order.at(-1), 'keepAliveStop');
+});
+
+test('Android stops keep-alive when opening the browser fails', async () => {
+  const f = waitingAndroid();
+  f.platform.openBrowser = async () => {
+    f.order.push('browser');
+    throw new Error('No browser');
+  };
+  f.auth = new CoreAuthService(f.platform);
+  await assert.rejects(f.auth.signIn(), /RB-AUTH-BROWSER/);
+  assert.equal(f.order.at(-1), 'keepAliveStop');
 });
 
 test('a timestamp-only pending sign-in becomes RB-AUTH-INTERRUPTED after a restart', async () => {
@@ -448,6 +470,73 @@ test('Android answers the browser and returns to the app before exchanging the c
     } finally {
       await f.close();
     }
+  }
+});
+
+test('Android keeps sign-in alive while the browser is in front and always releases it', async () => {
+  for (const outcome of ['success', 'rejected', 'cancelled', 'unavailable'] as const) {
+    const events: string[] = [];
+    const f: Awaited<ReturnType<typeof fixture>> = await fixture(
+      true,
+      async () => {
+        events.push(`foreground:${f.exchanges.length}`);
+        if (outcome === 'cancelled') {
+          f.auth.cancelSignIn();
+          await new Promise(resolve => setTimeout(resolve, 10));
+        }
+      },
+      {
+        async start() {
+          events.push(`start:${f.authorizations.length}`);
+          if (outcome === 'unavailable') throw new Error('refused');
+        },
+        async stop() {
+          events.push('stop');
+        },
+      },
+    );
+    try {
+      if (outcome === 'rejected') f.state.tokenError = 'unsupported_country';
+      const signingIn = f.auth.signIn();
+      if (outcome === 'success' || outcome === 'unavailable') assert.equal((await signingIn).signedIn, true);
+      else await assert.rejects(signingIn);
+      // Started before the browser opened, and released exactly once whatever happened.
+      assert.equal(events[0], 'start:0');
+      assert.equal(events.filter(event => event === 'stop').length, 1);
+      assert.equal(events.at(-1), 'stop');
+    } finally {
+      await f.close();
+    }
+  }
+});
+
+test('an attempt the OS ended by closing the app is explained on the next start', async () => {
+  const f = await fixture();
+  try {
+    // A browser that never returns: the app is closed while consent is still open.
+    const closed = new CoreAuthService({
+      fetch: fetchNetwork,
+      files: directoryFiles(f.directory),
+      openBrowser: async () => {},
+      credentials: f.credentialStore,
+      startLoopback: nodeLoopback,
+      keepAlive: { start: async () => {}, stop: async () => {} },
+    });
+    const pending = closed.signIn();
+    void pending.catch(() => undefined);
+    await new Promise(resolve => setTimeout(resolve, 50));
+    const restarted = new AuthService(f.directory, async () => {}, f.credentialStore);
+    const account = await restarted.account();
+    assert.equal(account.signedIn, false);
+    assert.match(account.message!, /RB-AUTH-INTERRUPTED/);
+    assert.match(account.message!, /battery usage to Unrestricted/);
+    closed.cancelSignIn();
+    await assert.rejects(pending, /RB-AUTH-CANCELLED/);
+    // A completed attempt leaves no notice behind.
+    assert.equal((await f.auth.signIn()).signedIn, true);
+    await assert.rejects(readFile(join(f.directory, 'signin.json')), { code: 'ENOENT' });
+  } finally {
+    await f.close();
   }
 });
 

@@ -395,7 +395,7 @@ function AccountSettings({
           className="button secondary"
           onClick={() =>
             api()
-              .openBatterySettings?.()
+              .openAppSettings?.()
               .catch(error => setError(errorText(error)))
           }
         >

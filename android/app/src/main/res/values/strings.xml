@@ -4,4 +4,6 @@
     <string name="title_activity_main">Research Bot</string>
     <string name="package_name">com.researchbot.android</string>
     <string name="custom_url_scheme">com.researchbot.android</string>
+    <string name="sign_in_channel">ChatGPT sign-in</string>
+    <string name="sign_in_notification">Connecting ChatGPT…</string>
 </resources>

@@ -17,7 +17,7 @@ assert.ok(apk, 'Pass a debuggable APK (WebView debugging is enabled only in debu
 const option = name => process.argv.find(arg => arg.startsWith(`--${name}`));
 const consentSeconds = Number((option('consent-seconds') ?? '--consent-seconds=75').split('=')[1]);
 const dataSaver = Boolean(option('data-saver'));
-const killDuringConsent = Boolean(option('kill-during-consent'));
+const killDuringConsent = Boolean(option('kill-during-consent') || option('killed'));
 const packageName = 'com.researchbot.android';
 const activity = `${packageName}/.MainActivity`;
 const serialArgs = process.env.ANDROID_SERIAL ? ['-s', process.env.ANDROID_SERIAL] : [];

@@ -12,8 +12,8 @@ import {
   nativeFetch,
   nativeFiles,
   nativeForeground,
+  nativeKeepAlive,
   nativeLoopback,
-  nativeSignInKeepAlive,
 } from './adapters';
 import { PersistentDatabase } from './database';
 import wasmUrl from 'sql.js/dist/sql-wasm.wasm?url';
@@ -58,7 +58,7 @@ export function createAndroidAPI(): ResearchAPI {
       credentials: keystoreCredentials,
       startLoopback: nativeLoopback,
       awaitForeground: nativeForeground,
-      keepAlive: nativeSignInKeepAlive,
+      keepAlive: nativeKeepAlive,
     });
     const runner = new Runner(
       store,
@@ -125,7 +125,7 @@ export function createAndroidAPI(): ResearchAPI {
     account: () => withDevice(call('account')()),
     signIn: () => withDevice(call('signIn')()),
     checkSignInConnection: createConnectionCheck(nativeFetch, Native, device),
-    openBatterySettings: () => Native.openBatterySettings(),
+    openAppSettings: () => Native.openAppSettings(),
     cancelSignIn: call('cancelSignIn'),
     signOut: call('signOut'),
     models: call('models'),

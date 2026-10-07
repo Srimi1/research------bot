@@ -85,7 +85,7 @@ try {
       events.push(method === 'signInKeepAliveStart' ? 'keepAliveStart' : 'keepAliveStop');
       return {};
     }
-    if (method === 'openBatterySettings') return {};
+    if (method === 'openAppSettings') return {};
     if (method === 'loopbackRespond') {
       replies.push(options);
       events.push('reply');
@@ -223,7 +223,7 @@ try {
               'awaitForeground',
               'signInKeepAliveStart',
               'signInKeepAliveStop',
-              'openBatterySettings',
+              'openAppSettings',
               'openUrl',
               'httpOpen',
               'httpRead',

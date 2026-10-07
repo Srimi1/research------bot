@@ -277,7 +277,7 @@ public class ResearchNativePlugin extends Plugin {
     }
 
     @PluginMethod
-    public void openBatterySettings(PluginCall call) {
+    public void openAppSettings(PluginCall call) {
         try {
             getActivity().startActivity(new Intent(
                 Settings.ACTION_APPLICATION_DETAILS_SETTINGS,

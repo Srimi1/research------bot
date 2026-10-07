@@ -99,7 +99,7 @@ export interface AuthPlatform {
    */
   awaitForeground?: (signal: AbortSignal) => Promise<void>;
   /** Android only. Promote the process before opening the browser; stop on every outcome. */
-  keepAlive?: (active: boolean) => Promise<void>;
+  keepAlive?: { start(): Promise<void>; stop(): Promise<void> };
 }
 
 /** Credentials and OAuth traffic stay in this service; the interface only sees the Account summary. */
@@ -127,7 +127,7 @@ export class AuthService {
   private credentialStore: CredentialStore;
   private startLoopback: StartLoopback;
   private awaitForeground?: (signal: AbortSignal) => Promise<void>;
-  private keepAlive?: (active: boolean) => Promise<void>;
+  private keepAlive?: AuthPlatform['keepAlive'];
 
   constructor(platform: AuthPlatform) {
     this.fetch = platform.fetch;
@@ -598,7 +598,7 @@ export class AuthService {
         } catch {
           throw new AuthFailure('storage');
         }
-        await this.keepAlive(true);
+        await this.keepAlive.start().catch(() => undefined);
       }
       if (controller.signal.aborted || cancellationGeneration !== this.signInCancellation) throw cancellation();
       await Promise.race([
@@ -614,7 +614,7 @@ export class AuthService {
       controller.abort();
       server.close();
       if (this.pending?.controller === controller) this.pending = undefined;
-      await this.keepAlive?.(false).catch(() => undefined);
+      await this.keepAlive?.stop().catch(() => undefined);
     }
   }
 

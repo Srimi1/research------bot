@@ -30,7 +30,7 @@ public class SignInService extends Service {
         try {
             NotificationManager notifications = getSystemService(NotificationManager.class);
             notifications.createNotificationChannel(new NotificationChannel(
-                CHANNEL, "ChatGPT sign-in", NotificationManager.IMPORTANCE_LOW
+                CHANNEL, getString(R.string.sign_in_channel), NotificationManager.IMPORTANCE_LOW
             ));
             Intent activity = new Intent(this, MainActivity.class).addFlags(
                 Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -40,7 +40,7 @@ public class SignInService extends Service {
             );
             Notification notification = new Notification.Builder(this, CHANNEL)
                 .setSmallIcon(android.R.drawable.stat_notify_sync)
-                .setContentTitle("Connecting ChatGPT…")
+                .setContentTitle(getString(R.string.sign_in_notification))
                 .setContentText("Return to Research Bot to finish sign-in.")
                 .setContentIntent(returnToApp)
                 .setOngoing(true)

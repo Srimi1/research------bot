@@ -20,6 +20,10 @@ A later signed-APK check opened the project form visually while repeated accessi
 
 The strengthened APK test installs the packaged app, checks the crash buffer, requires its interface to render, creates a project through accessibility-tree-derived taps, adds a note outline, then force-stops/reopens the app and verifies both the project and notes. CI runs it against the debug APK; release automation runs it against the exact signed APK before uploading/publishing. Screenshots, UI trees and logcat are retained as workflow artifacts.
 
+The exact signed 0.3.4 APK passed project creation, note saving and restoration after cold restarts in the [successful release run](https://github.com/Srimi1/research------bot/actions/runs/37570995543). The public download's checksum, certificate and 16 KiB alignment were verified, along with all 11 release assets' checksum entries and update-manifest filenames/sizes.
+
+A [parallel test](https://github.com/Srimi1/research------bot/actions/runs/37570997910) created a project with the truncated title `Andr` during automated input. The driver now waits for keyboard/focus to settle and enters characters at a human pace, while still requiring the complete title and saved notes after cold restarts. That run did not show a native crash; the physical phone's immediate close remains a separate validation item.
+
 ## Remaining limits
 
 - Stock emulator success cannot establish Legion OS-specific behavior on the maintainer's physical OnePlus.

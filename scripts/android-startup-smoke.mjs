@@ -149,7 +149,12 @@ try {
       // WebView 133 can retain its previous accessibility subtree until a cold restart.
       // Verify real UI creation and persistence after reopening, instead of trusting that stale tree.
       adb('shell', 'input', 'keyevent', '61');
-      adb('shell', 'input', 'text', 'AndroidStartupTest');
+      // Let Android finish focusing/resizing the input, and simulate typing instead of flooding keys.
+      await pause(1_000);
+      for (const character of 'AndroidStartupTest') {
+        adb('shell', 'input', 'text', character);
+        await pause(75);
+      }
       await pause(500);
       adb('shell', 'input', 'keyevent', '66');
       await pause(3_000);

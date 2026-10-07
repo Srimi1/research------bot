@@ -11,7 +11,9 @@ A personal research workspace for Android, Windows, Linux and macOS. Keep your q
 [![Android 8+](https://img.shields.io/badge/Android-8%2B-254b3d.svg)](docs/android.md)
 [![Node.js 24](https://img.shields.io/badge/Node.js-24-254b3d.svg)](CONTRIBUTING.md)
 
-**Android download:** [Research Bot 0.3.4 APK](https://github.com/Srimi1/research------bot/raw/refs/heads/main/downloads/android/research-bot-0.3.4-android.apk) · [Installation and checksums](downloads/android/README.md)
+**Android download:** [Research Bot 0.3.5 APK](https://github.com/Srimi1/research------bot/raw/refs/heads/main/downloads/android/research-bot-0.3.5-android.apk) · [Installation and checksums](downloads/android/README.md)
+
+**Mac download:** [Apple Silicon DMG](https://github.com/Srimi1/research------bot/releases/download/v0.3.5/research-bot-0.3.5-mac-arm64.dmg) · [Intel DMG](https://github.com/Srimi1/research------bot/releases/download/v0.3.5/research-bot-0.3.5-mac-x64.dmg) · [Mac installation and research guide](docs/macos.md)
 
 **Beta:** local workflows and mocked authentication are tested. Live ChatGPT sign-in, account eligibility and AI output quality still need verification with a real account. See the [audit report](docs/audits/2026-10-06.md) for evidence and limits.
 
@@ -40,14 +42,14 @@ Crossref discovery works without signing in. AI assistants require eligible Chat
 
 ## Install or build
 
-The signed **Android 0.3.4 APK is available in [downloads/android](downloads/android/README.md)** and through the direct download above. Check [GitHub Releases](https://github.com/Srimi1/research------bot/releases) for desktop installers. As of the October 6, 2026 audit, `v0.3.1` contains Linux and Windows installers but no APK.
+The signed **Android 0.3.5 APK is available in [downloads/android](downloads/android/README.md)** and through the direct download above. [Release 0.3.5](https://github.com/Srimi1/research------bot/releases/tag/v0.3.5) also includes Mac, Windows and Linux installers, with checksums. Mac beta builds are ad hoc signed without Developer ID signing/notarization and use manual updates; see the Mac guide for installation instructions.
 
 | Platform   | Distribution / development                                                                                                                                        | Guide                                                               |
 | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| Android 8+ | [Signed 0.3.4 APK](https://github.com/Srimi1/research------bot/raw/refs/heads/main/downloads/android/research-bot-0.3.4-android.apk); CI also uploads a debug APK | [Android setup, signing and updates](docs/android.md)               |
+| Android 8+ | [Signed 0.3.5 APK](https://github.com/Srimi1/research------bot/raw/refs/heads/main/downloads/android/research-bot-0.3.5-android.apk); CI also uploads a debug APK | [Android setup, signing and updates](docs/android.md)               |
 | Windows    | NSIS installer                                                                                                                                                    | [Releases and updates](docs/implementation.md#releases-and-updates) |
 | Linux      | AppImage; live sign-in needs a secure desktop keyring                                                                                                             | [Operating notes](docs/implementation.md#operating-notes)           |
-| macOS      | Local app builds; release signing/notarization is not configured                                                                                                  | [Contribution guide](CONTRIBUTING.md)                               |
+| macOS 13+  | Apple Silicon and Intel DMGs; ad hoc signed beta, manual updates                                                                                                  | [Mac installation and research](docs/macos.md)                      |
 
 For Android 16 on the OnePlus 7T Pro, use the Android build. The app targets SDK 36 and supports Android 8 or later. No local AI model is bundled. Physical-device and custom-ROM behavior still need testing on your phone.
 

@@ -53,10 +53,10 @@ Installed copies check [GitHub Releases](https://github.com/Srimi1/research-----
 
 To publish a new version:
 
-1. Bump `version` in `package.json` (for example to `0.3.4`) and merge it to `main`. Auto-update only offers versions higher than the installed one.
+1. Bump `version` in `package.json` (for example to `0.3.5`) and merge it to `main`. Auto-update only offers versions higher than the installed one.
 2. Release it, either way:
-   - **From GitHub Actions:** run **Publish release** on `main` with the tag `v0.3.4`. Choose **Android source: build** to build with the signing secrets, or **prebuilt** to verify and reuse the signed APK committed in `downloads/android` (see [the Android guide](android.md#release-an-existing-signed-apk)). It creates a draft on that commit and publishes it only after every build/upload succeeds, using `docs/releases/v0.3.4.md` as the notes when that file exists (GitHub's generated notes otherwise).
-   - **From the Releases page:** publish a release whose tag is `v` plus that version (`v0.3.4`). Leave "Set as a pre-release" unchecked: the updater ignores pre-releases.
+   - **From GitHub Actions:** run **Publish release** on `main` with the tag `v0.3.5`. Choose **Android source: build** to build with the signing secrets, or **prebuilt** to verify and reuse the signed APK committed in `downloads/android` (see [the Android guide](android.md#release-an-existing-signed-apk)). It creates a draft on that commit and publishes it only after every build/upload succeeds, using `docs/releases/v0.3.5.md` as the notes when that file exists (GitHub's generated notes otherwise).
+   - **From the Releases page:** publish a release whose tag is `v` plus that version (`v0.3.5`). Leave "Set as a pre-release" unchecked: the updater ignores pre-releases.
 
    Either way, the workflow refuses a tag that does not match `package.json`. Building Android requires all four signing secrets; the manual **prebuilt** option instead requires a verified APK with matching build information and unchanged app inputs. Prefer the manual workflow: publishing a release from the Releases page exposes it before its assets have been built.
 

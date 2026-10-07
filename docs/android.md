@@ -4,7 +4,7 @@ The Android app is the same Research Bot as the desktop app: the same interface,
 
 ## Install
 
-1. Download the [signed Research Bot 0.3.4 APK](https://github.com/Srimi1/research------bot/raw/refs/heads/main/downloads/android/research-bot-0.3.4-android.apk). It is stored in the repository's [downloads/android folder](../downloads/android/README.md).
+1. Download the [signed Research Bot 0.3.5 APK](https://github.com/Srimi1/research------bot/raw/refs/heads/main/downloads/android/research-bot-0.3.5-android.apk). It is stored in the repository's [downloads/android folder](../downloads/android/README.md).
 2. Open the downloaded file. Android asks to allow installs from your browser or file manager the first time; allow it, then choose **Install**.
 3. Open **Research Bot**. Your projects are stored only on this phone.
 
@@ -123,3 +123,7 @@ adb logcat -b crash -d > research-bot-crash.txt
 ```
 
 Share the Research Bot exception and `Caused by` lines with the maintainer. Those identify the native failure; a build or browser preview cannot supply the physical phone's crash log. See the [startup investigation](audits/2026-10-07-android-startup.md).
+
+## Sign-in says it is no longer active
+
+Install version 0.3.5 or later over your existing app, then start a fresh sign-in from Research Bot. This version waits for the native callback response before closing the server, fixing a race that could replace a completed reply with “This sign-in is no longer active.” Do not reuse the old localhost callback URL; authorization codes are one-use. Stay in the browser until consent finishes, and switch back to Research Bot if Android does not return automatically. Cancelling, closing the account dialog or taking longer than five minutes still ends an attempt. Live account eligibility and inference remain unverified. See the [callback investigation](audits/2026-10-07-signin-and-macos.md).

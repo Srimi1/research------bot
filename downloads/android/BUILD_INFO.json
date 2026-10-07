@@ -1,18 +1,19 @@
 {
-  "version": "0.3.4",
-  "versionCode": 304,
+  "version": "0.3.5",
+  "versionCode": 305,
   "package": "com.researchbot.android",
   "minSdk": 26,
   "targetSdk": 36,
-  "sourceCommit": "bdb993918a44add6ca98dd98da485aa5183e6d90",
+  "sourceCommit": "1a462cd42ee703227d1f930c9ad4d54a7317b918",
   "certificateSha256": "98580ca053712555a2b8a3a8fecfc15c85d83c5d192480e3b6b09ca13a633441",
-  "apkSha256": "f71310e60ec369106464b5b3cf8c77722bb16445689f8a312606eb468ad09887",
-  "apkBytes": 4767599,
+  "apkSha256": "d3b1e346aa06abf04699cac35bfef84844c3c3e9739c7f66e3ed5b4bcb2aecdd",
+  "apkBytes": 4767775,
   "validation": {
-    "regressionTestsPassed": 79,
+    "regressionTestsPassed": 80,
     "productionAndroidBackendUnderCsp": "passed",
     "androidReleaseBuildAndLint": "passed",
-    "signatureAnd16KiBAlignment": "passed"
+    "signatureAnd16KiBAlignment": "passed",
+    "asyncNativeCallbackReplyOrdering": "passed"
   },
   "limits": [
     "Physical OnePlus/Legion OS immediate close remains unverified",

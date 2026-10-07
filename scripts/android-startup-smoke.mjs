@@ -102,8 +102,37 @@ async function waitForTree(label, expected) {
 async function tapNode(label, predicate) {
   for (let attempt = 0; attempt < 4; attempt++) {
     const list = nodes(await treeFor(label));
+    const frame = bounds(list.find(node => node.package === packageName && node.class === 'android.webkit.WebView'));
+    const footer = bounds(
+      list.find(
+        node =>
+          node.package === packageName &&
+          (node.text === 'Project sections' || node['content-desc'] === 'Project sections') &&
+          bounds(node) &&
+          frame &&
+          bounds(node).top > frame.top + (frame.bottom - frame.top) / 2,
+      ),
+    );
+    const headerBottom = Math.max(
+      frame?.top ?? 0,
+      ...list
+        .filter(
+          node =>
+            node.package === packageName &&
+            ['Open navigation', 'Account and preferences'].includes(node.text || node['content-desc']) &&
+            bounds(node),
+        )
+        .map(node => bounds(node).bottom),
+    );
     const target = list.find(node => node.package === packageName && predicate(node) && bounds(node));
-    if (target) {
+    const targetBounds = bounds(target);
+    // Accessibility can report a button's bounds behind fixed controls as visible. Scroll it fully
+    // into the XML-derived content area before tapping, or a navigation button receives the touch.
+    if (
+      targetBounds &&
+      targetBounds.top >= headerBottom &&
+      targetBounds.bottom <= (footer?.top ?? frame?.bottom ?? Infinity)
+    ) {
       const { left, top, right, bottom } = bounds(target);
       console.log(`Tap ${label}: ${JSON.stringify(target)}`);
       adb('shell', 'input', 'tap', String(Math.round((left + right) / 2)), String(Math.round((top + bottom) / 2)));
@@ -113,7 +142,10 @@ async function tapNode(label, predicate) {
     // Find coordinates from the accessibility tree; scroll and re-dump before declaring it missing.
     const scroll = list.find(node => node.package === packageName && node.scrollable === 'true' && bounds(node));
     assert.ok(scroll, `No visible target or scrollable region on ${label}`);
-    const { left, top, right, bottom } = bounds(scroll);
+    const region = bounds(scroll);
+    const { left, right } = region;
+    const top = Math.max(region.top, headerBottom);
+    const bottom = Math.min(region.bottom, footer?.top ?? region.bottom);
     // The WebView bounds include fixed header/bottom controls. Swipe within its middle content.
     const x = Math.round(left + (right - left) / 3);
     const start = Math.round(top + (bottom - top) * 0.75);
@@ -178,7 +210,7 @@ try {
     assert.ok(!crash.includes(`Process: ${packageName}`), `Native startup crash:\n${crash}`);
     assert.ok(adb('shell', 'pidof', packageName).trim(), 'The app must remain running after its screen loads');
     console.log(
-      `${label}: actual APK opened SQLite and ${launch === 1 ? 'created a project with saved notes' : 'restored that project and notes after a cold restart'}.`,
+      `${label}: actual APK opened SQLite and ${launch === 1 ? 'created a project and requested a note outline' : 'restored that project and notes after a cold restart'}.`,
     );
   }
 } catch (error) {

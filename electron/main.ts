@@ -19,6 +19,7 @@ if (!primary) app.quit();
 app.on('second-instance', () => {
   if (win && !win.isDestroyed()) {
     if (win.isMinimized()) win.restore();
+    win.show();
     win.focus();
   }
 });
@@ -106,6 +107,7 @@ app.whenReady().then(() => {
       detail: 'Stay in Research Bot and save your notes before closing.',
     });
     if (choice === 1) event.preventDefault();
+    else quitting = false;
   });
   const handlers = createHandlers({
     store,

@@ -21,14 +21,24 @@ try {
   execFileSync('ditto', [app, installed]);
   const executable = join(installed, 'Contents/MacOS/Research Bot');
   const architecture = process.arch === 'arm64' ? 'arm64' : 'x86_64';
-  execFileSync('lipo', ['-verify_arch', architecture, executable]);
+  execFileSync('lipo', [executable, '-verify_arch', architecture]);
   assert.ok(existsSync(join(installed, 'Contents/Resources/icon.icns')), 'Packaged app must include its Mac icon');
-  execFileSync(process.execPath, ['scripts/electron-smoke.mjs'], {
-    stdio: 'inherit',
+  const result = execFileSync(process.execPath, ['scripts/electron-smoke.mjs'], {
+    encoding: 'utf8',
+    maxBuffer: 16 * 1024 * 1024,
     timeout: 180_000,
     env: { ...process.env, ELECTRON_SMOKE_EXECUTABLE: executable, RESEARCH_BOT_DISABLE_UPDATES: '1' },
   });
+  console.log(result);
   console.log(`DMG passed: mount, install, ${architecture} executable, icon and packaged research workflows.`);
+} catch (error) {
+  const details = [error.stack, error.stdout, error.stderr].filter(Boolean).join('\n');
+  console.error(details);
+  if (process.env.GITHUB_ACTIONS)
+    console.error(
+      `::error title=Mac DMG validation::${details.slice(-16_000).replaceAll('%', '%25').replaceAll('\r', '%0D').replaceAll('\n', '%0A')}`,
+    );
+  throw error;
 } finally {
   if (attached) execFileSync('hdiutil', ['detach', mount], { stdio: 'inherit' });
   rmSync(work, { recursive: true, force: true });

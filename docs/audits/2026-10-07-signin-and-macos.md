@@ -25,4 +25,6 @@ Mac apps use ad hoc signing for local executable integrity. There is no Apple De
 - CI installs each actual Mac DMG and exercises the packaged Electron runtime, menus, notes/revisions, plan controls, export chooser, single instance, Dock reopening and persistence after restart.
 - Signed Android release compilation/lint, certificate/alignment/provenance checks and Android 16 APK runtime checks are required before publishing.
 
+The first CI attempt exposed two driver mistakes: the Mac `lipo -verify_arch` argument order, and an Android tap on an accessibility node obscured by fixed bottom navigation. Corrected the command and bounded Android touches/scrolls using the current XML header/footer geometry. That Android run launched and created its project but did not add notes; it is not counted as a passing persistence check.
+
 See linked GitHub workflow results for the completed runs; builds still in progress are not evidence of success. No real account credentials or private signing keys are included. Live consent/inference, the physical OnePlus/Legion OS and the researcher's physical MacBook remain outside automated validation.

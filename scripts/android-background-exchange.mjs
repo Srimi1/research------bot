@@ -257,7 +257,7 @@ async function main() {
       await pause(1_000);
       assert.equal(shell(`pidof ${packageName}`), pid, 'am kill must spare the foreground service');
       shell(`am force-stop ${packageName}`);
-      assert.equal(shell(`pidof ${packageName}`), '', 'The process must actually be gone');
+      assert.equal(shell(`pidof ${packageName} || true`), '', 'The process must actually be gone');
       devtools.close();
       shell(`am start -W -n ${activity}`);
       await pause(3_000);

@@ -271,6 +271,8 @@ try {
   await page.evaluate(async () =>
     window.research.saveSettings({ ...(await window.research.getSettings()), autoUpdate: false }),
   );
+  events = [];
+  await page.locator('.topbar-signin').click();
   for (const [failureMode, code] of [
     ['response', 'RESPONSE'],
     ['dns', 'EXCHANGE-DNS'],
@@ -278,9 +280,10 @@ try {
     ['storage', 'STORAGE'],
   ]) {
     mode = failureMode;
-    events = [];
-    if (failureMode === 'response') await page.locator('.topbar-signin').click();
-    else await page.getByRole('button', { name: 'Continue with ChatGPT', exact: true }).click();
+    // The first attempt already started when the dialog opened; its events were recorded from the start.
+    if (failureMode !== 'response') events = [];
+    if (failureMode !== 'response')
+      await page.getByRole('button', { name: 'Continue with ChatGPT', exact: true }).click();
     const alert = page.getByRole('alert');
     await alert
       .filter({ hasText: `RB-AUTH-${code}` })

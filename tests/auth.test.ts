@@ -10,7 +10,7 @@ import { MockAgent, getGlobalDispatcher, setGlobalDispatcher } from 'undici';
 import { AuthService, directoryFiles, nodeLoopback } from '../electron/auth';
 import { AuthService as CoreAuthService, type AuthPlatform } from '../core/auth';
 import { fetchNetwork } from '../electron/network';
-import { createNativeLoopback } from '../src/android/adapters';
+import { createKeepAlive, createNativeLoopback } from '../src/android/adapters';
 import type { CallbackRequest, LoopbackServer } from '../core/platform';
 import type { ResearchNativePlugin } from '../src/android/native';
 
@@ -344,6 +344,46 @@ test('Android stops keep-alive on cancel and timeout, including while openBrowse
       context.mock.timers.reset();
     }
   }
+});
+
+test('Android abandons sign-in cleanly when the foreground service reaches its deadline', async () => {
+  const f = waitingAndroid();
+  let expire = () => {};
+  let subscriptions = 0;
+  let unsubscribed = 0;
+  f.platform.keepAlive = {
+    start: async () => {
+      f.order.push('keepAliveStart');
+    },
+    stop: async () => {
+      f.order.push('keepAliveStop');
+    },
+    onExpired: listener => {
+      subscriptions++;
+      expire = listener;
+      return () => {
+        unsubscribed++;
+      };
+    },
+  };
+  f.auth = new CoreAuthService(f.platform);
+  const pending = f.auth.signIn();
+  const rejected = assert.rejects(pending, /RB-AUTH-TIMEOUT/);
+  await f.browserOpened;
+  expire();
+  await rejected;
+  assert.equal(subscriptions, 1);
+  assert.equal(unsubscribed, 1);
+  assert.equal(f.order.at(-1), 'keepAliveStop');
+  assert.ok(f.order.includes('close'), 'The loopback listener must be closed');
+  assert.deepEqual(JSON.parse(new TextDecoder().decode(f.files.get('signin.json'))), { reason: 'timeout' });
+  // A late event from a finished attempt must not disturb the next one.
+  expire();
+  const next = f.auth.signIn();
+  const cancelled = assert.rejects(next, /RB-AUTH-CANCELLED/);
+  await new Promise(resolve => setTimeout(resolve, 10));
+  f.auth.cancelSignIn();
+  await cancelled;
 });
 
 test('Android releases a refused service and falls back to the foreground exchange path', async () => {
@@ -1048,4 +1088,30 @@ test('system-browser errors cannot disclose the retained ID token through the re
   } finally {
     await f.close();
   }
+});
+
+test('the native keep-alive adapter forwards the service deadline until unsubscribed', async () => {
+  const handlers = new Map<string, () => void>();
+  let removed = 0;
+  const keepAlive = createKeepAlive({
+    signInKeepAliveStart: async () => {},
+    signInKeepAliveStop: async () => {},
+    addListener: (async (event: string, listener: () => void) => {
+      handlers.set(event, listener);
+      return {
+        remove: async () => {
+          removed++;
+        },
+      };
+    }) as never,
+  });
+  let expired = 0;
+  const unsubscribe = keepAlive.onExpired(() => expired++);
+  handlers.get('signInExpired')?.();
+  assert.equal(expired, 1);
+  unsubscribe();
+  handlers.get('signInExpired')?.();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(expired, 1);
+  assert.equal(removed, 1);
 });

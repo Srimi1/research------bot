@@ -22,6 +22,7 @@ export interface ResearchNativePlugin {
   signInKeepAliveStart(): Promise<void>;
   signInKeepAliveStop(): Promise<void>;
   openAppSettings(): Promise<void>;
+  addListener(event: 'signInExpired', listener: () => void): Promise<PluginListenerHandle>;
   addListener(
     event: 'loopbackRequest',
     listener: (event: { serverId: string; requestId: string; method: string; url: string }) => void,

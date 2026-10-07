@@ -19,7 +19,10 @@ public class SignInService extends Service {
     private static final int NOTIFICATION = 4040;
     // Also bound older Android releases, and stop before the API 34 shortService ANR deadline.
     private final Handler handler = new Handler(Looper.getMainLooper());
-    private final Runnable deadline = this::finish;
+    private final Runnable deadline = this::expire;
+    /** Result code sent to the plugin when the service stops because its deadline passed. */
+    static final int RESULT_EXPIRED = 2;
+    private ResultReceiver replyTo;
 
     @Override
     @SuppressWarnings("deprecation")
@@ -27,6 +30,7 @@ public class SignInService extends Service {
         ResultReceiver reply = intent == null ? null : (Build.VERSION.SDK_INT >= 33
             ? intent.getParcelableExtra("reply", ResultReceiver.class)
             : intent.getParcelableExtra("reply"));
+        replyTo = reply;
         try {
             NotificationManager notifications = getSystemService(NotificationManager.class);
             notifications.createNotificationChannel(new NotificationChannel(
@@ -63,6 +67,14 @@ public class SignInService extends Service {
         return START_NOT_STICKY;
     }
 
+    /** Deadline or system timeout: stop, and let JS cancel the pending attempt and close its listener. */
+    private void expire() {
+        ResultReceiver reply = replyTo;
+        replyTo = null;
+        if (reply != null) reply.send(RESULT_EXPIRED, null);
+        finish();
+    }
+
     private void finish() {
         handler.removeCallbacks(deadline);
         stopForeground(STOP_FOREGROUND_REMOVE);
@@ -71,12 +83,12 @@ public class SignInService extends Service {
 
     @Override
     public void onTimeout(int startId) {
-        finish();
+        expire();
     }
 
     @Override
     public void onTimeout(int startId, int fgsType) {
-        finish();
+        expire();
     }
 
     @Override

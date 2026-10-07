@@ -42,9 +42,7 @@ Crossref discovery works without signing in. AI assistants require eligible Chat
 
 ## Install or build
 
-**0.4.0 is being prepared to fix ChatGPT sign-in on Android.** It adds a short foreground service during browser consent and an `RB-AUTH-INTERRUPTED` recovery notice if Android closes the app. The signed 0.4.0 APK is pending the new signing key and release validation; the existing download below is still 0.3.9.
-
-The original Android key was lost. Moving from 0.3.x to 0.4.0 requires **exporting every project, verifying the saved files, uninstalling Research Bot once, then installing the new signed APK**. Uninstalling removes the phone's local database and credentials. Exports are JSON/Markdown archives; automatic project import is not available. The new public certificate fingerprint will be committed as `android/release-signing-certificate.sha256` before publication. On Legion OS or another aggressive ROM, set **App info → Battery usage → Unrestricted** if sign-in is repeatedly interrupted. See [Android installation and signing](docs/android.md) for the steps.
+**0.4.0 is being prepared to fix ChatGPT sign-in on Android.** It adds a short foreground service during browser consent and an `RB-AUTH-INTERRUPTED` recovery notice if Android closes the app. It uses the same signing certificate as 0.3.x, so it installs over your existing app and keeps your projects. On Legion OS or another aggressive ROM, set **App info → Battery usage → Unrestricted** if sign-in is repeatedly interrupted. See [Android installation and signing](docs/android.md).
 
 The signed **Android 0.3.9 APK is available in [downloads/android](downloads/android/README.md)** and through the direct download above. [Release 0.3.9](https://github.com/Srimi1/research------bot/releases/tag/v0.3.9) publishes Android assets only. Desktop installers remain available in [release 0.3.7](https://github.com/Srimi1/research------bot/releases/tag/v0.3.7), with checksums. Mac beta builds are ad hoc signed without Developer ID signing/notarization and use manual updates; see the Mac guide for installation instructions.
 

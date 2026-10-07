@@ -4,7 +4,7 @@ The Android app is the same Research Bot as the desktop app: the same interface,
 
 ## Install
 
-**0.4.0 is in release preparation.** Its new signed APK is pending key setup and release checks. The current download below is 0.3.9. Do not uninstall your current app until the new signed APK is available and your exports are verified.
+**0.4.0 is in release preparation.** It installs over 0.3.x with the same signing certificate, keeping your projects. The current download below is 0.3.9 until 0.4.0 is published.
 
 1. Download the [signed Research Bot 0.3.9 APK](https://github.com/Srimi1/research------bot/releases/download/v0.3.9/research-bot-0.3.9-android.apk). It is stored in the repository's [downloads/android folder](../downloads/android/README.md).
 2. Open the downloaded file. Android asks to allow installs from your browser or file manager the first time; allow it, then choose **Install**.
@@ -83,33 +83,18 @@ CI runs the same flow on Android 16. The release workflow additionally tests the
 
 ## Release signing (one-time setup)
 
-The original 0.3.x private signing key was lost. Version 0.4.0 starts a new signing lineage. Every later Android release must use this new key so installed 0.4.x copies can update. Keys and passwords stay out of Git; only the public certificate SHA-256 is committed in `android/release-signing-certificate.sha256`.
+Every Android release is signed with the same private key, so installed copies update in place. Releases 0.3.1 onward use the certificate whose SHA-256 is committed in `android/release-signing-certificate.sha256` (`98580ca053712555a2b8a3a8fecfc15c85d83c5d192480e3b6b09ca13a633441`). The key itself and its passwords stay out of Git, in four repository secrets: **Settings → Secrets and variables → Actions → Repository secrets**:
 
-### Create the new key on the maintainer's Mac (Option A)
+- `ANDROID_KEYSTORE_BASE64`: the keystore file as one line of base64 (`base64 -i <keystore> | tr -d '\n' | pbcopy` on macOS, `base64 -w0 <keystore>` on Linux)
+- `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`
 
-From a checkout containing this release's changes, with JDK 21 installed, run this single Terminal block:
+The release workflow tolerates whitespace-wrapped base64, checks the password and alias, and refuses to build unless the key's certificate matches the committed fingerprint. It verifies the built APK against that fingerprint again and records `BUILD_INFO-android.json` from the actual APK.
 
-```sh
-bash scripts/create-android-signing-key.sh "$HOME/Research-Bot-signing-backup"
-```
+Keep a private backup of the keystore and its passwords outside GitHub. If the key were ever lost, `scripts/create-android-signing-key.sh` creates a replacement and its fingerprint, but every installed copy would then have to export its projects, uninstall and reinstall once.
 
-The script creates a 4096-bit RSA JKS, prints the four GitHub secret values, and writes their backup alongside `research-bot-release.jks` outside the repository. It refuses to overwrite an existing key or fingerprint. Back up that directory securely. It also creates `android/release-signing-certificate.sha256` in your checkout; share/commit that public fingerprint, never the four secret values or key.
+### Publish an Android release
 
-In this repository's **Settings → Secrets and variables → Actions**, set `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD` to the printed values. The release restores whitespace-wrapped base64, checks the password and alias, then requires the certificate to match the committed fingerprint. It verifies the built APK against that fingerprint again and creates `BUILD_INFO-android.json` from the actual APK. No fingerprint is available until the new key is created.
-
-Option B is generating the key in the coding environment and providing a private backup, only with the maintainer's explicit permission. Do not generate a second key if Option A has already been completed.
-
-### One-time switch from 0.3.x to 0.4.0
-
-1. In the old app, export **every project** as JSON or Markdown to storage outside Research Bot. Open the exported files and verify that your notes and sources are present. There is no automatic project import; keep the archives and recreate projects as needed.
-2. Download the published signed 0.4.0 APK. Verify its checksum and public certificate against the release build information and `android/release-signing-certificate.sha256`.
-3. Uninstall the old Research Bot. This removes its local projects and credentials; the new key cannot update a 0.3.x installation in place.
-4. Install 0.4.0, sign in with ChatGPT, and run one agent. Report whether sign-in succeeds without `RB-AUTH-EXCHANGE-DNS`; this is the physical-phone gate for Phase 2.
-5. If sign-in is interrupted, use **App info → Battery usage → Unrestricted**, then retry. Subsequent 0.4.x APKs signed with the new key can update in place.
-
-### Publish 0.4.0 after signing setup
-
-Commit the new public fingerprint, update/merge PR #12's signing restoration, and merge the verified sign-in changes. Run **Publish release** from `main` with tag `v0.4.0`, **Platforms: android**, **Android source: build**, and **Android upgrade from** empty. The workflow's fresh-install, persistence and cold-restart checks must pass on the exact signed APK before publication. Download the published APK and `BUILD_INFO-android.json`, commit them as `downloads/android/research-bot-0.4.0-android.apk` and `downloads/android/BUILD_INFO.json`, and regenerate `downloads/android/SHA256SUMS.txt`. Update the download links and release status only after publication. Emulator evidence and the maintainer's OnePlus result must be reported separately.
+Run **Publish release** from `main` with the version tag (for example `v0.4.0`), **Platforms: android**, **Android source: build**, and **Android upgrade from** set to the previous published tag (for example `v0.3.9`). Before publication the exact signed APK must pass fresh install, persistence, cold restart and the in-place upgrade with notes retained on Android 16. Afterwards commit the published APK and `BUILD_INFO-android.json` as `downloads/android/research-bot-VERSION-android.apk` and `downloads/android/BUILD_INFO.json`, regenerate `downloads/android/SHA256SUMS.txt`, and update the download links. Emulator evidence and the maintainer's phone result are reported separately.
 
 ### Release an existing signed APK
 

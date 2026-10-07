@@ -25,7 +25,13 @@ The report contains fixed service labels, numeric HTTP status or allowlisted `RB
 - Instrumented Android checks require public metadata, a real HTTP rejection from dummy authorization while a browser is open, all three fallback paths and the actual native connection report. They never sign in a real account. All those checks passed on stock Android 16 in [source CI 37631157855](https://github.com/Srimi1/research------bot/actions/runs/37631157855) on `f741d2b24eb938f698b48fa925ecbdbfb5850d56`. All six source CI jobs passed.
 - The APK-only release mode preserves the signed-runtime publication gate. The optional upgrade gate installs the previously published signed APK, creates a synthetic project/notes, installs the new APK in place and verifies recovery after a cold restart.
 
-The signed 0.3.8 APK was built and linted from that source commit. SHA-256, the existing signing certificate, package/version, SDK levels, source-input provenance and 16 KiB alignment passed local verification. Its SHA-256 is `df6362dad0964b43b91476123bbc781c1e655ba4dcef9883c985df0de32c46de` (4,772,011 bytes). Signed fresh-install/upgrade runtime and public-download verification remain pending publication.
+The signed 0.3.8 APK was built and linted from that source commit. SHA-256, the existing signing certificate, package/version, SDK levels, source-input provenance and 16 KiB alignment passed local verification. Its SHA-256 is `df6362dad0964b43b91476123bbc781c1e655ba4dcef9883c985df0de32c46de` (4,772,011 bytes). The first [signed-release check](https://github.com/Srimi1/research------bot/actions/runs/37632416974) passed fresh launch/create/save/cold-restart. It then installed the upgrade but its PNG capture exceeded Node’s default 1 MiB buffer (`ENOBUFS`), preventing completion/publication. The screenshot capture now has a bounded 16 MiB buffer. Signed upgrade/runtime completion and public-download verification remain pending the corrected release run.
+
+## Latest physical-device evidence
+
+A later 0.3.7 screenshot shows `RB-AUTH-EXCHANGE-DNS` and Android System WebView `153.0.8010.36`. The maintainer reports the failure on both Wi-Fi and mobile data. The Java transport emits that fixed reason for `UnknownHostException`, so this attempt identifies an Android hostname-resolution failure. WebView 153 supports the optional APIs addressed above; those compatibility fixes do not explain this device attempt. No phone-specific resolver exception details or account credentials have been collected.
+
+Browser consent reaches the provider, but browser reachability does not establish the app's resolver/network access. The next check compares the opt-in native HTTPS results while Research Bot is foregrounded with a fresh consent exchange. Foreground/background policy, per-app network restrictions and browser DNS behavior are hypotheses, not confirmed findings.
 
 ## Remaining validation
 

@@ -62,7 +62,10 @@ function capture(label) {
   writeFileSync(`${output}/${label}-crash.txt`, crash);
   writeFileSync(
     `${output}/${label}.png`,
-    execFileSync('adb', [...serialArgs, 'exec-out', 'screencap', '-p'], { timeout: 30_000 }),
+    execFileSync('adb', [...serialArgs, 'exec-out', 'screencap', '-p'], {
+      timeout: 30_000,
+      maxBuffer: 16 * 1024 * 1024,
+    }),
   );
   return { log, crash };
 }

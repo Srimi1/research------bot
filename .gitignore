@@ -21,6 +21,9 @@ out/
 release/
 coverage/
 .playwright/
+__pycache__/
+.venv-android-qa/
+android-startup-results/
 
 # Local research content
 data/

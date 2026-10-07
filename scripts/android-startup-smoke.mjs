@@ -122,6 +122,14 @@ async function tapNode(label, predicate) {
 
 const named = text => node => node.text === text || node['content-desc'] === text;
 
+function coldStart() {
+  const crash = adb('logcat', '-b', 'crash', '-d');
+  assert.ok(!crash.includes(`Process: ${packageName}`), `Native startup crash:\n${crash}`);
+  adb('shell', 'am', 'force-stop', packageName);
+  adb('logcat', '-c');
+  console.log(adb('shell', 'am', 'start', '-W', '-n', `${packageName}/.MainActivity`).trim());
+}
+
 try {
   console.log(adb('shell', 'getprop', 'ro.build.version.release').trim());
   console.log(adb('install', '--no-streaming', '-r', resolve(apk)).trim());
@@ -131,26 +139,29 @@ try {
   adb('shell', 'svc', 'power', 'stayon', 'true');
   for (let launch = 1; launch <= 2; launch++) {
     const label = `launch-${launch}`;
-    adb('shell', 'am', 'force-stop', packageName);
-    adb('logcat', '-c');
-    console.log(adb('shell', 'am', 'start', '-W', '-n', `${packageName}/.MainActivity`).trim());
+    coldStart();
     if (launch === 1) {
       await waitForTree(label, tree => tree.includes('Create your first project'));
       await tapNode('start-project', named('Create your first project'));
-      await waitForTree('project-form', tree => nodes(tree).some(node => node.class === 'android.widget.EditText'));
-      await tapNode('project-title', node => node.class === 'android.widget.EditText');
+      await pause(1_000);
+      capture('project-form');
+      // The modal focuses its close button. Tab reaches the title; Enter submits the form.
+      // WebView 133 can retain its previous accessibility subtree until a cold restart.
+      // Verify real UI creation and persistence after reopening, instead of trusting that stale tree.
+      adb('shell', 'input', 'keyevent', '61');
       adb('shell', 'input', 'text', 'AndroidStartupTest');
-      adb('shell', 'input', 'keyevent', '4');
       await pause(500);
-      await tapNode('create-project', named('Create project'));
+      adb('shell', 'input', 'keyevent', '66');
+      await pause(3_000);
+      capture('project-submitted');
+      assert.ok(adb('shell', 'pidof', packageName).trim(), 'The app must stay running while creating the project');
+      coldStart();
       await waitForTree(
         'project-created',
         tree => tree.includes('AndroidStartupTest') && tree.includes('Your research notes'),
       );
       await tapNode('note-outline', named('Add a note outline'));
-      await waitForTree('notes-saved', tree => tree.includes('What I know'));
       await pause(2_000);
-      adb('shell', 'input', 'keyevent', '4');
     } else {
       await waitForTree(label, tree => tree.includes('AndroidStartupTest') && tree.includes('What I know'));
     }

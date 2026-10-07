@@ -16,6 +16,8 @@ The exact published 0.3.3 APK was installed and cold-launched twice on stock And
 
 The first diagnostic attempts exposed test-harness issues: an accessibility dump was requested before Android exposed its root, and a noisy emulator log exceeded Node's default output buffer. The harness now waits/retries, wakes/unlocks the display and captures full diagnostics. Those test failures were not classified as app crashes.
 
+A later signed-APK check opened the project form visually while repeated accessibility dumps still described the welcome screen. The [complete screenshot and logs](https://github.com/Srimi1/research------bot/actions/runs/37569885519) distinguish this stale snapshot from a missing form or native crash. A persistent UiAutomator2 connection also [observed the stale WebView 133 subtree](https://github.com/Srimi1/research------bot/actions/runs/37570376298). The driver uses the form's Tab/Enter navigation and verifies creation after a cold reopen, then adds notes and verifies them after another cold reopen. Taps still use UI-tree-derived bounds. Failure screenshots are flushed before exit so workflow logs preserve the complete image.
+
 The strengthened APK test installs the packaged app, checks the crash buffer, requires its interface to render, creates a project through accessibility-tree-derived taps, adds a note outline, then force-stops/reopens the app and verifies both the project and notes. CI runs it against the debug APK; release automation runs it against the exact signed APK before uploading/publishing. Screenshots, UI trees and logcat are retained as workflow artifacts.
 
 ## Remaining limits

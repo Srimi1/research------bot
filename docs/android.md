@@ -60,6 +60,21 @@ The debug APK is available at `android/app/build/outputs/apk/debug/app-debug.apk
 
 `npm run icon:android` regenerates the launcher icons from `public/app-icon.png`.
 
+### Verify the packaged app
+
+Start an Android emulator and run from the repository root:
+
+```sh
+python3 -m venv .venv-android-qa
+.venv-android-qa/bin/pip install uiautomator2==3.7.0
+RESEARCH_UIAUTOMATOR_PYTHON=.venv-android-qa/bin/python \
+  node scripts/android-startup-smoke.mjs android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+Use a fresh emulator without Research Bot data; the test creates synthetic projects. Set `ANDROID_SERIAL` when multiple devices are connected. The driver uses an active Android accessibility connection and UI-tree-derived taps. It creates a project through the form's keyboard navigation and verifies it after a cold reopen, adds notes, then cold-restarts again and verifies persistence. This avoids relying on stale within-page snapshots from the emulator's WebView 133. Evidence is written to `android-startup-results/`.
+
+CI runs the same flow on Android 16. The release workflow additionally tests the exact signed APK before publication, while the **Android APK startup** workflow can test a published APK or the signed APK committed on the selected ref.
+
 ## Release signing (one-time setup)
 
 Every Android release must be signed with the same key, or installed copies cannot update. The release workflow reads the key from four repository secrets. For an existing installation, use its original key. The personally signed APKs supplied to the maintainer use a separate private signing backup; do not generate a replacement key when preparing updates for those installations. Keys and passwords must stay out of Git. For a new distribution, create the secrets once:

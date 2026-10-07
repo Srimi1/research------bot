@@ -95,6 +95,11 @@ jobs:
           expected="$(node -p "require('./package.json').version")"
           echo "APK version $version"
           test "$version" = "$expected" || { echo "::error::APK version $version does not match package.json $expected"; exit 1; }
+      - name: Install the persistent Android accessibility driver
+        run: |
+          python3 -m venv "$RUNNER_TEMP/research-android-qa"
+          "$RUNNER_TEMP/research-android-qa/bin/pip" install uiautomator2==3.7.0
+          echo "RESEARCH_UIAUTOMATOR_PYTHON=$RUNNER_TEMP/research-android-qa/bin/python" >> "$GITHUB_ENV"
       - name: Enable KVM for the Android runtime test
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules

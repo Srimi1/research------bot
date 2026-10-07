@@ -1,8 +1,9 @@
 // Launch the packaged APK on a real Android runtime, including the native bridge and WebView.
 import assert from 'node:assert/strict';
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { createInterface } from 'node:readline';
 
 const apk = process.argv[2];
 assert.ok(apk, 'Pass the signed or debug APK to install');
@@ -13,6 +14,45 @@ const serialArgs = process.env.ANDROID_SERIAL ? ['-s', process.env.ANDROID_SERIA
 const adb = (...args) =>
   execFileSync('adb', [...serialArgs, ...args], { encoding: 'utf8', timeout: 60_000, maxBuffer: 16 * 1024 * 1024 });
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
+let uiDriver;
+let treeRequest;
+
+function readHierarchy() {
+  if (!uiDriver) {
+    uiDriver = spawn(process.env.RESEARCH_UIAUTOMATOR_PYTHON || 'python3', ['scripts/android-ui-tree.py'], {
+      stdio: ['pipe', 'pipe', 'inherit'],
+    });
+    createInterface({ input: uiDriver.stdout }).on('line', line => {
+      if (!line.startsWith('{')) return console.log(`UI driver: ${line}`);
+      const result = JSON.parse(line);
+      if (!treeRequest) return;
+      clearTimeout(treeRequest.timer);
+      if (result.error) treeRequest.reject(new Error(result.error));
+      else treeRequest.resolve(result.xml);
+      treeRequest = undefined;
+    });
+    const stopped = error => {
+      if (!treeRequest) return;
+      clearTimeout(treeRequest.timer);
+      treeRequest.reject(error);
+      treeRequest = undefined;
+    };
+    uiDriver.on('error', stopped);
+    uiDriver.on('exit', code => stopped(new Error(`The Android UI driver stopped (${code})`)));
+  }
+  return new Promise((resolve, reject) => {
+    treeRequest = {
+      resolve,
+      reject,
+      timer: setTimeout(() => {
+        treeRequest = undefined;
+        uiDriver.kill();
+        reject(new Error('The Android accessibility tree timed out'));
+      }, 60_000),
+    };
+    uiDriver.stdin.write('{}\n');
+  });
+}
 
 function capture(label) {
   const log = adb('logcat', '-d');
@@ -39,15 +79,9 @@ function bounds(node) {
   return right > left && bottom > top ? { left, top, right, bottom } : undefined;
 }
 
-function treeFor(label) {
-  adb('shell', 'rm', '-f', '/sdcard/research-bot-startup.xml');
-  adb('shell', 'uiautomator', 'dump', '/sdcard/research-bot-startup.xml');
-  const dumped = spawnSync('adb', [...serialArgs, 'shell', 'test', '-s', '/sdcard/research-bot-startup.xml'], {
-    timeout: 15_000,
-  });
-  // Immediately after boot, Android can return a null accessibility root. Retry the dump.
-  if (dumped.status !== 0) return '';
-  const tree = adb('shell', 'cat', '/sdcard/research-bot-startup.xml');
+async function treeFor(label) {
+  // One-shot uiautomator dump reconnects on every call and can expose stale WebView nodes.
+  const tree = await readHierarchy();
   writeFileSync(`${output}/${label}-ui.xml`, tree);
   return tree;
 }
@@ -58,7 +92,7 @@ async function waitForTree(label, expected) {
     const crash = adb('logcat', '-b', 'crash', '-d');
     assert.ok(!crash.includes(`Process: ${packageName}`), `Native startup crash:\n${crash}`);
     if (attempt % 3 !== 0) continue;
-    const tree = treeFor(label);
+    const tree = await treeFor(label);
     assert.ok(!tree.includes('CompileError'), 'The actual APK must initialize SQLite under its shipped CSP');
     if (expected(tree)) return tree;
   }
@@ -67,7 +101,7 @@ async function waitForTree(label, expected) {
 
 async function tapNode(label, predicate) {
   for (let attempt = 0; attempt < 3; attempt++) {
-    const list = nodes(treeFor(label));
+    const list = nodes(await treeFor(label));
     const target = list.find(node => predicate(node) && bounds(node));
     if (target) {
       const { left, top, right, bottom } = bounds(target);
@@ -102,19 +136,8 @@ try {
     console.log(adb('shell', 'am', 'start', '-W', '-n', `${packageName}/.MainActivity`).trim());
     if (launch === 1) {
       await waitForTree(label, tree => tree.includes('Create your first project'));
-      // Wait for the first screen to settle; an initial touch can focus a newly opened WebView.
-      let form;
-      for (let attempt = 0; attempt < 3; attempt++) {
-        await tapNode('start-project', named('Create your first project'));
-        await pause(1_000);
-        form = treeFor('project-form');
-        console.log(`Project form nodes: ${JSON.stringify(nodes(form))}`);
-        if (nodes(form).some(node => node.class === 'android.widget.EditText')) break;
-      }
-      assert.ok(
-        nodes(form).some(node => node.class === 'android.widget.EditText'),
-        'Create project must open its form',
-      );
+      await tapNode('start-project', named('Create your first project'));
+      await waitForTree('project-form', tree => nodes(tree).some(node => node.class === 'android.widget.EditText'));
       await tapNode('project-title', node => node.class === 'android.widget.EditText');
       adb('shell', 'input', 'text', 'AndroidStartupTest');
       adb('shell', 'input', 'keyevent', '4');
@@ -156,7 +179,7 @@ try {
     console.log(adb('shell', 'dumpsys', 'webviewupdate'));
     console.log(
       JSON.stringify(
-        nodes(treeFor('failure')).filter(
+        nodes(await treeFor('failure')).filter(
           node => node.text || node['content-desc'] || node.class === 'android.widget.EditText',
         ),
       ),
@@ -172,4 +195,6 @@ try {
       );
   } catch {}
   throw error;
+} finally {
+  uiDriver?.kill();
 }

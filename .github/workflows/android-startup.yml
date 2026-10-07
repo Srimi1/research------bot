@@ -52,6 +52,11 @@ jobs:
           mkdir apk
           (cd downloads/android && sha256sum --check SHA256SUMS.txt)
           cp "downloads/android/research-bot-$APK_VERSION-android.apk" apk/app.apk
+      - name: Install the persistent Android accessibility driver
+        run: |
+          python3 -m venv "$RUNNER_TEMP/research-android-qa"
+          "$RUNNER_TEMP/research-android-qa/bin/pip" install uiautomator2==3.7.0
+          echo "RESEARCH_UIAUTOMATOR_PYTHON=$RUNNER_TEMP/research-android-qa/bin/python" >> "$GITHUB_ENV"
       - name: Enable KVM for the emulator
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules

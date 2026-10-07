@@ -1,31 +1,21 @@
 {
-  "version": "0.3.3",
-  "versionCode": 303,
+  "version": "0.3.4",
+  "versionCode": 304,
   "package": "com.researchbot.android",
   "minSdk": 26,
   "targetSdk": 36,
-  "sourceCommit": "b620924841b29b161c111604514f66cf9c499e51",
+  "sourceCommit": "bdb993918a44add6ca98dd98da485aa5183e6d90",
   "certificateSha256": "98580ca053712555a2b8a3a8fecfc15c85d83c5d192480e3b6b09ca13a633441",
-  "apkSha256": "289f00adeac6c8689e5c053c53752e13d648e249a0ef836a2ce43225308697de",
-  "apkBytes": 4767647,
+  "apkSha256": "f71310e60ec369106464b5b3cf8c77722bb16445689f8a312606eb468ad09887",
+  "apkBytes": 4767599,
   "validation": {
     "regressionTestsPassed": 79,
-    "electronNodeTestsPassed": 24,
-    "browserSuitesPassed": 4,
-    "npmAuditVulnerabilities": 0,
+    "productionAndroidBackendUnderCsp": "passed",
     "androidReleaseBuildAndLint": "passed",
     "signatureAnd16KiBAlignment": "passed"
   },
-  "limits": ["Physical OnePlus/Legion OS behavior untested", "Live ChatGPT eligibility and inference untested"],
-  "githubCi": {
-    "url": "https://github.com/Srimi1/research------bot/actions/runs/37508336190",
-    "conclusion": "success",
-    "jobs": [
-      "check",
-      "Linux AppImage packaging",
-      "Windows NSIS packaging",
-      "macOS unpacked packaging",
-      "Android debug build and lint"
-    ]
-  }
+  "limits": [
+    "Physical OnePlus/Legion OS immediate close remains unverified",
+    "Live ChatGPT eligibility and inference untested"
+  ]
 }

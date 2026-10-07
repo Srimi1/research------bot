@@ -222,6 +222,19 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           disable-animations: true
           script: node scripts/android-startup-smoke.mjs "upload/research-bot-${RESEARCH_RELEASE_TAG#v}-android.apk"
+      - name: Record the passed signed APK runtime check
+        if: env.ANDROID_SOURCE == 'prebuilt'
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync, writeFileSync } from 'node:fs';
+          const path = 'upload/BUILD_INFO-android.json';
+          const info = JSON.parse(readFileSync(path, 'utf8'));
+          info.validation.android16SignedApkStartupAndPersistence = 'passed';
+          info.githubReleaseRun = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
+          writeFileSync(path, JSON.stringify(info, null, 2) + '\n');
+          NODE
+          cd upload
+          sha256sum BUILD_INFO-android.json research-bot-*-android.apk > SHA256SUMS-android.txt
       - name: Upload release files
         run: gh release upload "$RESEARCH_RELEASE_TAG" upload/* --repo "$GITHUB_REPOSITORY" --clobber
       - uses: actions/upload-artifact@v4

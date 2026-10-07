@@ -11,7 +11,7 @@ A personal research workspace for Android, Windows, Linux and macOS. Keep your q
 [![Android 8+](https://img.shields.io/badge/Android-8%2B-254b3d.svg)](docs/android.md)
 [![Node.js 24](https://img.shields.io/badge/Node.js-24-254b3d.svg)](CONTRIBUTING.md)
 
-**Android download:** [Research Bot 0.3.3 APK](https://github.com/Srimi1/research------bot/raw/refs/heads/main/downloads/android/research-bot-0.3.3-android.apk) · [Installation and checksums](downloads/android/README.md)
+**Android download:** [Research Bot 0.3.4 APK](https://github.com/Srimi1/research------bot/raw/refs/heads/main/downloads/android/research-bot-0.3.4-android.apk) · [Installation and checksums](downloads/android/README.md)
 
 **Beta:** local workflows and mocked authentication are tested. Live ChatGPT sign-in, account eligibility and AI output quality still need verification with a real account. See the [audit report](docs/audits/2026-10-06.md) for evidence and limits.
 
@@ -40,11 +40,11 @@ Crossref discovery works without signing in. AI assistants require eligible Chat
 
 ## Install or build
 
-The signed **Android 0.3.3 APK is available in [downloads/android](downloads/android/README.md)** and through the direct download above. Check [GitHub Releases](https://github.com/Srimi1/research------bot/releases) for desktop installers. As of the October 6, 2026 audit, `v0.3.1` contains Linux and Windows installers but no APK.
+The signed **Android 0.3.4 APK is available in [downloads/android](downloads/android/README.md)** and through the direct download above. Check [GitHub Releases](https://github.com/Srimi1/research------bot/releases) for desktop installers. As of the October 6, 2026 audit, `v0.3.1` contains Linux and Windows installers but no APK.
 
 | Platform   | Distribution / development                                                                                                                                        | Guide                                                               |
 | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| Android 8+ | [Signed 0.3.3 APK](https://github.com/Srimi1/research------bot/raw/refs/heads/main/downloads/android/research-bot-0.3.3-android.apk); CI also uploads a debug APK | [Android setup, signing and updates](docs/android.md)               |
+| Android 8+ | [Signed 0.3.4 APK](https://github.com/Srimi1/research------bot/raw/refs/heads/main/downloads/android/research-bot-0.3.4-android.apk); CI also uploads a debug APK | [Android setup, signing and updates](docs/android.md)               |
 | Windows    | NSIS installer                                                                                                                                                    | [Releases and updates](docs/implementation.md#releases-and-updates) |
 | Linux      | AppImage; live sign-in needs a secure desktop keyring                                                                                                             | [Operating notes](docs/implementation.md#operating-notes)           |
 | macOS      | Local app builds; release signing/notarization is not configured                                                                                                  | [Contribution guide](CONTRIBUTING.md)                               |

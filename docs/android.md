@@ -4,11 +4,11 @@ The Android app is the same Research Bot as the desktop app: the same interface,
 
 ## Install
 
-1. Download the [signed Research Bot 0.3.3 APK](https://github.com/Srimi1/research------bot/raw/refs/heads/main/downloads/android/research-bot-0.3.3-android.apk). It is stored in the repository's [downloads/android folder](../downloads/android/README.md).
+1. Download the [signed Research Bot 0.3.4 APK](https://github.com/Srimi1/research------bot/raw/refs/heads/main/downloads/android/research-bot-0.3.4-android.apk). It is stored in the repository's [downloads/android folder](../downloads/android/README.md).
 2. Open the downloaded file. Android asks to allow installs from your browser or file manager the first time; allow it, then choose **Install**.
 3. Open **Research Bot**. Your projects are stored only on this phone.
 
-To check this download, compare its SHA-256 with [downloads/android/SHA256SUMS.txt](../downloads/android/SHA256SUMS.txt). This APK uses the same personal certificate as the previously supplied 0.3.1 and 0.3.2 APKs, so it can update those installations. Install this version manually; automatic updates require an APK and checksums attached to a newer published GitHub release.
+To check this download, compare its SHA-256 with [downloads/android/SHA256SUMS.txt](../downloads/android/SHA256SUMS.txt). This APK uses the same personal certificate as the previously supplied 0.3.1, 0.3.2 and released 0.3.3 APKs, so it can update those installations. Install this version manually; automatic updates require an APK and checksums attached to a newer published GitHub release.
 
 ## Sign in with ChatGPT
 
@@ -94,3 +94,17 @@ The app targets SDK 36 and supports this Android version. It bundles the interfa
 - Live ChatGPT sign-in and inference have the same open validation item as on desktop: they have been tested against mocked OpenAI responses, not yet with a real account.
 - The app is distributed outside Google Play, so Play Protect may show a warning the first time.
 - Only one copy of the app runs at a time on a phone, so credentials cannot be refreshed twice at once.
+
+## If the app closes at launch
+
+Install the current APK over your existing copy first; do not clear app data or uninstall it while diagnosing startup. Version 0.3.4 fixes SQLite's blocked WebAssembly initialization and corrects the splash-screen handoff. Its actual signed APK is tested on stock Android 16 before release; this does not establish behavior on every custom ROM.
+
+Check that your ROM has an enabled, current Android System WebView provider. If the app still closes, connect the phone to a computer with Android Platform Tools and USB debugging enabled, then capture the Android crash buffer:
+
+```sh
+adb logcat -c
+# Open Research Bot on the phone and let it close.
+adb logcat -b crash -d > research-bot-crash.txt
+```
+
+Share the Research Bot exception and `Caused by` lines with the maintainer. Those identify the native failure; a build or browser preview cannot supply the physical phone's crash log. See the [startup investigation](audits/2026-10-07-android-startup.md).

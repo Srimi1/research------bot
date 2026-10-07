@@ -31,4 +31,6 @@ Published [version 0.3.6](https://github.com/Srimi1/research------bot/releases/t
 
 ## Remaining limit
 
+Subsequent screenshots from the updated app expose `RB-AUTH-EXCHANGE-NETWORK`. The next [transport and WebView investigation](2026-10-07-android-auth-transport.md) reproduces a missing-API bug that can cause that exact code before any network request. The installed phone WebView and its actual underlying exception remain unknown.
+
 The original device's precise failure is still unknown: its old browser page was generic, and the maintainer could not see the app's error. No real ChatGPT account credentials were available for consent, eligibility or inference validation. The update fixes the confirmed recovery/feedback bugs and makes a remaining failure diagnosable; it does not establish that this account can already complete sign-in. A safe `RB-AUTH-…` error from the updated app is needed if the attempt still fails.

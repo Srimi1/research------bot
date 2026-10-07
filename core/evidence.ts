@@ -1,7 +1,7 @@
 import type { EvidenceResult } from '../src/shared/types';
 import { crossrefSearchUrl, parseCrossref } from '../src/shared/crossref';
 import { version } from '../package.json';
-import { readLimited, type Fetch } from './platform';
+import { combineSignals, readLimited, type Fetch } from './platform';
 
 export { parseCrossref };
 
@@ -18,7 +18,7 @@ export const createEvidenceSearch =
       throw new Error('Enter a search query between 2 and 1,000 characters.');
     signal.throwIfAborted();
     const url = crossrefSearchUrl(query);
-    const combined = AbortSignal.any([signal, AbortSignal.timeout(20_000)]);
+    const combined = combineSignals([signal, AbortSignal.timeout(20_000)]);
     try {
       const response = await fetch(url, {
         signal: combined,

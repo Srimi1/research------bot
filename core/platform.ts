@@ -70,6 +70,31 @@ export async function sha256Base64url(text: string): Promise<string> {
   return base64url(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text))));
 }
 
+/** AbortSignal.any arrived in WebView 116, later than the bundled JavaScript's baseline. */
+export function combineSignals(signals: AbortSignal[]): AbortSignal {
+  if (typeof AbortSignal.any === 'function') return AbortSignal.any(signals);
+  const controller = new AbortController();
+  const parents = [...new Set(signals)];
+  const already = parents.find(signal => signal.aborted);
+  if (already) {
+    controller.abort(already.reason);
+    return controller.signal;
+  }
+  const listeners = parents.map(signal => {
+    const listener = () => controller.abort(signal.reason);
+    signal.addEventListener('abort', listener, { once: true });
+    return { signal, listener };
+  });
+  controller.signal.addEventListener(
+    'abort',
+    () => {
+      for (const { signal, listener } of listeners) signal.removeEventListener('abort', listener);
+    },
+    { once: true },
+  );
+  return controller.signal;
+}
+
 /** Compare secrets without returning early on the first differing character. */
 export function constantEqual(left: string, right: string): boolean {
   const a = new TextEncoder().encode(left);
@@ -103,7 +128,7 @@ export async function requestJson<T>(fetch: Fetch, url: string, init?: RequestIn
   const response = await fetch(url, {
     ...init,
     redirect: 'error',
-    signal: init?.signal ? AbortSignal.any([init.signal, AbortSignal.timeout(30_000)]) : AbortSignal.timeout(30_000),
+    signal: init?.signal ? combineSignals([init.signal, AbortSignal.timeout(30_000)]) : AbortSignal.timeout(30_000),
   });
   if (!response.ok) {
     await response.body?.cancel();

@@ -26,6 +26,8 @@ Failed attempts show a fixed, safe `RB-AUTH-…` diagnostic near the sign-in but
 
 Live account consent, eligibility, and inference remain unverified until the researcher signs in. The app does not copy cookies, scrape ChatGPT sessions, or reuse Codex credential files.
 
+Version 0.3.7 composes cancellation signals without requiring the newer `AbortSignal.any` WebView API. It preserves allowlisted native DNS/TLS/timeout/connection errors through Capacitor and shows app/WebView versions beside Android sign-in failures. An instrumented transport check uses public metadata and dummy authorization values with the real Android HTTPS bridge; its rejection is not proof of real-account sign-in. See the [transport investigation](audits/2026-10-07-android-auth-transport.md).
+
 ## References
 
 - [ChatGPT plan usage overview](https://developers.openai.com/siwc/token-sharing-open-source)

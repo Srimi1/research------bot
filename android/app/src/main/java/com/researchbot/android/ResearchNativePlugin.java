@@ -13,6 +13,7 @@ import android.provider.Settings;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
 import android.util.Base64;
+import android.webkit.WebView;
 import androidx.activity.result.ActivityResult;
 import androidx.browser.customtabs.CustomTabsIntent;
 import androidx.core.content.FileProvider;
@@ -31,6 +32,8 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.net.ConnectException;
+import java.net.UnknownHostException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -55,6 +58,7 @@ import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
+import javax.net.ssl.SSLException;
 
 /**
  * The device services the shared research backend needs on Android: HTTPS with streamed bodies
@@ -142,7 +146,7 @@ public class ResearchNativePlugin extends Plugin {
                 call.resolve(result);
             } catch (Exception error) {
                 closeHttp(id);
-                call.reject(error instanceof SocketTimeoutException ? "The request timed out." : describe(error));
+                rejectNetwork(call, error);
             }
         });
     }
@@ -172,7 +176,7 @@ public class ResearchNativePlugin extends Plugin {
                 call.resolve(result);
             } catch (Exception error) {
                 closeHttp(id);
-                call.reject(error instanceof SocketTimeoutException ? "The response timed out." : describe(error));
+                rejectNetwork(call, error);
             }
         });
     }
@@ -191,6 +195,15 @@ public class ResearchNativePlugin extends Plugin {
             if (stream != null) stream.close();
         } catch (IOException ignored) {}
         if (connection != null) connection.disconnect();
+    }
+
+    private static void rejectNetwork(PluginCall call, Exception error) {
+        String code = error instanceof UnknownHostException ? "RB_NET_DNS"
+            : error instanceof SSLException ? "RB_NET_TLS"
+            : error instanceof SocketTimeoutException ? "RB_NET_TIMEOUT"
+            : error instanceof ConnectException ? "RB_NET_CONNECT" : "RB_NET_IO";
+        // Do not send exception text or attach its stack: it can contain request details.
+        call.reject("The Android network request failed.", code);
     }
 
     // Loopback sign-in callback ----------------------------------------------------------------
@@ -510,6 +523,8 @@ public class ResearchNativePlugin extends Plugin {
             result.put("version", info.versionName);
             result.put("versionCode", versionCode(info));
             result.put("sdk", Build.VERSION.SDK_INT);
+            PackageInfo webview = WebView.getCurrentWebViewPackage();
+            result.put("webviewVersion", webview == null ? "unavailable" : webview.versionName);
             result.put("canInstall", Build.VERSION.SDK_INT < Build.VERSION_CODES.O || getContext().getPackageManager().canRequestPackageInstalls());
             call.resolve(result);
         } catch (Exception error) {

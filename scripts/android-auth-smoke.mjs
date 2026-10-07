@@ -7,6 +7,7 @@ import { createHash, randomBytes, createCipheriv, createDecipheriv } from 'node:
 import { exportJWK, generateKeyPair, SignJWT } from 'jose';
 import { chromium } from 'playwright';
 
+const legacyAbort = process.argv.includes('--legacy-abort') || process.env.ANDROID_AUTH_LEGACY === '1';
 const issuer = 'https://auth.openai.com';
 const clientId = 'oaiapp_packaged_android_fixture';
 const scopes = 'openid profile email offline_access resource.invoke chatgpt.tokens.use.direct';
@@ -27,6 +28,7 @@ let authorization;
 let idToken;
 let page;
 let browser;
+let tokenRequests = 0;
 
 function encrypt(text) {
   const iv = randomBytes(12);
@@ -77,7 +79,8 @@ try {
       replies.push(options);
       return {};
     }
-    if (method === 'appInfo') return { version: '0.3.6', versionCode: 306, sdk: 36, canInstall: false };
+    if (method === 'appInfo')
+      return { version: '0.3.7', versionCode: 307, sdk: 36, webviewVersion: '115.0.fixture', canInstall: false };
     if (method === 'openUrl') {
       authorization = new URL(options.url);
       assert.equal(authorization.origin + authorization.pathname, `${issuer}/api/accounts/authorize`);
@@ -115,6 +118,9 @@ try {
       let status = 200;
       let data;
       if (options.url === `${issuer}/api/accounts/oauth/token`) {
+        tokenRequests++;
+        if (mode === 'dns')
+          return { __fixtureFailure: { code: 'RB_NET_DNS', message: 'private native request details' } };
         const form = new URLSearchParams(options.body);
         assert.equal(form.get('client_id'), clientId);
         assert.equal(form.get('redirect_uri'), authorization.searchParams.get('redirect_uri'));
@@ -144,7 +150,7 @@ try {
       else if (options.url === 'https://api.openai.com/v1/models')
         data = { models: [{ slug: 'fixture-model', visibility: 'list' }] };
       else if (options.url === 'https://api.github.com/repos/Srimi1/research------bot/releases/latest')
-        data = { tag_name: 'v0.3.6', draft: false, prerelease: false, assets: [] };
+        data = { tag_name: 'v0.3.7', draft: false, prerelease: false, assets: [] };
       else throw new Error(`Unexpected fixture endpoint: ${new URL(options.url).pathname}`);
       bodies.set(options.id, Buffer.from(typeof data === 'string' ? data : JSON.stringify(data)));
       return { status, statusText: '', headers: { 'content-type': 'application/json' } };
@@ -163,7 +169,8 @@ try {
     }
     throw new Error(`Unexpected native fixture method: ${method}`);
   });
-  await context.addInitScript(() => {
+  await context.addInitScript(legacyAbort => {
+    if (legacyAbort) Object.defineProperty(AbortSignal, 'any', { value: undefined, configurable: true });
     const listeners = new Map();
     let counter = 0;
     window.__emitNative = (eventName, event) => {
@@ -208,7 +215,10 @@ try {
           listeners.delete(options.callbackId);
           return Promise.resolve({});
         }
-        return window.__nativePromise(plugin, method, options);
+        return window.__nativePromise(plugin, method, options).then(result => {
+          if (result.__fixtureFailure) throw result.__fixtureFailure;
+          return result;
+        });
       },
       nativeCallback(_plugin, _method, { eventName }, callback) {
         const id = String(++counter);
@@ -216,7 +226,7 @@ try {
         return id;
       },
     };
-  });
+  }, legacyAbort);
   page = await context.newPage();
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
@@ -228,6 +238,7 @@ try {
   await page.locator('.topbar-signin').click();
   for (const [failureMode, code] of [
     ['response', 'RESPONSE'],
+    ['dns', 'EXCHANGE-DNS'],
     ['nonce', 'IDENTITY-NONCE'],
     ['storage', 'STORAGE'],
   ]) {
@@ -235,7 +246,7 @@ try {
     if (failureMode !== 'response')
       await page.getByRole('button', { name: 'Continue with ChatGPT', exact: true }).click();
     const alert = page.getByRole('alert');
-    await alert.filter({ hasText: `RB-AUTH-${code}` }).waitFor();
+    await alert.filter({ hasText: `RB-AUTH-${code}` }).waitFor({ timeout: legacyAbort ? 5000 : 30000 });
     const box = await alert.boundingBox();
     assert.ok(
       box.y >= 0 && box.y + box.height < 892,
@@ -247,6 +258,7 @@ try {
     assert.doesNotMatch(replies.at(-1).body, /synthetic-access|synthetic-refresh|private upstream|Private credential/);
     assert.equal((await page.evaluate(() => window.research.account())).signedIn, false);
     assert.equal(files.has('account.enc'), false);
+    await page.getByText('Research Bot 0.3.7 · Android System WebView 115.0.fixture', { exact: true }).waitFor();
     if (failureMode === 'response') {
       await page.getByRole('button', { name: 'Close dialog', exact: true }).click();
       await page.reload();
@@ -286,11 +298,12 @@ try {
   assert.equal((await page.evaluate(() => window.research.account())).signedIn, true);
   assert.deepEqual(errors, []);
   console.log(
-    'Packaged Android OAuth passed: safe visible failures, restart recovery, retained issued registration, PKCE, RSA verification, encrypted persistence and successful reconnect under production CSP. Native and OpenAI services were synthetic.',
+    `Packaged Android OAuth passed${legacyAbort ? ' without AbortSignal.any' : ''}: safe visible failures, safe native DNS code, WebView version, restart recovery, retained issued registration, PKCE, RSA verification, encrypted persistence and successful reconnect under production CSP. Native and OpenAI services were synthetic.`,
   );
 } catch (error) {
   console.error('Packaged auth fixture failure:', {
     mode,
+    tokenRequests,
     replyStatuses: replies.map(reply => reply.status),
     visibleErrors: await page
       ?.getByRole('alert')

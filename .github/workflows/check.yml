@@ -95,7 +95,7 @@ jobs:
       - run: npm run build:android
       - name: Build and lint
         working-directory: android
-        run: ./gradlew --no-daemon assembleDebug lintDebug
+        run: ./gradlew --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug
       - name: Check the APK carries the package.json version
         run: |
           apk=android/app/build/outputs/apk/debug/app-debug.apk
@@ -123,7 +123,9 @@ jobs:
           profile: pixel_2
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           disable-animations: true
-          script: node scripts/android-startup-smoke.mjs android/app/build/outputs/apk/debug/app-debug.apk
+          script: |
+            node scripts/android-startup-smoke.mjs android/app/build/outputs/apk/debug/app-debug.apk
+            cd android && ./gradlew --no-daemon :app:connectedDebugAndroidTest
       - uses: actions/upload-artifact@v4
         with:
           name: research-bot-android-debug
@@ -139,5 +141,8 @@ jobs:
         if: always()
         with:
           name: android-startup
-          path: android-startup-results/
+          path: |
+            android-startup-results/
+            android/app/build/reports/androidTests/connected/
+            android/app/build/outputs/androidTest-results/connected/
           if-no-files-found: ignore

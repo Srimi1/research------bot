@@ -1,7 +1,9 @@
 import { createLocalJWKSet, jwtVerify, type JSONWebKeySet, type JWTPayload } from 'jose';
 import type { Account } from '../src/shared/types';
 import { AuthFailure, oauthFailure, readAuthFailure, safeAuthFailure, type AuthStage } from './auth-errors';
+import { NetworkFailure } from './network-errors';
 import {
+  combineSignals,
   constantEqual,
   randomSecret,
   readLimited,
@@ -288,17 +290,28 @@ export class AuthService {
   }
 
   private async tokenRequest(body: URLSearchParams, signal: AbortSignal): Promise<TokenResponse> {
-    const response = await this.fetch(TOKEN, {
-      method: 'POST',
-      redirect: 'error',
-      signal: AbortSignal.any([signal, AbortSignal.timeout(30_000)]),
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: body.toString(),
-    });
+    const deadline = combineSignals([signal, AbortSignal.timeout(30_000)]);
+    let response: Response;
+    try {
+      response = await this.fetch(TOKEN, {
+        method: 'POST',
+        redirect: 'error',
+        signal: deadline,
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString(),
+      });
+    } catch (error) {
+      if (signal.aborted) throw cancellation();
+      if (deadline.aborted) throw new AuthFailure('exchange_timeout');
+      throw error;
+    }
     let value: unknown;
     try {
       value = JSON.parse(await readLimited(response, 1_000_000));
-    } catch {
+    } catch (error) {
+      if (signal.aborted) throw cancellation();
+      if (deadline.aborted) throw new AuthFailure('exchange_timeout');
+      if (error instanceof NetworkFailure) throw error;
       throw new AuthFailure('response', response.status);
     }
     if (!response.ok) {
@@ -675,7 +688,7 @@ export class AuthService {
 
   private async authorized(url: string, init: RequestInit = {}): Promise<Response> {
     const sessionSignal = this.session.signal;
-    const signal = init.signal ? AbortSignal.any([init.signal, sessionSignal]) : sessionSignal;
+    const signal = init.signal ? combineSignals([init.signal, sessionSignal]) : sessionSignal;
     let token = await this.accessToken();
     const send = () =>
       this.fetch(url, {
@@ -726,7 +739,7 @@ export class AuthService {
   ): Promise<{ text: string; usage?: { input: number; output: number } }> {
     const response = await this.authorized(`${RESOURCE}/responses`, {
       method: 'POST',
-      signal: AbortSignal.any([signal, AbortSignal.timeout(5 * 60_000)]),
+      signal: combineSignals([signal, AbortSignal.timeout(5 * 60_000)]),
       headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
       body: JSON.stringify({
         model,

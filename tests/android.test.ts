@@ -5,6 +5,7 @@ import { Store, ConcurrentEditError } from '../core/store';
 import {
   base64url,
   constantEqual,
+  combineSignals,
   randomSecret,
   readLimited,
   sha256Base64url,
@@ -12,6 +13,8 @@ import {
   type FileStore,
 } from '../core/platform';
 import { createNativeFetch } from '../src/android/adapters';
+import { NetworkFailure } from '../core/network-errors';
+import { safeAuthFailure } from '../core/auth-errors';
 import { PersistentDatabase, RETRY_DELAY_MS, SAVE_DELAY_MS } from '../src/android/database';
 import { checksumFor, findUpdate, newer } from '../src/android/releases';
 import type { Run, Source } from '../src/shared/types';
@@ -153,6 +156,27 @@ test('PKCE and secret helpers give the same results as Node crypto without depen
   assert.equal(constantEqual('état', 'etat'), false);
 });
 
+test('signal composition preserves cancellation before and after startup without AbortSignal.any', () => {
+  const original = Object.getOwnPropertyDescriptor(AbortSignal, 'any')!;
+  Object.defineProperty(AbortSignal, 'any', { value: undefined, configurable: true });
+  try {
+    const first = new AbortController();
+    const second = new AbortController();
+    const combined = combineSignals([first.signal, second.signal, second.signal]);
+    const reason = new Error('cancel this request');
+    assert.equal(combined.aborted, false);
+    second.abort(reason);
+    assert.equal(combined.aborted, true);
+    assert.equal(combined.reason, reason);
+    first.abort(new Error('a later abort must not replace the first reason'));
+    assert.equal(combined.reason, reason);
+    assert.equal(combineSignals([first.signal, second.signal]).reason, first.signal.reason);
+    assert.equal(combineSignals([]).aborted, false);
+  } finally {
+    Object.defineProperty(AbortSignal, 'any', original);
+  }
+});
+
 test('update versions and checksums are compared exactly', () => {
   assert.equal(newer('0.10.0', '0.9.9'), true);
   assert.equal(newer('0.2.0', '0.2.0'), false);
@@ -274,6 +298,47 @@ test('native fetch rejects an unreadable status and closes the connection', asyn
     message: /invalid response/,
   });
   assert.deepEqual(bridge.calls.closed, [bridge.calls.open[0].id]);
+});
+
+test('serialized native connection failures retain safe diagnostic codes without private messages', async () => {
+  for (const [code, suffix] of [
+    ['RB_NET_DNS', 'DNS'],
+    ['RB_NET_TLS', 'TLS'],
+    ['RB_NET_TIMEOUT', 'TIMEOUT'],
+    ['RB_NET_CONNECT', 'CONNECT'],
+    ['private-code', 'NETWORK'],
+  ]) {
+    const fetch = createNativeFetch({
+      async httpOpen() {
+        throw { code, message: 'private-code authorization-secret private-url', data: 'private response' };
+      },
+      async httpRead() {
+        throw new Error('No body should be read');
+      },
+      async httpClose() {},
+    });
+    await assert.rejects(fetch('https://auth.openai.com/api/accounts/oauth/token'), error => {
+      assert.ok(error instanceof NetworkFailure);
+      const safe = safeAuthFailure(error, 'exchange_network').message;
+      assert.match(safe, new RegExp(`RB-AUTH-EXCHANGE-${suffix}`));
+      assert.doesNotMatch(safe, /private-code|authorization-secret|private-url|private response/);
+      return true;
+    });
+  }
+});
+
+test('native stream read failures preserve the fixed timeout reason without exposing response data', async () => {
+  const bridge = fakeBridge(200, []);
+  bridge.httpRead = async () => {
+    throw { code: 'RB_NET_TIMEOUT', message: 'private response body' };
+  };
+  const response = await createNativeFetch(bridge)('https://auth.openai.com/api/accounts/oauth/token');
+  await assert.rejects(response.text(), error => {
+    assert.ok(error instanceof NetworkFailure);
+    assert.equal(error.networkCode, 'timeout');
+    assert.doesNotMatch(error.message, /private response body/);
+    return true;
+  });
 });
 
 test('native fetch rejects a late response after cancellation, including bodyless responses', async () => {

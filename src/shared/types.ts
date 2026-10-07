@@ -95,6 +95,7 @@ export interface Account {
   model?: string;
   storageAvailable: boolean;
   message?: string;
+  device?: { appVersion: string; webviewVersion?: string };
 }
 export interface Settings {
   model: string;

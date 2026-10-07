@@ -1,4 +1,5 @@
 import type { CredentialStore, Fetch, FileStore, StartLoopback } from '../../core/platform';
+import { NetworkFailure, nativeNetworkFailure } from '../../core/network-errors';
 import { Native, fromBase64, toBase64, type ResearchNativePlugin } from './native';
 
 type Bridge = Pick<ResearchNativePlugin, 'httpOpen' | 'httpRead' | 'httpClose'>;
@@ -35,7 +36,7 @@ export function createNativeFetch(bridge: Bridge): Fetch {
     } catch (error) {
       release();
       if (signal?.aborted) throw aborted(signal);
-      throw new TypeError(error instanceof Error ? error.message : 'The network request failed.');
+      throw nativeNetworkFailure(error);
     }
     if (signal?.aborted) {
       release();
@@ -46,12 +47,12 @@ export function createNativeFetch(bridge: Bridge): Fetch {
       // Response() only accepts 200-599; HttpURLConnection reports -1 for an unreadable reply.
       release();
       close();
-      throw new TypeError(`The server sent an invalid response (status ${head.status}).`);
+      throw new NetworkFailure('response');
     }
     if (head.status >= 300 && head.status < 400 && init.redirect === 'error') {
       release();
       close();
-      throw new TypeError('The server answered with an unexpected redirect.');
+      throw new NetworkFailure('redirect');
     }
     const empty = [204, 205, 304].includes(head.status) || init.method === 'HEAD';
     let finished = false;
@@ -79,13 +80,18 @@ export function createNativeFetch(bridge: Bridge): Fetch {
               } else controller.enqueue(fromBase64(chunk.data ?? ''));
             } catch (error) {
               finish();
-              controller.error(signal?.aborted ? aborted(signal) : error);
+              controller.error(signal?.aborted ? aborted(signal) : nativeNetworkFailure(error));
             }
           },
           cancel: finish,
         });
     if (empty) finish();
-    return new Response(body, { status: head.status, statusText: head.statusText, headers: head.headers });
+    try {
+      return new Response(body, { status: head.status, statusText: head.statusText, headers: head.headers });
+    } catch {
+      finish();
+      throw new NetworkFailure('response');
+    }
   };
 }
 

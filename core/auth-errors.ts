@@ -1,3 +1,5 @@
+import { NetworkFailure } from './network-errors';
+
 /** Only these fixed messages may reach the callback page or the saved sign-in notice. */
 const messages = {
   declined: 'ChatGPT authorization was declined. Enable app access in ChatGPT Settings to continue.',
@@ -18,6 +20,15 @@ const messages = {
   credentials: 'ChatGPT returned an invalid credential response. Continue with ChatGPT again.',
   exchange_network:
     'Research Bot could not reach the ChatGPT token server. Check your connection, VPN and private DNS settings, then try again.',
+  exchange_dns: 'Android could not resolve the ChatGPT token server. Check your connection and private DNS settings.',
+  exchange_tls:
+    'Android could not verify the ChatGPT token server’s secure connection. Check automatic date and time and Android system updates.',
+  exchange_timeout: 'The ChatGPT token request timed out. Try a different connection and start a fresh sign-in.',
+  exchange_connect:
+    'Android could not connect to the ChatGPT token server. Check your connection, VPN and firewall settings.',
+  exchange_redirect:
+    'The ChatGPT token server returned an unexpected redirect. The request was stopped to protect your credentials.',
+  exchange_response: 'Android received an unusable reply from the ChatGPT token server. Report this error code.',
   identity_missing: 'ChatGPT did not return an identity token. Continue with ChatGPT again.',
   identity_keys: 'Research Bot could not load ChatGPT identity verification keys. Check your connection and try again.',
   identity_signature:
@@ -59,6 +70,18 @@ export class AuthFailure extends Error {
 
 export function safeAuthFailure(error: unknown, stage: AuthStage): AuthFailure {
   if (error instanceof AuthFailure) return error;
+  if (stage === 'exchange_network' && error instanceof NetworkFailure) {
+    const reasons = {
+      dns: 'exchange_dns',
+      tls: 'exchange_tls',
+      timeout: 'exchange_timeout',
+      connect: 'exchange_connect',
+      redirect: 'exchange_redirect',
+      response: 'exchange_response',
+      io: 'exchange_network',
+    } as const;
+    return new AuthFailure(reasons[error.networkCode]);
+  }
   return new AuthFailure(stage);
 }
 

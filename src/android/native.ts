@@ -27,7 +27,13 @@ export interface ResearchNativePlugin {
   fileRemove(options: { name: string }): Promise<void>;
   openUrl(options: { url: string }): Promise<void>;
   saveFile(options: { name: string; mimeType: string; content: string }): Promise<{ saved: boolean; path?: string }>;
-  appInfo(): Promise<{ version: string; versionCode: number; sdk: number; canInstall: boolean }>;
+  appInfo(): Promise<{
+    version: string;
+    versionCode: number;
+    sdk: number;
+    canInstall: boolean;
+    webviewVersion?: string;
+  }>;
   downloadUpdate(options: { url: string; sha256: string }): Promise<{ version: string }>;
   installUpdate(): Promise<void>;
 }

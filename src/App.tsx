@@ -372,6 +372,12 @@ function AccountSettings({
           {error}
         </p>
       )}
+      {(error || account?.message) && account?.device && (
+        <p className="help">
+          Research Bot {account.device.appVersion} · Android System WebView{' '}
+          {account.device.webviewVersion || 'unavailable'}
+        </p>
+      )}
       <div className="account-actions">
         {account?.signedIn ? (
           <button

@@ -5,7 +5,7 @@ import { describeError } from '../../core/errors';
 import { createEvidenceSearch } from '../../core/evidence';
 import { Runner } from '../../core/runner';
 import { Store } from '../../core/store';
-import type { ResearchAPI, RunEvent } from '../shared/types';
+import type { Account, ResearchAPI, RunEvent } from '../shared/types';
 import { back } from '../back';
 import { keystoreCredentials, nativeFetch, nativeFiles, nativeLoopback } from './adapters';
 import { PersistentDatabase } from './database';
@@ -32,6 +32,13 @@ const MIME = { json: 'application/json', markdown: 'text/markdown' } as const;
  */
 export function createAndroidAPI(): ResearchAPI {
   const listeners = new Set<(event: RunEvent) => void>();
+  const device = Native.appInfo()
+    .then(info => ({ appVersion: info.version, webviewVersion: info.webviewVersion }))
+    .catch(() => undefined);
+  const withDevice = async (operation: Promise<Account>): Promise<Account> => {
+    const [account, info] = await Promise.all([operation, device]);
+    return { ...account, ...(info ? { device: info } : {}) };
+  };
   const ready = (async () => {
     const db = await PersistentDatabase.open(nativeFiles, wasmUrl);
     const store = new Store(db);
@@ -106,8 +113,8 @@ export function createAndroidAPI(): ResearchAPI {
     undoNotes: call('undoNotes'),
     redoNotes: call('redoNotes'),
     exportProject: call('exportProject'),
-    account: call('account'),
-    signIn: call('signIn'),
+    account: () => withDevice(call('account')()),
+    signIn: () => withDevice(call('signIn')()),
     cancelSignIn: call('cancelSignIn'),
     signOut: call('signOut'),
     models: call('models'),

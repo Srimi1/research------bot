@@ -125,6 +125,9 @@ public class NativeAuthTransportTest {
                 // The pending state and loopback URI remain private to this test and are never logged.
                 String callbackJson = evaluate("JSON.stringify((() => { const u = new URL(window.__qaAuthorize); const r = new URL(u.searchParams.get('redirect_uri')); r.search = new URLSearchParams({state: u.searchParams.get('state'), code: 'synthetic-invalid-code', client_id: 'oaiapp_native_transport_fixture'}); return {port: Number(r.port), target: r.pathname + r.search}; })())");
                 JSONObject callback = new JSONObject((String) new org.json.JSONTokener(callbackJson).nextValue());
+                // A real callback only arrives after the browser has loaded consent, so wait until the
+                // browser actually covers the app; otherwise its late launch could land on top again.
+                waitFor("document.visibilityState === 'hidden'", 20);
                 // Raw loopback sockets keep the app's HTTPS-only outbound policy intact.
                 try (Socket socket = new Socket("127.0.0.1", callback.getInt("port"))) {
                     socket.setSoTimeout(45000);

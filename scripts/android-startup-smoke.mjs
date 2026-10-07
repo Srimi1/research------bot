@@ -211,6 +211,12 @@ try {
         adb('shell', 'am', 'force-stop', packageName);
         console.log(adb('install', '--no-streaming', '-r', resolve(apk)).trim());
         console.log('Installed the new signed APK over the previous version with the project and notes retained.');
+        // Installing an update stops the old activity. Launch the new version before checking its UI/PID.
+        coldStart();
+        await waitForTree(
+          'upgrade-restored',
+          tree => tree.includes('AndroidStartupTest') && tree.includes('What I know'),
+        );
       }
     } else {
       await waitForTree(label, tree => tree.includes('AndroidStartupTest') && tree.includes('What I know'));

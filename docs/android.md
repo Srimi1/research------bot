@@ -4,7 +4,7 @@ The Android app is the same Research Bot as the desktop app: the same interface,
 
 ## Install
 
-1. Download the [signed Research Bot 0.3.9 APK](https://github.com/Srimi1/research------bot/raw/refs/heads/main/downloads/android/research-bot-0.3.9-android.apk). It is stored in the repository's [downloads/android folder](../downloads/android/README.md).
+1. Download the [signed Research Bot 0.3.9 APK](https://github.com/Srimi1/research------bot/releases/download/v0.3.9/research-bot-0.3.9-android.apk). It is stored in the repository's [downloads/android folder](../downloads/android/README.md).
 2. Open the downloaded file. Android asks to allow installs from your browser or file manager the first time; allow it, then choose **Install**.
 3. Open **Research Bot**. Your projects are stored only on this phone.
 

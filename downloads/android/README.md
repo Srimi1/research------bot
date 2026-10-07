@@ -1,6 +1,6 @@
 # Download Research Bot for Android
 
-[**Download the signed Research Bot 0.3.9 APK**](https://github.com/Srimi1/research------bot/raw/refs/heads/main/downloads/android/research-bot-0.3.9-android.apk)
+[**Download the signed Research Bot 0.3.9 APK**](https://github.com/Srimi1/research------bot/releases/download/v0.3.9/research-bot-0.3.9-android.apk)
 
 Supports Android 8 or later and targets Android 16. Open the downloaded APK and choose **Install**. It uses the existing signing certificate from 0.3.1–0.3.8; install over your existing app to keep projects and notes.
 
@@ -26,7 +26,7 @@ sha256sum -c SHA256SUMS.txt
 
 Package: `com.researchbot.android`. Version: `0.3.9` / code `309`. Signing certificate SHA-256: `98580ca053712555a2b8a3a8fecfc15c85d83c5d192480e3b6b09ca13a633441`.
 
-Built from [202b077](https://github.com/Srimi1/research------bot/commit/202b077ef54620e10211bf268277c3cf1a253afe). All six [source CI jobs](https://github.com/Srimi1/research------bot/actions/runs/37649730288) passed, including 95 unit tests, production Android/OAuth fixtures and native Android 16 checks. Android release build/lint also passed locally. Publication requires the actual signed APK to pass fresh launch/create/save/cold-restart and an upgrade from published 0.3.8 with retained notes. [BUILD_INFO.json](BUILD_INFO.json) records public metadata and results. The signing key remains private.
+Built from [202b077](https://github.com/Srimi1/research------bot/commit/202b077ef54620e10211bf268277c3cf1a253afe). All six [source CI jobs](https://github.com/Srimi1/research------bot/actions/runs/37649730288) passed, including 95 unit tests, production Android/OAuth fixtures and native Android 16 checks. Android release build/lint also passed locally. The actual signed APK passed fresh launch/create/save/cold-restart and an upgrade from published 0.3.8 with retained notes in [Android-only release checks](https://github.com/Srimi1/research------bot/actions/runs/37653997201). All three public assets returned HTTP 200 and matched their checksums; the downloaded APK also passed certificate, package/version, SDK, alignment and disabled-debugging verification. [BUILD_INFO.json](BUILD_INFO.json) records public metadata and results. The signing key remains private.
 
 If it still fails, run **Account & preferences → Check connection**, then **Copy connection results**. Report the fresh fixed `RB-AUTH-…` error and that report. Callback URLs, authorization codes, tokens and account details must stay private.
 

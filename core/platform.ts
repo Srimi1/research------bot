@@ -28,8 +28,8 @@ export interface CallbackRequest {
   method: string;
   /** Path and query, for example `/auth/callback?code=...`. */
   url: string;
-  /** Answer with a plain-text page. Only the first answer is sent. */
-  respond(status: number, body: string): void;
+  /** Answer with a plain-text page. Async adapters resolve after writing; only the first answer is sent. */
+  respond(status: number, body: string): void | Promise<void>;
 }
 
 export interface LoopbackServer {

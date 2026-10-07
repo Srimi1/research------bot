@@ -22,14 +22,23 @@ const launch = async () => {
 };
 const notes = page => page.locator('#research-notes');
 const toast = page => page.locator('.toast');
+const macAction = (app, command) =>
+  app.evaluate(({ Menu }, id) => {
+    const item = Menu.getApplicationMenu()?.getMenuItemById(`research-${id}`);
+    if (!item) throw new Error(`Missing native research menu command: ${id}`);
+    item.click();
+  }, command);
 
 try {
   let { app, page, errors } = await launch();
-  await page.getByRole('button', { name: 'Create your first project' }).click();
+  await page.getByRole('button', { name: 'Create your first project' }).waitFor();
+  if (process.platform === 'darwin') await macAction(app, 'new-project');
+  else await page.getByRole('button', { name: 'Create your first project' }).click();
   await page.locator('#project-title').fill('Electron smoke');
   await page.getByRole('button', { name: 'Create project', exact: true }).click();
   for (const draft of ['First draft', 'Second draft']) {
     await notes(page).fill(draft);
+    if (process.platform === 'darwin') await macAction(app, 'save');
     await page.locator('.save-indicator').filter({ hasText: 'Saved' }).waitFor();
   }
   await page.getByRole('button', { name: 'Undo last saved change', exact: true }).click();
@@ -50,9 +59,30 @@ try {
   await page.getByRole('button', { name: 'Dismiss notification' }).click();
 
   // The main process answers account requests (no keychain is available under xvfb).
-  await page.getByRole('button', { name: 'Account and preferences' }).click();
+  if (process.platform === 'darwin') await macAction(app, 'preferences');
+  else await page.getByRole('button', { name: 'Account and preferences' }).click();
   await page.getByText('Account & preferences').waitFor();
   await page.getByRole('button', { name: 'Close', exact: true }).click();
+
+  if (process.platform === 'darwin') {
+    await macAction(app, 'library');
+    await page.getByRole('heading', { name: 'Your source library', exact: true }).waitFor();
+    await macAction(app, 'plan');
+    await page.getByRole('button', { name: 'Add a step', exact: true }).waitFor();
+    await page.getByRole('button', { name: 'Add a step', exact: true }).click();
+    await page.getByRole('button', { name: 'Complete: New research step', exact: true }).click();
+    await page.getByText('1 of 1 complete', { exact: true }).waitFor();
+    await macAction(app, 'workspace');
+    await notes(page).waitFor();
+    await macAction(app, 'export');
+    await page.getByRole('button', { name: 'Markdown document', exact: true }).waitFor();
+    await page.getByRole('button', { name: 'Export', exact: true }).click();
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].close());
+    assert.equal(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].isVisible()), false);
+    await app.evaluate(({ app }) => app.emit('activate'));
+    assert.equal(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].isVisible()), true);
+    assert.equal(await notes(page).inputValue(), 'Second draft');
+  }
 
   // A second launch with the same data folder must exit without opening a window.
   const second = spawn(executable, args, { env, stdio: 'ignore' });

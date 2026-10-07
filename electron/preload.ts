@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { ResearchAPI, RunEvent } from '../src/shared/types';
+import type { DesktopAction, ResearchAPI, RunEvent } from '../src/shared/types';
 import { unwrap } from './ipc-protocol';
 const invoke = async (channel: string, ...args: unknown[]) => unwrap<any>(await ipcRenderer.invoke(channel, ...args));
 const api: ResearchAPI = {
@@ -28,6 +28,11 @@ const api: ResearchAPI = {
     const listener = (_event: Electron.IpcRendererEvent, data: RunEvent) => callback(data);
     ipcRenderer.on('agents:event', listener);
     return () => ipcRenderer.removeListener('agents:event', listener);
+  },
+  onDesktopAction: callback => {
+    const listener = (_event: Electron.IpcRendererEvent, action: DesktopAction) => callback(action);
+    ipcRenderer.on('desktop:action', listener);
+    return () => ipcRenderer.removeListener('desktop:action', listener);
   },
 };
 contextBridge.exposeInMainWorld('research', api);

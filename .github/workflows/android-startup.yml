@@ -6,7 +6,7 @@ on:
       apk_version:
         description: APK version to install and launch.
         required: true
-        default: 0.3.4
+        default: 0.3.5
       apk_source:
         description: Test a published release or the signed APK committed on this ref.
         type: choice

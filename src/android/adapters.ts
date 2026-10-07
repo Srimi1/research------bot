@@ -91,36 +91,42 @@ export function createNativeFetch(bridge: Bridge): Fetch {
 
 export const nativeFetch = createNativeFetch(Native);
 
-export const nativeLoopback: StartLoopback = async handler => {
-  let serverId = '';
-  const listener = await Native.addListener('loopbackRequest', event => {
-    if (event.serverId !== serverId) return;
-    let answered = false;
-    handler({
-      method: event.method,
-      url: event.url,
-      respond(status, body) {
-        if (answered) return;
-        answered = true;
-        void Native.loopbackRespond({ requestId: event.requestId, status, body }).catch(() => undefined);
-      },
+type LoopbackBridge = Pick<ResearchNativePlugin, 'addListener' | 'loopbackStart' | 'loopbackRespond' | 'loopbackClose'>;
+
+export function createNativeLoopback(bridge: LoopbackBridge): StartLoopback {
+  return async handler => {
+    let serverId = '';
+    const listener = await bridge.addListener('loopbackRequest', event => {
+      if (event.serverId !== serverId) return;
+      let answered = false;
+      handler({
+        method: event.method,
+        url: event.url,
+        async respond(status, body) {
+          if (answered) return;
+          answered = true;
+          await bridge.loopbackRespond({ requestId: event.requestId, status, body }).catch(() => undefined);
+        },
+      });
     });
-  });
-  try {
-    const server = await Native.loopbackStart();
-    serverId = server.serverId;
-    return {
-      port: server.port,
-      close() {
-        void listener.remove();
-        void Native.loopbackClose({ serverId: server.serverId }).catch(() => undefined);
-      },
-    };
-  } catch (error) {
-    await listener.remove();
-    throw error;
-  }
-};
+    try {
+      const server = await bridge.loopbackStart();
+      serverId = server.serverId;
+      return {
+        port: server.port,
+        close() {
+          void listener.remove();
+          void bridge.loopbackClose({ serverId: server.serverId }).catch(() => undefined);
+        },
+      };
+    } catch (error) {
+      await listener.remove();
+      throw error;
+    }
+  };
+}
+
+export const nativeLoopback = createNativeLoopback(Native);
 
 /** App-private files (Context.getFilesDir()/research), replaced atomically. */
 export const nativeFiles: FileStore = {

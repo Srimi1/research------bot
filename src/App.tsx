@@ -1298,6 +1298,25 @@ export default function App() {
       document.removeEventListener('visibilitychange', hidden);
     };
   }, [persist]);
+  useEffect(
+    () =>
+      api().onDesktopAction?.(action => {
+        if (loading || (action !== 'save' && document.querySelector('[role="dialog"]'))) return;
+        if (action === 'save') void persist().catch(error => setError(errorText(error)));
+        else if (action === 'new-project') {
+          setNewProjectRole(null);
+          setCreating(true);
+        } else if (action === 'preferences') setSettingsOpen('preferences');
+        else if (detailRef.current) {
+          if (action === 'export') setExportOpen(true);
+          else {
+            setView(action);
+            setExportOpen(false);
+          }
+        }
+      }),
+    [loading, persist],
+  );
   const selectProject = async (id: string) => {
     if (id === detailRef.current?.project.id) {
       setMobileSidebar(false);

@@ -59,6 +59,8 @@ Install Playwright Chromium if needed. Android builds require Node.js 24, a full
 
 Before accepting Android readiness, test the production Android backend under the shipped CSP and install the actual APK on an Android runtime. Verify native launch, project creation, note saving and a cold restart; keep emulator evidence separate from physical-device results. Signed releases must pass the actual APK runtime test before publication.
 
+Before publishing a Mac DMG, mount the actual installer, copy its app and launch the packaged executable on the matching architecture. Check research menus, note/plan persistence, exports and Dock reopening. Record whether signing is ad hoc or Developer ID/notarized; do not imply automatic updates work in an unsigned beta. For native authentication transports, test delayed response acknowledgements and wait for replies before closing callback servers.
+
 Inspect the final diff, scan staged files for secrets, and record each command's result. Fix failed relevant checks before publishing. Explain blocked checks and remaining validation limits honestly.
 
 ## Make the result professional and reviewable

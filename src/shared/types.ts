@@ -114,6 +114,8 @@ export interface RunEvent {
   type: 'delta' | 'status';
   text: string;
 }
+export type DesktopAction =
+  'new-project' | 'preferences' | 'save' | 'export' | 'workspace' | 'library' | 'plan' | 'history';
 export interface ResearchAPI {
   listProjects(): Promise<Project[]>;
   createProject(input: { title: string; topic: string }): Promise<ProjectDetail>;
@@ -137,6 +139,8 @@ export interface ResearchAPI {
   cancelRun(runId: string): Promise<void>;
   openExternal(url: string): Promise<void>;
   onRunEvent(callback: (event: RunEvent) => void): () => void;
+  /** Native desktop menu commands; absent on Android and browser previews. */
+  onDesktopAction?(callback: (action: DesktopAction) => void): () => void;
 }
 declare global {
   interface Window {

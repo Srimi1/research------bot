@@ -9,6 +9,7 @@ import { Runner } from './runner';
 import { toResult } from './ipc';
 import { CHANNELS, createHandlers } from '../core/api';
 import { startUpdates, updateBlocker } from './updater';
+import { installMacMenu } from './menu';
 const dev = process.argv.includes('--dev');
 // Tests and portable setups can point the app at a separate data folder. Must run before the instance lock.
 if (process.env.RESEARCH_BOT_USER_DATA) app.setPath('userData', process.env.RESEARCH_BOT_USER_DATA);
@@ -25,6 +26,13 @@ let win: BrowserWindow;
 let store: Store;
 let auth: AuthService;
 let runner: Runner;
+let quitting = false;
+app.on('activate', () => {
+  if (win && !win.isDestroyed()) {
+    win.show();
+    win.focus();
+  }
+});
 function register(channel: string, handler: (...args: any[]) => unknown) {
   ipcMain.handle(channel, (event, ...args) =>
     toResult(() => {
@@ -71,6 +79,16 @@ app.whenReady().then(() => {
       sandbox: true,
     },
   });
+  if (process.platform === 'darwin') {
+    installMacMenu(win);
+    // Keep the research session available from the Dock until the researcher explicitly quits.
+    win.on('close', event => {
+      if (!quitting) {
+        event.preventDefault();
+        win.hide();
+      }
+    });
+  }
   runner = new Runner(store, auth, join(app.getAppPath(), 'agents'), event => {
     if (!win.isDestroyed()) win.webContents.send('agents:event', event);
   });
@@ -138,6 +156,7 @@ app.on('window-all-closed', () => {
   app.quit();
 });
 app.on('before-quit', () => {
+  quitting = true;
   runner?.stop();
   auth?.cancelSignIn();
 });

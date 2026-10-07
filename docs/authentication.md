@@ -18,7 +18,9 @@ Sign-in and authorization to use the ChatGPT plan are distinct. The flow does no
 - Check model/account policy before enabling web search. Use local retrieval rather than unsupported hosted file search.
 - Handle denied consent, unsupported accounts, exhausted allowance, and cancellation clearly; do not silently incur API charges.
 
-The desktop authentication flow is implemented with mocked protocol tests. Live account consent, eligibility, and inference remain unverified until the researcher signs in. The app does not copy cookies, scrape ChatGPT sessions, or reuse Codex credential files.
+The shared Android/desktop authentication flow is implemented with mocked protocol tests. Callback replies are awaited before closing the local server; Android's native bridge acknowledges them after writing to the browser socket. This avoids server cleanup replacing a completed reply with “This sign-in is no longer active.” Explicit cancellation and the five-minute timeout still end inactive attempts. See the [callback investigation](audits/2026-10-07-signin-and-macos.md).
+
+Live account consent, eligibility, and inference remain unverified until the researcher signs in. The app does not copy cookies, scrape ChatGPT sessions, or reuse Codex credential files.
 
 ## References
 

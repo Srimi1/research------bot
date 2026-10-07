@@ -265,9 +265,10 @@ public class ResearchNativePlugin extends Plugin {
         String body = call.getString("body", "");
         executor.execute(() -> {
             respond(requestId, status, body);
+            // Acknowledge only after the socket write: JS closes the server after this resolves.
+            call.resolve();
             if (status == 200) returnToApp();
         });
-        call.resolve();
     }
 
     /** After a successful sign-in, close the browser tab by bringing the app back on top of it. */

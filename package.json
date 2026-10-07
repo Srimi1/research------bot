@@ -1,6 +1,6 @@
 {
   "name": "research-bot",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "private": true,
   "license": "MIT",
   "repository": {
@@ -120,8 +120,26 @@
     },
     "mac": {
       "icon": "build/icon.icns",
+      "category": "public.app-category.education",
+      "identity": "-",
+      "hardenedRuntime": false,
       "target": [
         "dmg"
+      ]
+    },
+    "dmg": {
+      "title": "Research Bot ${version}",
+      "contents": [
+        {
+          "x": 150,
+          "y": 180
+        },
+        {
+          "x": 430,
+          "y": 180,
+          "type": "link",
+          "path": "/Applications"
+        }
       ]
     },
     "nsis": {

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.5 — 2026-10-07
+
+- Fixed Android sign-in replies racing callback-server cleanup, which could show “This sign-in is no longer active” instead of the completed response.
+- Added an asynchronous callback regression for successful and rejected sign-ins.
+- Added Apple Silicon and Intel Mac DMG releases with installed-app runtime checks and checksums.
+- Added native Mac research menus, Command-key shortcuts, interface zoom and Dock reopening.
+- Documented Mac installation, research workflows, local data, manual updates and signing limitations.
+
 ## 0.3.4 — 2026-10-07
 
 - Fixed Android SQLite initialization being blocked by the shipped content security policy. WebAssembly is allowed; JavaScript eval stays blocked.

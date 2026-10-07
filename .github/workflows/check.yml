@@ -25,7 +25,7 @@ jobs:
       - run: xvfb-run -a npm run test:electron
 
   # Builds what a release ships (unsigned, publishes nothing): the AppImage and NSIS installer
-  # with their auto-update manifests, plus an unpacked macOS app. Catches packaging and
+  # with their auto-update manifests, plus installed Apple Silicon and Intel DMGs. Catches packaging and
   # update-manifest breakage before a release is tagged.
   package:
     strategy:
@@ -38,8 +38,12 @@ jobs:
           - os: windows-latest
             target: --win nsis
             manifest: latest.yml
-          - os: macos-latest
-            target: --mac --dir
+          - os: macos-15
+            target: --mac dmg --arm64
+            mac_arch: arm64
+          - os: macos-15-intel
+            target: --mac dmg --x64
+            mac_arch: x64
     runs-on: ${{ matrix.os }}
     env:
       CSC_IDENTITY_AUTO_DISCOVERY: false
@@ -56,6 +60,11 @@ jobs:
       - run: npm run test:toolchain
       - run: npm run build
       - run: npx electron-builder ${{ matrix.target }} --publish never
+      - name: Install and test the actual Mac DMG
+        if: matrix.mac_arch
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          node scripts/macos-dmg-smoke.mjs "release/research-bot-$version-mac-${{ matrix.mac_arch }}.dmg"
       - name: Check the update manifest names a built file
         if: matrix.manifest
         run: |

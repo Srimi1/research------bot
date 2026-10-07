@@ -7,7 +7,12 @@ import { createCipheriv, createDecipheriv, randomBytes, createHash } from 'node:
 import { get } from 'node:http';
 import { exportJWK, generateKeyPair, SignJWT } from 'jose';
 import { MockAgent, getGlobalDispatcher, setGlobalDispatcher } from 'undici';
-import { AuthService } from '../electron/auth';
+import { AuthService, directoryFiles, nodeLoopback } from '../electron/auth';
+import { AuthService as CoreAuthService } from '../core/auth';
+import { fetchNetwork } from '../electron/network';
+import { createNativeLoopback } from '../src/android/adapters';
+import type { CallbackRequest, LoopbackServer } from '../core/platform';
+import type { ResearchNativePlugin } from '../src/android/native';
 
 const issuer = 'https://auth.openai.com';
 const clientId = 'oaiapp_research_test';
@@ -29,7 +34,7 @@ function callback(url: URL): Promise<{ status: number; body: string }> {
     }).on('error', reject);
   });
 }
-async function fixture() {
+async function fixture(deferredResponse = false) {
   const directory = await mkdtemp(join(tmpdir(), 'research-bot-auth-'));
   const original = getGlobalDispatcher();
   const agent = new MockAgent();
@@ -78,6 +83,8 @@ async function fixture() {
   };
   const authorizations: URL[] = [];
   const exchanges: URLSearchParams[] = [];
+  let callbackReply: Promise<{ status: number; body: string }> | undefined;
+  const responseOrder: string[] = [];
   const openBrowser = async (url: string) => {
     const authorize = new URL(url);
     authorizations.push(authorize);
@@ -124,9 +131,49 @@ async function fixture() {
       invalid.searchParams.set('state', 'incorrect');
       assert.equal((await callback(invalid)).status, 400);
     }
-    await callback(redirect);
+    if (deferredResponse) {
+      callbackReply = callback(redirect);
+      void callbackReply.catch(() => undefined);
+    } else await callback(redirect);
   };
-  const auth = new AuthService(directory, openBrowser, credentialStore);
+  const auth = deferredResponse
+    ? new CoreAuthService({
+        fetch: fetchNetwork,
+        files: directoryFiles(directory),
+        openBrowser,
+        credentials: credentialStore,
+        startLoopback: (() => {
+          let listener: Parameters<ResearchNativePlugin['addListener']>[1];
+          let server: LoopbackServer;
+          const requests = new Map<string, CallbackRequest>();
+          return createNativeLoopback({
+            async addListener(_event, callback) {
+              listener = callback;
+              return { remove: async () => {} };
+            },
+            async loopbackStart() {
+              server = await nodeLoopback(request => {
+                const requestId = crypto.randomUUID();
+                requests.set(requestId, request);
+                listener({ serverId: 'native-test', requestId, method: request.method, url: request.url });
+              });
+              return { serverId: 'native-test', port: server.port };
+            },
+            async loopbackRespond({ requestId, status, body }) {
+              // Native acknowledgements arrive after the worker has written the browser reply.
+              await new Promise(resolve => setTimeout(resolve, 20));
+              responseOrder.push('respond');
+              requests.get(requestId)!.respond(status, body);
+              requests.delete(requestId);
+            },
+            async loopbackClose() {
+              responseOrder.push('close');
+              server.close();
+            },
+          });
+        })(),
+      })
+    : new AuthService(directory, openBrowser, credentialStore);
   return {
     auth,
     agent,
@@ -137,6 +184,10 @@ async function fixture() {
     credentialStore,
     authorizations,
     exchanges,
+    responseOrder,
+    get callbackReply() {
+      return callbackReply;
+    },
     get jwksCalls() {
       return jwksCalls;
     },
@@ -148,6 +199,23 @@ async function fixture() {
     },
   };
 }
+
+test('asynchronous native callback replies finish before the sign-in server closes', async () => {
+  for (const declined of [false, true]) {
+    const f = await fixture(true);
+    try {
+      if (declined) f.state.nonceOverride = 'invalid-nonce';
+      if (declined) await assert.rejects(f.auth.signIn(), /identity verification failed/);
+      else assert.equal((await f.auth.signIn()).signedIn, true);
+      assert.deepEqual(f.responseOrder, ['respond', 'close']);
+      const reply = await f.callbackReply!;
+      assert.equal(reply.status, declined ? 400 : 200);
+      assert.match(reply.body, declined ? /sign-in did not complete/ : /ChatGPT is connected/);
+    } finally {
+      await f.close();
+    }
+  }
+});
 
 test('dynamic registration uses PKCE, exact loopback URI and verified identity; credentials stay encrypted', async () => {
   const f = await fixture();

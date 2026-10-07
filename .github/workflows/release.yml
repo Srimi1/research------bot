@@ -11,9 +11,9 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Release tag, for example v0.3.4. Must match the version in package.json.
+        description: Release tag, for example v0.3.5. Must match the version in package.json.
         required: true
-        default: v0.3.4
+        default: v0.3.5
       android_source:
         description: Build with signing secrets, or verify the signed APK committed in downloads/android.
         type: choice
@@ -138,6 +138,43 @@ jobs:
       - name: Upload release files
         run: gh release upload "$RESEARCH_RELEASE_TAG" upload/* --repo "$GITHUB_REPOSITORY" --clobber
 
+  mac:
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            arch: arm64
+          - os: macos-15-intel
+            arch: x64
+    runs-on: ${{ matrix.os }}
+    env:
+      RESEARCH_RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      GH_TOKEN: ${{ github.token }}
+      CSC_IDENTITY_AUTO_DISCOVERY: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Build the Mac installer
+        run: npx electron-builder --mac dmg --${{ matrix.arch }} --publish never
+      - name: Install and test the actual DMG
+        run: node scripts/macos-dmg-smoke.mjs "release/research-bot-${RESEARCH_RELEASE_TAG#v}-mac-${{ matrix.arch }}.dmg"
+      - name: Collect checksums and upload
+        run: |
+          mkdir upload
+          cp release/research-bot-*-mac-${{ matrix.arch }}.dmg upload/
+          cd upload
+          shasum -a 256 research-bot-*.dmg > SHA256SUMS-mac-${{ matrix.arch }}.txt
+          gh release upload "$RESEARCH_RELEASE_TAG" ./* --repo "$GITHUB_REPOSITORY" --clobber
+
   android:
     needs: prepare
     runs-on: ubuntu-latest
@@ -253,7 +290,7 @@ jobs:
         run: rm -f "$RUNNER_TEMP/release.jks"
 
   publish:
-    needs: [build, android]
+    needs: [build, mac, android]
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     env:

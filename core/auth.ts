@@ -428,11 +428,16 @@ export class AuthService {
           this.recoveryClientId = undefined;
           this.loadMessage = undefined;
           this.signOutMessage = undefined;
-          request.respond(200, 'ChatGPT is connected. You can close this tab and return to Research Bot.');
+          // The native bridge queues the socket write. Wait before finally closes its server,
+          // otherwise closeServer can replace this reply with "sign-in is no longer active".
+          await request.respond(200, 'ChatGPT is connected. You can close this tab and return to Research Bot.');
           finish();
         } catch (error) {
-          request.respond(400, 'ChatGPT sign-in did not complete. Return to Research Bot to try again.');
-          reject(error instanceof Error ? error : new Error('ChatGPT sign-in failed.'));
+          try {
+            await request.respond(400, 'ChatGPT sign-in did not complete. Return to Research Bot to try again.');
+          } finally {
+            reject(error instanceof Error ? error : new Error('ChatGPT sign-in failed.'));
+          }
         }
       })().catch(() => {
         request.respond(400, 'Invalid callback.');

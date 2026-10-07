@@ -286,8 +286,7 @@ test('Android answers the browser and returns to the app before exchanging the c
 test('Android keeps sign-in alive while the browser is in front and always releases it', async () => {
   for (const outcome of ['success', 'rejected', 'cancelled', 'unavailable'] as const) {
     const events: string[] = [];
-    let f!: Awaited<ReturnType<typeof fixture>>;
-    f = await fixture(
+    const f: Awaited<ReturnType<typeof fixture>> = await fixture(
       true,
       async () => {
         events.push(`foreground:${f.exchanges.length}`);

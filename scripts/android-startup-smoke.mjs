@@ -18,6 +18,18 @@ const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 let uiDriver;
 let treeRequest;
 
+function logcat(...args) {
+  // Android 16 can close a logcat dump with status 255 after returning partial output.
+  // Retry this read-only capture, but still fail if no complete dump is available.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      return adb('logcat', ...args, '-d');
+    } catch (error) {
+      if (error.status !== 255 || attempt === 2) throw error;
+    }
+  }
+}
+
 function readHierarchy() {
   if (!uiDriver) {
     uiDriver = spawn(process.env.RESEARCH_UIAUTOMATOR_PYTHON || 'python3', ['scripts/android-ui-tree.py'], {
@@ -56,8 +68,8 @@ function readHierarchy() {
 }
 
 function capture(label) {
-  const log = adb('logcat', '-d');
-  const crash = adb('logcat', '-b', 'crash', '-d');
+  const log = logcat();
+  const crash = logcat('-b', 'crash');
   writeFileSync(`${output}/${label}-logcat.txt`, log);
   writeFileSync(`${output}/${label}-crash.txt`, crash);
   writeFileSync(
@@ -93,7 +105,7 @@ async function treeFor(label) {
 async function waitForTree(label, expected) {
   for (let attempt = 0; attempt < 20; attempt++) {
     await pause(1_000);
-    const crash = adb('logcat', '-b', 'crash', '-d');
+    const crash = logcat('-b', 'crash');
     assert.ok(!crash.includes(`Process: ${packageName}`), `Native startup crash:\n${crash}`);
     if (attempt % 3 !== 0) continue;
     const tree = await treeFor(label);
@@ -162,10 +174,17 @@ async function tapNode(label, predicate) {
 
 const named = text => node => node.text === text || node['content-desc'] === text;
 
-function coldStart() {
-  const crash = adb('logcat', '-b', 'crash', '-d');
+async function coldStart() {
+  const crash = logcat('-b', 'crash');
   assert.ok(!crash.includes(`Process: ${packageName}`), `Native startup crash:\n${crash}`);
   adb('shell', 'am', 'force-stop', packageName);
+  adb('shell', 'input', 'keyevent', '3');
+  // Make the persistent accessibility connection observe another window first. Otherwise
+  // a cached tree from the stopped WebView can falsely satisfy the restored-project check.
+  await waitForTree(
+    'between-launches',
+    tree => /package="[^"]*launcher[^"]*"/.test(tree) && !tree.includes(`package="${packageName}"`),
+  );
   adb('logcat', '-c');
   console.log(adb('shell', 'am', 'start', '-W', '-n', `${packageName}/.MainActivity`).trim());
 }
@@ -179,7 +198,7 @@ try {
   adb('shell', 'svc', 'power', 'stayon', 'true');
   for (let launch = 1; launch <= 2; launch++) {
     const label = `launch-${launch}`;
-    coldStart();
+    await coldStart();
     if (launch === 1) {
       await waitForTree(label, tree => tree.includes('Create your first project'));
       await tapNode('start-project', named('Create your first project'));
@@ -200,7 +219,7 @@ try {
       await pause(3_000);
       capture('project-submitted');
       assert.ok(adb('shell', 'pidof', packageName).trim(), 'The app must stay running while creating the project');
-      coldStart();
+      await coldStart();
       await waitForTree(
         'project-created',
         tree => tree.includes('AndroidStartupTest') && tree.includes('Your research notes'),
@@ -212,7 +231,7 @@ try {
         console.log(adb('install', '--no-streaming', '-r', resolve(apk)).trim());
         console.log('Installed the new signed APK over the previous version with the project and notes retained.');
         // Installing an update stops the old activity. Launch the new version before checking its UI/PID.
-        coldStart();
+        await coldStart();
         await waitForTree(
           'upgrade-restored',
           tree => tree.includes('AndroidStartupTest') && tree.includes('What I know'),

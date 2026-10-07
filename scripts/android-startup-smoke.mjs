@@ -10,7 +10,8 @@ const packageName = 'com.researchbot.android';
 const output = resolve('android-startup-results');
 mkdirSync(output, { recursive: true });
 const serialArgs = process.env.ANDROID_SERIAL ? ['-s', process.env.ANDROID_SERIAL] : [];
-const adb = (...args) => execFileSync('adb', [...serialArgs, ...args], { encoding: 'utf8', timeout: 60_000 });
+const adb = (...args) =>
+  execFileSync('adb', [...serialArgs, ...args], { encoding: 'utf8', timeout: 60_000, maxBuffer: 16 * 1024 * 1024 });
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 function capture(label) {
@@ -28,6 +29,10 @@ function capture(label) {
 try {
   console.log(adb('shell', 'getprop', 'ro.build.version.release').trim());
   console.log(adb('install', '--no-streaming', '-r', resolve(apk)).trim());
+  adb('shell', 'input', 'keyevent', '224');
+  adb('shell', 'wm', 'dismiss-keyguard');
+  adb('shell', 'settings', 'put', 'system', 'screen_off_timeout', '1800000');
+  adb('shell', 'svc', 'power', 'stayon', 'true');
   for (let launch = 1; launch <= 2; launch++) {
     const label = `launch-${launch}`;
     adb('shell', 'am', 'force-stop', packageName);

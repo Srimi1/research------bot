@@ -11,6 +11,8 @@ import { keystoreCredentials, nativeFetch, nativeFiles, nativeLoopback } from '.
 import { PersistentDatabase } from './database';
 import wasmUrl from 'sql.js/dist/sql-wasm.wasm?url';
 import { Native } from './native';
+import { readDeviceInfo } from './device';
+import { createConnectionCheck } from './diagnostics';
 import { startAndroidUpdates } from './updater';
 import shared from '../../agents/shared.md?raw';
 import grammar from '../../agents/grammar-editor.md?raw';
@@ -32,12 +34,10 @@ const MIME = { json: 'application/json', markdown: 'text/markdown' } as const;
  */
 export function createAndroidAPI(): ResearchAPI {
   const listeners = new Set<(event: RunEvent) => void>();
-  const device = Native.appInfo()
-    .then(info => ({ appVersion: info.version, webviewVersion: info.webviewVersion }))
-    .catch(() => undefined);
+  const device = readDeviceInfo(() => Native.appInfo(), navigator.userAgent);
   const withDevice = async (operation: Promise<Account>): Promise<Account> => {
     const [account, info] = await Promise.all([operation, device]);
-    return { ...account, ...(info ? { device: info } : {}) };
+    return { ...account, device: info };
   };
   const ready = (async () => {
     const db = await PersistentDatabase.open(nativeFiles, wasmUrl);
@@ -115,6 +115,7 @@ export function createAndroidAPI(): ResearchAPI {
     exportProject: call('exportProject'),
     account: () => withDevice(call('account')()),
     signIn: () => withDevice(call('signIn')()),
+    checkSignInConnection: createConnectionCheck(nativeFetch, Native, device),
     cancelSignIn: call('cancelSignIn'),
     signOut: call('signOut'),
     models: call('models'),

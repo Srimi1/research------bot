@@ -7,14 +7,19 @@ import {
   constantEqual,
   combineSignals,
   randomSecret,
+  randomId,
   readLimited,
   sha256Base64url,
+  timeoutSignal,
   type Fetch,
   type FileStore,
 } from '../core/platform';
 import { createNativeFetch } from '../src/android/adapters';
 import { NetworkFailure } from '../core/network-errors';
 import { safeAuthFailure } from '../core/auth-errors';
+import { readDeviceInfo } from '../src/android/device';
+import { createConnectionCheck } from '../src/android/diagnostics';
+import { version } from '../package.json';
 import { PersistentDatabase, RETRY_DELAY_MS, SAVE_DELAY_MS } from '../src/android/database';
 import { checksumFor, findUpdate, newer } from '../src/android/releases';
 import type { Run, Source } from '../src/shared/types';
@@ -175,6 +180,63 @@ test('signal composition preserves cancellation before and after startup without
   } finally {
     Object.defineProperty(AbortSignal, 'any', original);
   }
+});
+
+test('secure UUIDs remain usable without the WebView UUID convenience API', () => {
+  const descriptor = Object.getOwnPropertyDescriptor(crypto, 'randomUUID');
+  Object.defineProperty(crypto, 'randomUUID', { value: undefined, configurable: true });
+  try {
+    const first = randomId();
+    const second = randomId();
+    assert.match(first, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    assert.match(second, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    assert.notEqual(first, second);
+  } finally {
+    if (descriptor) Object.defineProperty(crypto, 'randomUUID', descriptor);
+    else delete (crypto as Partial<Crypto>).randomUUID;
+  }
+});
+
+test('deadlines still abort with a timeout reason without AbortSignal.timeout', async () => {
+  const descriptor = Object.getOwnPropertyDescriptor(AbortSignal, 'timeout')!;
+  Object.defineProperty(AbortSignal, 'timeout', { value: undefined, configurable: true });
+  try {
+    const signal = timeoutSignal(1);
+    assert.equal(signal.aborted, false);
+    await new Promise(resolve => setTimeout(resolve, 15));
+    assert.equal(signal.aborted, true);
+    assert.equal(signal.reason.name, 'TimeoutError');
+    assert.throws(() => timeoutSignal(-1), RangeError);
+  } finally {
+    Object.defineProperty(AbortSignal, 'timeout', descriptor);
+  }
+});
+
+test('a failed optional Android query preserves the bundled version and safe WebView fallback', async () => {
+  const device = await readDeviceInfo(async () => {
+    throw new Error('private-token private-account private-platform-message');
+  }, 'Chrome/102.0.5005.125 private-device-text');
+  assert.equal(device.appVersion, version);
+  assert.equal(device.webviewVersion, '102.0.5005.125');
+  assert.doesNotMatch(JSON.stringify(device), /private-|token|account/);
+  const invalid = await readDeviceInfo(
+    async () => ({
+      version: 'private-platform-message',
+      versionCode: 307,
+      sdk: 36,
+      canInstall: false,
+      webviewVersion: 'private-token',
+    }),
+    'Chrome/103.0.0.0',
+  );
+  assert.equal(invalid.webviewVersion, '103.0.0.0');
+  assert.equal(invalid.nativeVersion, undefined);
+});
+
+test('an unanswered optional Android query does not block account results', { timeout: 1000 }, async () => {
+  const device = await readDeviceInfo(() => new Promise(() => {}), '', 1);
+  assert.equal(device.appVersion, version);
+  assert.equal(device.webviewVersion, 'unavailable');
 });
 
 test('update versions and checksums are compared exactly', () => {
@@ -405,4 +467,94 @@ test('Android saves happen after a pause in changes and retry after a failed wri
   assert.equal(disk.writes(), 1);
   db.close();
   assert.equal(new Store(await PersistentDatabase.open(disk.store)).listProjects()[0].title, 'Kept');
+});
+
+test('the optional connection check separates native HTTPS from the adapter without account credentials', async () => {
+  const requests: { url: string; init: RequestInit }[] = [];
+  const closed: string[] = [];
+  const check = createConnectionCheck(
+    async (input, init = {}) => {
+      requests.push({ url: String(input), init });
+      return new Response('private response contents', { status: init.method === 'POST' ? 400 : 200 });
+    },
+    {
+      async httpOpen(options) {
+        assert.equal(options.url, 'https://auth.openai.com/.well-known/openid-configuration');
+        assert.deepEqual(options.headers, {});
+        assert.equal(options.body, undefined);
+        return { status: 200, statusText: '', headers: {} };
+      },
+      async httpClose({ id }) {
+        closed.push(id);
+      },
+    },
+    Promise.resolve({ appVersion: version, nativeVersion: version, webviewVersion: '115.0.0.0' }),
+  );
+  const result = await check(new AbortController().signal);
+  assert.deepEqual(
+    result.checks.map(item => item.result),
+    ['HTTP 200', 'HTTP 200', 'HTTP 200', 'HTTP 400'],
+  );
+  assert.equal(closed.length, 1);
+  assert.equal(requests.length, 3);
+  for (const request of requests) {
+    assert.equal(new URL(request.url).origin, 'https://auth.openai.com');
+    assert.equal(new Headers(request.init.headers).has('Authorization'), false);
+    assert.equal(new Headers(request.init.headers).has('Cookie'), false);
+    assert.equal(request.init.redirect, 'error');
+  }
+  const dummy = new URLSearchParams(String(requests.find(request => request.init.method === 'POST')!.init.body));
+  assert.equal(dummy.get('code'), 'synthetic-invalid-code');
+  assert.equal(dummy.get('client_id'), 'oaiapp_research_connectivity_check');
+  assert.doesNotMatch(JSON.stringify(result), /private response|synthetic-invalid|auth.openai.com|127.0.0.1/);
+});
+
+test('connection checks redact native, JavaScript and response-read failures into fixed codes', async () => {
+  const check = createConnectionCheck(
+    async input => {
+      if (String(input).includes('openid')) throw new Error('private URL authorization code');
+      if (String(input).includes('jwks'))
+        return new Response(
+          new ReadableStream({
+            start(controller) {
+              controller.error(new NetworkFailure('timeout'));
+            },
+          }),
+        );
+      return new Response('upstream details', { status: 403 });
+    },
+    {
+      async httpOpen() {
+        throw { code: 'RB_NET_TLS', message: 'private certificate credentials' };
+      },
+      async httpClose() {},
+    },
+    Promise.resolve({ appVersion: version }),
+  );
+  const result = await check(new AbortController().signal);
+  assert.deepEqual(
+    result.checks.map(item => item.result),
+    ['RB-NET-TLS', 'RB-NET-IO', 'RB-NET-TIMEOUT', 'HTTP 403'],
+  );
+  assert.doesNotMatch(JSON.stringify(result), /private|credentials|authorization|upstream/);
+});
+
+test('cancelling a connection check closes native HTTPS and bounds a nonresponsive bridge', async () => {
+  let closes = 0;
+  const check = createConnectionCheck(
+    () => new Promise<Response>(() => {}),
+    {
+      httpOpen: () => new Promise(() => {}),
+      async httpClose() {
+        closes++;
+      },
+    },
+    Promise.resolve({ appVersion: version }),
+  );
+  const controller = new AbortController();
+  const pending = check(controller.signal);
+  controller.abort(new Error('private cancellation reason'));
+  await assert.rejects(pending, { name: 'AbortError', message: 'Connection check cancelled.' });
+  assert.ok(closes >= 1);
+  await assert.rejects(check(controller.signal), { name: 'AbortError' });
 });

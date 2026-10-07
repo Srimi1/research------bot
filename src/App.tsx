@@ -10,6 +10,7 @@ import {
   ChevronDown,
   ChevronRight,
   CircleHelp,
+  Copy,
   Download,
   ExternalLink,
   FileText,
@@ -30,6 +31,7 @@ import {
 } from 'lucide-react';
 import type {
   Account,
+  ConnectionDiagnostics,
   AgentResult,
   GrammarEdit,
   GrammarResult,
@@ -46,6 +48,8 @@ import { onBack } from './back';
 import { buildAgentInput } from './shared/agent-input';
 import { MAX_NOTES, MAX_QUESTION } from './shared/limits';
 import { ProjectOverview, WelcomeArtwork } from './MobileEnhancements';
+import { randomId } from '../core/platform';
+import { version as appVersion } from '../package.json';
 
 const api = () => window.research;
 const roles: { id: Role; title: string; label: string; description: string; icon: typeof BookOpen; action: string }[] =
@@ -95,7 +99,7 @@ const errorText = (error: unknown) =>
   error instanceof Error ? error.message : 'Something went wrong. Please try again.';
 const date = (value: string) =>
   new Date(value).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-const uid = () => crypto.randomUUID();
+const uid = randomId;
 
 function Modal({
   title,
@@ -273,6 +277,10 @@ function AccountSettings({
   const [signing, setSigning] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [checkingConnection, setCheckingConnection] = useState(false);
+  const [connection, setConnection] = useState<ConnectionDiagnostics | null>(null);
+  const connectionController = useRef<AbortController | null>(null);
+  useEffect(() => () => connectionController.current?.abort(), []);
   useEffect(() => {
     let mounted = true;
     Promise.allSettled([
@@ -296,6 +304,7 @@ function AccountSettings({
   }, [account?.signedIn]);
   const signIn = async () => {
     setSigning(true);
+    setConnection(null);
     setError('');
     setMessage('Your browser will open for ChatGPT sign-in.');
     try {
@@ -361,7 +370,17 @@ function AccountSettings({
         </div>
         {account?.signedIn && <span className="tag green">Connected</span>}
       </div>
-      {account?.message && account.message !== error && <p className="callout">{account.message}</p>}
+      {!signing && account?.message && account.message !== error && (
+        <p className="callout">
+          {account.message.includes('[RB-AUTH-') && (
+            <>
+              <strong>Previous sign-in attempt</strong>
+              <br />
+            </>
+          )}
+          {account.message}
+        </p>
+      )}
       {message && (
         <p className="muted" role="status">
           {message}
@@ -372,17 +391,19 @@ function AccountSettings({
           {error}
         </p>
       )}
-      {(error || account?.message) && account?.device && (
+      {platform === 'android' && (
         <p className="help">
-          Research Bot {account.device.appVersion} · Android System WebView{' '}
-          {account.device.webviewVersion || 'unavailable'}
+          Research Bot {appVersion} · Android System WebView {account?.device?.webviewVersion || 'unavailable'}
+          {account?.device?.nativeVersion && account.device.nativeVersion !== appVersion && (
+            <> · Installed APK {account.device.nativeVersion}</>
+          )}
         </p>
       )}
       <div className="account-actions">
         {account?.signedIn ? (
           <button
             className="button secondary"
-            disabled={busy}
+            disabled={busy || checkingConnection}
             onClick={async () => {
               setBusy(true);
               setError('');
@@ -414,7 +435,7 @@ function AccountSettings({
             Cancel sign-in
           </button>
         ) : (
-          <button className="button primary" onClick={signIn} disabled={isBrowserPreview}>
+          <button className="button primary" onClick={signIn} disabled={isBrowserPreview || checkingConnection}>
             <Sparkles size={16} />
             Continue with ChatGPT
           </button>
@@ -425,7 +446,68 @@ function AccountSettings({
             Waiting for sign-in…
           </span>
         )}
+        {platform === 'android' && (
+          <button
+            className="button secondary"
+            disabled={busy || signing || checkingConnection}
+            onClick={async () => {
+              const check = api().checkSignInConnection;
+              if (!check) return;
+              const controller = new AbortController();
+              connectionController.current = controller;
+              setCheckingConnection(true);
+              setConnection(null);
+              setMessage('');
+              try {
+                const result = await check(controller.signal);
+                if (!controller.signal.aborted) setConnection(result);
+              } catch {
+                if (!controller.signal.aborted) setError('The connection check could not complete. Try again.');
+              } finally {
+                if (!controller.signal.aborted) setCheckingConnection(false);
+              }
+            }}
+          >
+            {checkingConnection ? <LoaderCircle className="spin" size={16} /> : <CircleHelp size={16} />}
+            {checkingConnection ? 'Checking connection…' : 'Check connection'}
+          </button>
+        )}
       </div>
+      {connection && (
+        <div className="callout" role="status">
+          <strong>Sign-in connection check</strong>
+          <p className="help">
+            Uses public endpoints and a dummy token request. No account credentials are sent. An HTTP 4xx reply to the
+            dummy request means the token server is reachable.
+          </p>
+          <ul>
+            {connection.checks.map(check => (
+              <li key={check.service}>
+                {check.service}: {check.result}
+              </li>
+            ))}
+          </ul>
+          <p className="help">
+            WebView support: signal composition {connection.features.signalAny ? 'built in' : 'fallback'}, request
+            timeout {connection.features.signalTimeout ? 'built in' : 'fallback'}, secure IDs{' '}
+            {connection.features.randomUuid ? 'built in' : 'fallback'}.
+          </p>
+          <button
+            className="button secondary"
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(JSON.stringify(connection, null, 2));
+                setMessage('Connection results copied. They contain no account credentials.');
+              } catch {
+                setMessage('Copy is unavailable. You can report the result codes shown here.');
+              }
+            }}
+          >
+            <Copy size={16} />
+            Copy connection results
+          </button>
+        </div>
+      )}
       <div className="divider" />
       <h3>Agent preferences</h3>
       {settings && (

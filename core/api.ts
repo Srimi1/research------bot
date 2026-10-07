@@ -55,7 +55,7 @@ export interface ApiHost {
 }
 
 /** Every request the interface can make, validated the same way on every platform. */
-export type Handlers = Omit<ResearchAPI, 'onRunEvent' | 'onDesktopAction'>;
+export type Handlers = Omit<ResearchAPI, 'onRunEvent' | 'onDesktopAction' | 'checkSignInConnection'>;
 
 export function createHandlers({ store, auth, runner, saveFile, openUrl }: ApiHost): Handlers {
   return {

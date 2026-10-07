@@ -1,10 +1,9 @@
-import type { SqlDatabase, SqlValue } from './platform';
+import { randomId as randomUUID, type SqlDatabase, type SqlValue } from './platform';
 import type { EvidenceResult, PlanStep, Project, ProjectDetail, Run, Settings, Source } from '../src/shared/types';
 import { MAX_NOTES, MAX_QUESTION } from '../src/shared/limits';
 import { canonicalSourceUrl, normalizeDoi } from '../src/shared/source-keys';
 
 type Row = Record<string, SqlValue>;
-const randomUUID = () => crypto.randomUUID();
 const DEFAULT_SETTINGS: Settings = { model: '', maxRequests: 20, autoUpdate: true };
 const SCHEMA_VERSION = 2;
 /** Autosave writes a revision after most pauses, so history is bounded per project. */

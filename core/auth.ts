@@ -6,7 +6,9 @@ import {
   combineSignals,
   constantEqual,
   randomSecret,
+  randomId,
   readLimited,
+  timeoutSignal,
   requestJson,
   sha256Base64url,
   type CredentialStore,
@@ -140,7 +142,7 @@ export class AuthService {
           throw new Error('Research Bot’s host identity could not be read.');
         }
         if (!host) {
-          this.hostId = `urn:uuid:${crypto.randomUUID()}`;
+          this.hostId = `urn:uuid:${randomId()}`;
           await this.files.write('host.json', new TextEncoder().encode(JSON.stringify({ id: this.hostId })));
         }
         // Keep only allowlisted diagnostics and the public issued client ID here; never tokens or URLs.
@@ -290,7 +292,7 @@ export class AuthService {
   }
 
   private async tokenRequest(body: URLSearchParams, signal: AbortSignal): Promise<TokenResponse> {
-    const deadline = combineSignals([signal, AbortSignal.timeout(30_000)]);
+    const deadline = combineSignals([signal, timeoutSignal(30_000)]);
     let response: Response;
     try {
       response = await this.fetch(TOKEN, {
@@ -596,7 +598,7 @@ export class AuthService {
         const response = await this.fetch(metadata.revocation_endpoint, {
           method: 'POST',
           redirect: 'error',
-          signal: AbortSignal.timeout(10_000),
+          signal: timeoutSignal(10_000),
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
           body: new URLSearchParams({
             token: registration.refreshToken,
@@ -720,7 +722,7 @@ export class AuthService {
   }
 
   async models(): Promise<string[]> {
-    const response = await this.authorized(`${RESOURCE}/models`, { signal: AbortSignal.timeout(30_000) });
+    const response = await this.authorized(`${RESOURCE}/models`, { signal: timeoutSignal(30_000) });
     const value = JSON.parse(await readLimited(response, 2_000_000)) as {
       models?: { visibility?: string; slug?: string }[];
     };
@@ -739,7 +741,7 @@ export class AuthService {
   ): Promise<{ text: string; usage?: { input: number; output: number } }> {
     const response = await this.authorized(`${RESOURCE}/responses`, {
       method: 'POST',
-      signal: combineSignals([signal, AbortSignal.timeout(5 * 60_000)]),
+      signal: combineSignals([signal, timeoutSignal(5 * 60_000)]),
       headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
       body: JSON.stringify({
         model,

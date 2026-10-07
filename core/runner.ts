@@ -3,8 +3,7 @@ import type { AgentResult, GrammarResult, Run, RunEvent, RunRequest } from '../s
 import type { Store } from './store';
 import type { AuthService } from './auth';
 import type { EvidenceSearch } from './evidence';
-
-const randomUUID = () => crypto.randomUUID();
+import { randomId as randomUUID } from './platform';
 
 /** The agent instruction files in agents/, by file name (for example `shared.md`). */
 export type AgentInstructions = (file: string) => string;

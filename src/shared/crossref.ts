@@ -1,5 +1,6 @@
 import type { EvidenceResult, Source } from './types';
 import { normalizeDoi } from './source-keys';
+import { randomId } from '../../core/platform';
 
 /** Crossref request and parsing shared by the desktop search and the browser preview. */
 export function crossrefSearchUrl(query: string): URL {
@@ -98,7 +99,7 @@ export function parseCrossref(payload: unknown, query: string, retrievedAt = new
           ? 'article'
           : 'document';
     sources.push({
-      id: crypto.randomUUID(),
+      id: randomId(),
       title,
       authors,
       year: publishedYear(work),

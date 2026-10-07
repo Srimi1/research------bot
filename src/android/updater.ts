@@ -1,6 +1,6 @@
 import { startUpdates, type Updater } from '../../core/updates';
 import type { Fetch } from '../../core/platform';
-import { readLimited } from '../../core/platform';
+import { readLimited, timeoutSignal } from '../../core/platform';
 import { Native } from './native';
 import { checksumFor, findUpdate } from './releases';
 
@@ -26,7 +26,7 @@ export function startAndroidUpdates(fetch: Fetch, enabled: () => boolean, log: (
         const release = await findUpdate(fetch, info.version);
         if (!release) return;
         if (ready !== release.version) {
-          const sums = await fetch(release.sumsUrl, { signal: AbortSignal.timeout(60_000) });
+          const sums = await fetch(release.sumsUrl, { signal: timeoutSignal(60_000) });
           if (!sums.ok) {
             await sums.body?.cancel();
             throw new Error(`The update checksums answered HTTP ${sums.status}.`);

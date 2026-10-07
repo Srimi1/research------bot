@@ -95,13 +95,18 @@ export interface Account {
   model?: string;
   storageAvailable: boolean;
   message?: string;
-  device?: { appVersion: string; webviewVersion?: string };
+  device?: { appVersion: string; webviewVersion?: string; nativeVersion?: string };
 }
 export interface Settings {
   model: string;
   maxRequests: number;
   /** Download new versions from GitHub Releases in the background. */
   autoUpdate: boolean;
+}
+export interface ConnectionDiagnostics {
+  device: NonNullable<Account['device']>;
+  features: { signalAny: boolean; signalTimeout: boolean; randomUuid: boolean };
+  checks: { service: string; result: string }[];
 }
 export interface RunRequest {
   projectId: string;
@@ -140,6 +145,8 @@ export interface ResearchAPI {
   cancelRun(runId: string): Promise<void>;
   openExternal(url: string): Promise<void>;
   onRunEvent(callback: (event: RunEvent) => void): () => void;
+  /** Android-only check using public metadata and a rejected dummy token request. */
+  checkSignInConnection?(signal: AbortSignal): Promise<ConnectionDiagnostics>;
   /** Native desktop menu commands; absent on Android and browser previews. */
   onDesktopAction?(callback: (action: DesktopAction) => void): () => void;
 }

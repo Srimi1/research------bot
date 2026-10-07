@@ -6,6 +6,7 @@ import { resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 
 const apk = process.argv[2];
+const upgradeFrom = process.argv[3];
 assert.ok(apk, 'Pass the signed or debug APK to install');
 const packageName = 'com.researchbot.android';
 const output = resolve('android-startup-results');
@@ -168,7 +169,7 @@ function coldStart() {
 
 try {
   console.log(adb('shell', 'getprop', 'ro.build.version.release').trim());
-  console.log(adb('install', '--no-streaming', '-r', resolve(apk)).trim());
+  console.log(adb('install', '--no-streaming', '-r', resolve(upgradeFrom || apk)).trim());
   adb('shell', 'input', 'keyevent', '224');
   adb('shell', 'wm', 'dismiss-keyguard');
   adb('shell', 'settings', 'put', 'system', 'screen_off_timeout', '1800000');
@@ -203,6 +204,11 @@ try {
       );
       await tapNode('note-outline', named('Add a note outline'));
       await pause(2_000);
+      if (upgradeFrom) {
+        adb('shell', 'am', 'force-stop', packageName);
+        console.log(adb('install', '--no-streaming', '-r', resolve(apk)).trim());
+        console.log('Installed the new signed APK over the previous version with the project and notes retained.');
+      }
     } else {
       await waitForTree(label, tree => tree.includes('AndroidStartupTest') && tree.includes('What I know'));
     }

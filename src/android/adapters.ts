@@ -1,4 +1,4 @@
-import type { CredentialStore, Fetch, FileStore, StartLoopback } from '../../core/platform';
+import { randomId, type CredentialStore, type Fetch, type FileStore, type StartLoopback } from '../../core/platform';
 import { NetworkFailure, nativeNetworkFailure } from '../../core/network-errors';
 import { Native, fromBase64, toBase64, type ResearchNativePlugin } from './native';
 
@@ -19,7 +19,7 @@ export function createNativeFetch(bridge: Bridge): Fetch {
     if (signal?.aborted) throw aborted(signal);
     if (init.body !== undefined && init.body !== null && typeof init.body !== 'string')
       throw new TypeError('Only text request bodies are supported.');
-    const id = crypto.randomUUID();
+    const id = randomId();
     const close = () => void bridge.httpClose({ id }).catch(() => undefined);
     signal?.addEventListener('abort', close, { once: true });
     const release = () => signal?.removeEventListener('abort', close);

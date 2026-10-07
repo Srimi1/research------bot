@@ -4,7 +4,7 @@ The Android app is the same Research Bot as the desktop app: the same interface,
 
 ## Install
 
-1. Download the [signed Research Bot 0.3.6 APK](https://github.com/Srimi1/research------bot/raw/refs/heads/main/downloads/android/research-bot-0.3.6-android.apk). It is stored in the repository's [downloads/android folder](../downloads/android/README.md).
+1. Download the [signed Research Bot 0.3.7 APK](https://github.com/Srimi1/research------bot/raw/refs/heads/main/downloads/android/research-bot-0.3.7-android.apk). It is stored in the repository's [downloads/android folder](../downloads/android/README.md).
 2. Open the downloaded file. Android asks to allow installs from your browser or file manager the first time; allow it, then choose **Install**.
 3. Open **Research Bot**. Your projects are stored only on this phone.
 
@@ -98,7 +98,7 @@ Every Android release must be signed with the same key, or installed copies cann
 
 For a locally built and validated APK, run **Publish release** with **Android source: prebuilt**. Commit `downloads/android/research-bot-VERSION-android.apk`, `SHA256SUMS.txt` and `BUILD_INFO.json` first. The build information records the version, package, SDK levels, byte count, SHA-256, public certificate fingerprint and full build commit.
 
-The workflow verifies the hash, certificate, package/version, SDK levels and 16 KiB alignment. It also requires the recorded build commit to be an ancestor of the release and all Android app/build inputs to be unchanged. If app inputs changed, rebuild and validate the APK before updating its build information. This path uses the existing signature without uploading the private key; it attaches `BUILD_INFO-android.json` as well as the APK and checksums. Desktop installers are still built normally, and the release stays draft until every upload succeeds.
+The workflow verifies the hash, certificate, package/version, SDK levels and 16 KiB alignment. It also requires the recorded build commit to be an ancestor of the release and all Android app/build inputs to be unchanged. If app inputs changed, rebuild and validate the APK before updating its build information. This path uses the existing signature without uploading the private key; it attaches `BUILD_INFO-android.json` as well as the APK and checksums. Choose **Platforms: android** to publish only the APK, or **all** to include desktop installers. The draft is published only after every selected upload and the signed APK runtime check succeeds. Optionally set **Android upgrade from** to a previous published tag, such as `v0.3.7`, to test an in-place signed upgrade with project and note recovery.
 
 ## Android 16 and the OnePlus 7T Pro
 
@@ -133,3 +133,11 @@ For the later message “ChatGPT sign-in did not complete,” use version 0.3.6 
 ## Token request reports a network error
 
 Version 0.3.7 fixes a reproduced compatibility bug: older WebView providers without `AbortSignal.any` could fail before sending any token request and display `RB-AUTH-EXCHANGE-NETWORK`. The new build supports that missing API, preserves safe Android DNS/TLS/timeout/connection reasons, and shows the app and WebView versions beside a sign-in failure. This does not establish the cause of a particular phone's failure. Keep Android System WebView current, install over the existing app and begin a fresh sign-in. Report only the error text and displayed versions if it fails. See the [transport investigation](audits/2026-10-07-android-auth-transport.md).
+
+### Connection check in Android 0.3.8
+
+In **Account & preferences**, tap **Check connection** after a failed attempt. The optional check makes four bounded HTTPS requests: a direct native metadata request, metadata and signing-key requests through the app adapter, and a token POST containing a deliberately invalid fixture code/client. It does not use your account credentials. An HTTP 400 or 403 result on the dummy token request proves that request reached a responding server; it does not establish live sign-in or eligibility.
+
+**Copy connection results** copies only fixed service labels, HTTP statuses/allowlisted failure codes, app/WebView versions and support flags. Share that report and the new `RB-AUTH-…` error to help distinguish a bridge failure from an HTTPS failure. Raw provider replies, callback URLs, account details and tokens are excluded.
+
+Saved failures are labeled **Previous sign-in attempt** and hidden while a new attempt runs. Version information remains visible even if an optional native information query fails or times out. WebView compatibility fallbacks cover signal composition, timeouts and secure UUID creation. See the [follow-up audit](audits/2026-10-07-android-auth-follow-up.md).

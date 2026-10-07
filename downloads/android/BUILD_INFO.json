@@ -17,7 +17,7 @@
     "asyncNativeCallbackReplyOrdering": "passed",
     "safePersistentSignInDiagnostics": "passed",
     "issuedRegistrationRetryAcrossRestart": "passed",
-    "android16SignedApkStartupAndPersistence": "pending release workflow",
+    "android16SignedApkStartupAndPersistence": "passed",
     "productionAndroidAuthenticationWithoutAbortSignalAny": "passed (synthetic native services and OpenAI responses)",
     "safeNativeNetworkDiagnostics": "passed (serialized bridge regression and production DNS fixture)",
     "android16NativeAuthTransport": "passed (instrumented debug app; real HTTPS and rejected dummy token exchanges)"
@@ -26,5 +26,6 @@
     "Physical OnePlus/Legion OS behavior not reproduced; installed WebView version unknown",
     "Live ChatGPT sign-in, account eligibility and inference untested; reported EXCHANGE-NETWORK cause on phone unconfirmed"
   ],
-  "githubCheckRun": "https://github.com/Srimi1/research------bot/actions/runs/37623448889"
+  "githubCheckRun": "https://github.com/Srimi1/research------bot/actions/runs/37623448889",
+  "githubReleaseRun": "https://github.com/Srimi1/research------bot/actions/runs/37624578805"
 }

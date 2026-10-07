@@ -523,9 +523,19 @@ public class ResearchNativePlugin extends Plugin {
             result.put("version", info.versionName);
             result.put("versionCode", versionCode(info));
             result.put("sdk", Build.VERSION.SDK_INT);
-            PackageInfo webview = WebView.getCurrentWebViewPackage();
-            result.put("webviewVersion", webview == null ? "unavailable" : webview.versionName);
-            result.put("canInstall", Build.VERSION.SDK_INT < Build.VERSION_CODES.O || getContext().getPackageManager().canRequestPackageInstalls());
+            try {
+                PackageInfo webview = WebView.getCurrentWebViewPackage();
+                result.put("webviewVersion", webview == null ? "unavailable" : webview.versionName);
+            } catch (RuntimeException unavailable) {
+                result.put("webviewVersion", "unavailable");
+            }
+            boolean canInstall = false;
+            try {
+                canInstall = Build.VERSION.SDK_INT < Build.VERSION_CODES.O || getContext().getPackageManager().canRequestPackageInstalls();
+            } catch (RuntimeException unavailable) {
+                // An optional installer query must not discard app/version information.
+            }
+            result.put("canInstall", canInstall);
             call.resolve(result);
         } catch (Exception error) {
             call.reject(describe(error));

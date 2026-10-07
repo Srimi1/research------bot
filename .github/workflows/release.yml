@@ -11,9 +11,17 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Release tag, for example v0.3.7. Must match the version in package.json.
+        description: Release tag, for example v0.3.8. Must match the version in package.json.
         required: true
-        default: v0.3.7
+        default: v0.3.8
+      platforms:
+        description: Publish all installers, or only the Android APK.
+        type: choice
+        required: true
+        default: all
+        options:
+          - all
+          - android
       android_source:
         description: Build with signing secrets, or verify the signed APK committed in downloads/android.
         type: choice
@@ -22,6 +30,10 @@ on:
         options:
           - build
           - prebuilt
+      android_upgrade_from:
+        description: Optional previous published tag to test upgrading without losing projects, for example v0.3.7.
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -82,6 +94,7 @@ jobs:
 
   build:
     needs: prepare
+    if: github.event_name != 'workflow_dispatch' || inputs.platforms != 'android'
     strategy:
       fail-fast: false
       matrix:
@@ -140,6 +153,7 @@ jobs:
 
   mac:
     needs: prepare
+    if: github.event_name != 'workflow_dispatch' || inputs.platforms != 'android'
     strategy:
       fail-fast: false
       matrix:
@@ -249,6 +263,23 @@ jobs:
           python3 -m venv "$RUNNER_TEMP/research-android-qa"
           "$RUNNER_TEMP/research-android-qa/bin/pip" install uiautomator2==3.7.0
           echo "RESEARCH_UIAUTOMATOR_PYTHON=$RUNNER_TEMP/research-android-qa/bin/python" >> "$GITHUB_ENV"
+      - name: Download and verify the previous APK for an upgrade test
+        if: github.event_name == 'workflow_dispatch' && inputs.android_upgrade_from != ''
+        env:
+          RESEARCH_PREVIOUS_TAG: ${{ inputs.android_upgrade_from }}
+        run: |
+          if ! [[ "$RESEARCH_PREVIOUS_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Previous tag must be a version such as v0.3.7"
+            exit 1
+          fi
+          mkdir "$RUNNER_TEMP/research-previous-apk"
+          gh release download "$RESEARCH_PREVIOUS_TAG" --repo "$GITHUB_REPOSITORY" \
+            --pattern "research-bot-${RESEARCH_PREVIOUS_TAG#v}-android.apk" \
+            --pattern BUILD_INFO-android.json --pattern SHA256SUMS-android.txt \
+            --dir "$RUNNER_TEMP/research-previous-apk"
+          cd "$RUNNER_TEMP/research-previous-apk"
+          sha256sum -c SHA256SUMS-android.txt
+          echo "RESEARCH_PREVIOUS_APK=$RUNNER_TEMP/research-previous-apk/research-bot-${RESEARCH_PREVIOUS_TAG#v}-android.apk" >> "$GITHUB_ENV"
       - name: Enable KVM for the signed APK runtime test
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -263,7 +294,7 @@ jobs:
           profile: pixel_2
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           disable-animations: true
-          script: node scripts/android-startup-smoke.mjs "upload/research-bot-${RESEARCH_RELEASE_TAG#v}-android.apk"
+          script: node scripts/android-startup-smoke.mjs "upload/research-bot-${RESEARCH_RELEASE_TAG#v}-android.apk" "${RESEARCH_PREVIOUS_APK:-}"
       - name: Record the passed signed APK runtime check
         if: env.ANDROID_SOURCE == 'prebuilt'
         run: |
@@ -272,6 +303,7 @@ jobs:
           const path = 'upload/BUILD_INFO-android.json';
           const info = JSON.parse(readFileSync(path, 'utf8'));
           info.validation.android16SignedApkStartupAndPersistence = 'passed';
+          if (process.env.RESEARCH_PREVIOUS_APK) info.validation.android16SignedApkUpgradeAndPersistence = 'passed';
           info.githubReleaseRun = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
           writeFileSync(path, JSON.stringify(info, null, 2) + '\n');
           NODE
@@ -290,8 +322,11 @@ jobs:
         run: rm -f "$RUNNER_TEMP/release.jks"
 
   publish:
-    needs: [build, mac, android]
-    if: github.event_name == 'workflow_dispatch'
+    needs: [prepare, build, mac, android]
+    if: >-
+      always() && github.event_name == 'workflow_dispatch' &&
+      needs.prepare.result == 'success' && needs.android.result == 'success' &&
+      (inputs.platforms == 'android' || (needs.build.result == 'success' && needs.mac.result == 'success'))
     runs-on: ubuntu-latest
     env:
       RESEARCH_RELEASE_TAG: ${{ inputs.tag }}

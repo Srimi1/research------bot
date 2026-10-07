@@ -75,6 +75,8 @@ public class NativeAuthTransportTest {
             evaluate("""
                 // Force the shipped compatibility path while keeping the real Android bridge.
                 Object.defineProperty(AbortSignal, 'any', {value: undefined, configurable: true});
+                Object.defineProperty(AbortSignal, 'timeout', {value: undefined, configurable: true});
+                Object.defineProperty(crypto, 'randomUUID', {value: undefined, configurable: true});
                 window.__qaAuthResult = null;
                 window.__qaAuthorize = null;
                 window.__qaAuthorizeCount = 0;
@@ -134,6 +136,18 @@ public class NativeAuthTransportTest {
             assertFalse("A dummy code must never connect an account", outcome.optBoolean("unexpectedSuccess"));
             assertFalse("Stock Android native exchange failed before receiving its rejection: " + outcome, outcome.optString("message").contains("EXCHANGE-NETWORK"));
             assertTrue(outcome.optString("message").contains("RB-AUTH-"));
+            evaluate("window.__qaConnection = null; window.research.checkSignInConnection(new AbortController().signal).then(result => window.__qaConnection = result)");
+            waitFor("window.__qaConnection", 30);
+            JSONObject connection = new JSONObject((String) new org.json.JSONTokener(evaluate("JSON.stringify(window.__qaConnection)")).nextValue());
+            org.json.JSONArray checks = connection.getJSONArray("checks");
+            assertEquals("HTTP 200", checks.getJSONObject(0).getString("result"));
+            assertEquals("HTTP 200", checks.getJSONObject(1).getString("result"));
+            assertEquals("HTTP 200", checks.getJSONObject(2).getString("result"));
+            assertTrue("The dummy request must receive an HTTP rejection", checks.getJSONObject(3).getString("result").matches("HTTP [45][0-9]{2}"));
+            assertFalse(connection.getJSONObject("features").getBoolean("signalAny"));
+            assertFalse(connection.getJSONObject("features").getBoolean("signalTimeout"));
+            assertFalse(connection.getJSONObject("features").getBoolean("randomUuid"));
+            assertEquals("The bundled and native APK versions must match", connection.getJSONObject("device").getString("appVersion"), connection.getJSONObject("device").getString("nativeVersion"));
             // Do not leave the deliberately unissued fixture client in this isolated debug app.
             evaluate("Promise.all(['registration.json', 'signin.json'].map(name => window.Capacitor.nativePromise('ResearchNative', 'fileRemove', {name})))");
             System.out.println("Native Android HTTPS passed: public metadata, real token POST rejection and callback while a browser tab was open; no account credentials used.");

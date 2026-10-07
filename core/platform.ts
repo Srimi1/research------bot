@@ -66,6 +66,31 @@ export function randomSecret(): string {
   return base64url(crypto.getRandomValues(new Uint8Array(32)));
 }
 
+/** Keep device IDs cryptographically random when WebView lacks the UUID convenience API. */
+export function randomId(): string {
+  if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const value = Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
+  return `${value.slice(0, 8)}-${value.slice(8, 12)}-${value.slice(12, 16)}-${value.slice(16, 20)}-${value.slice(20)}`;
+}
+
+/** WebView's optional timeout API must not prevent a request from starting. */
+export function timeoutSignal(milliseconds: number): AbortSignal {
+  if (typeof AbortSignal.timeout === 'function') return AbortSignal.timeout(milliseconds);
+  if (!Number.isInteger(milliseconds) || milliseconds < 0 || milliseconds > 2_147_483_647)
+    throw new RangeError('The timeout must be a nonnegative 32-bit integer.');
+  const controller = new AbortController();
+  const timer = setTimeout(
+    () => controller.abort(new DOMException('The request timed out.', 'TimeoutError')),
+    milliseconds,
+  );
+  // Node's timers should behave like the native timeout signal, which does not keep Node alive.
+  (timer as unknown as { unref?: () => void }).unref?.();
+  return controller.signal;
+}
+
 export async function sha256Base64url(text: string): Promise<string> {
   return base64url(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text))));
 }
@@ -128,7 +153,7 @@ export async function requestJson<T>(fetch: Fetch, url: string, init?: RequestIn
   const response = await fetch(url, {
     ...init,
     redirect: 'error',
-    signal: init?.signal ? combineSignals([init.signal, AbortSignal.timeout(30_000)]) : AbortSignal.timeout(30_000),
+    signal: init?.signal ? combineSignals([init.signal, timeoutSignal(30_000)]) : timeoutSignal(30_000),
   });
   if (!response.ok) {
     await response.body?.cancel();

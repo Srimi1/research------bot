@@ -2,12 +2,16 @@
 // Native services and OpenAI responses are synthetic; no real account, browser consent or tokens are used.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { createHash, randomBytes, createCipheriv, createDecipheriv } from 'node:crypto';
 import { exportJWK, generateKeyPair, SignJWT } from 'jose';
 import { chromium } from 'playwright';
 
 const legacyAbort = process.argv.includes('--legacy-abort') || process.env.ANDROID_AUTH_LEGACY === '1';
+const legacyTimeout = process.argv.includes('--legacy-timeout') || process.argv.includes('--legacy-all');
+const legacyUuid = process.argv.includes('--legacy-all');
+const missingInfo = process.argv.includes('--missing-info');
+const buildVersion = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
 const issuer = 'https://auth.openai.com';
 const clientId = 'oaiapp_packaged_android_fixture';
 const scopes = 'openid profile email offline_access resource.invoke chatgpt.tokens.use.direct';
@@ -79,8 +83,10 @@ try {
       replies.push(options);
       return {};
     }
-    if (method === 'appInfo')
-      return { version: '0.3.7', versionCode: 307, sdk: 36, webviewVersion: '115.0.fixture', canInstall: false };
+    if (method === 'appInfo') {
+      if (missingInfo) throw new Error('Optional device information is unavailable.');
+      return { version: buildVersion, versionCode: 308, sdk: 36, webviewVersion: '115.0.0.0', canInstall: false };
+    }
     if (method === 'openUrl') {
       authorization = new URL(options.url);
       assert.equal(authorization.origin + authorization.pathname, `${issuer}/api/accounts/authorize`);
@@ -117,7 +123,13 @@ try {
     if (method === 'httpOpen') {
       let status = 200;
       let data;
-      if (options.url === `${issuer}/api/accounts/oauth/token`) {
+      if (
+        options.url === `${issuer}/api/accounts/oauth/token` &&
+        new URLSearchParams(options.body).get('client_id') === 'oaiapp_research_connectivity_check'
+      ) {
+        status = 400;
+        data = { error: 'invalid_client' };
+      } else if (options.url === `${issuer}/api/accounts/oauth/token`) {
         tokenRequests++;
         if (mode === 'dns')
           return { __fixtureFailure: { code: 'RB_NET_DNS', message: 'private native request details' } };
@@ -150,7 +162,7 @@ try {
       else if (options.url === 'https://api.openai.com/v1/models')
         data = { models: [{ slug: 'fixture-model', visibility: 'list' }] };
       else if (options.url === 'https://api.github.com/repos/Srimi1/research------bot/releases/latest')
-        data = { tag_name: 'v0.3.7', draft: false, prerelease: false, assets: [] };
+        data = { tag_name: `v${buildVersion}`, draft: false, prerelease: false, assets: [] };
       else throw new Error(`Unexpected fixture endpoint: ${new URL(options.url).pathname}`);
       bodies.set(options.id, Buffer.from(typeof data === 'string' ? data : JSON.stringify(data)));
       return { status, statusText: '', headers: { 'content-type': 'application/json' } };
@@ -169,64 +181,69 @@ try {
     }
     throw new Error(`Unexpected native fixture method: ${method}`);
   });
-  await context.addInitScript(legacyAbort => {
-    if (legacyAbort) Object.defineProperty(AbortSignal, 'any', { value: undefined, configurable: true });
-    const listeners = new Map();
-    let counter = 0;
-    window.__emitNative = (eventName, event) => {
-      for (const listener of listeners.values()) if (listener.eventName === eventName) listener.callback(event);
-    };
-    window.androidBridge = {};
-    window.Capacitor = {
-      PluginHeaders: [
-        {
-          name: 'ResearchNative',
-          methods: [
-            'fileRead',
-            'fileWrite',
-            'fileRemove',
-            'encrypt',
-            'decrypt',
-            'loopbackStart',
-            'loopbackRespond',
-            'loopbackClose',
-            'openUrl',
-            'httpOpen',
-            'httpRead',
-            'httpClose',
-            'appInfo',
-          ]
-            .map(name => ({ name, rtype: 'promise' }))
-            .concat([
+  await context.addInitScript(
+    ({ legacyAbort, legacyTimeout, legacyUuid }) => {
+      if (legacyAbort) Object.defineProperty(AbortSignal, 'any', { value: undefined, configurable: true });
+      if (legacyTimeout) Object.defineProperty(AbortSignal, 'timeout', { value: undefined, configurable: true });
+      if (legacyUuid) Object.defineProperty(crypto, 'randomUUID', { value: undefined, configurable: true });
+      const listeners = new Map();
+      let counter = 0;
+      window.__emitNative = (eventName, event) => {
+        for (const listener of listeners.values()) if (listener.eventName === eventName) listener.callback(event);
+      };
+      window.androidBridge = {};
+      window.Capacitor = {
+        PluginHeaders: [
+          {
+            name: 'ResearchNative',
+            methods: [
+              'fileRead',
+              'fileWrite',
+              'fileRemove',
+              'encrypt',
+              'decrypt',
+              'loopbackStart',
+              'loopbackRespond',
+              'loopbackClose',
+              'openUrl',
+              'httpOpen',
+              'httpRead',
+              'httpClose',
+              'appInfo',
+            ]
+              .map(name => ({ name, rtype: 'promise' }))
+              .concat([
+                { name: 'addListener', rtype: 'callback' },
+                { name: 'removeListener', rtype: 'promise' },
+              ]),
+          },
+          {
+            name: 'App',
+            methods: [
               { name: 'addListener', rtype: 'callback' },
               { name: 'removeListener', rtype: 'promise' },
-            ]),
+            ],
+          },
+        ],
+        nativePromise(plugin, method, options) {
+          if (method === 'removeListener') {
+            listeners.delete(options.callbackId);
+            return Promise.resolve({});
+          }
+          return window.__nativePromise(plugin, method, options).then(result => {
+            if (result.__fixtureFailure) throw result.__fixtureFailure;
+            return result;
+          });
         },
-        {
-          name: 'App',
-          methods: [
-            { name: 'addListener', rtype: 'callback' },
-            { name: 'removeListener', rtype: 'promise' },
-          ],
+        nativeCallback(_plugin, _method, { eventName }, callback) {
+          const id = String(++counter);
+          listeners.set(id, { eventName, callback });
+          return id;
         },
-      ],
-      nativePromise(plugin, method, options) {
-        if (method === 'removeListener') {
-          listeners.delete(options.callbackId);
-          return Promise.resolve({});
-        }
-        return window.__nativePromise(plugin, method, options).then(result => {
-          if (result.__fixtureFailure) throw result.__fixtureFailure;
-          return result;
-        });
-      },
-      nativeCallback(_plugin, _method, { eventName }, callback) {
-        const id = String(++counter);
-        listeners.set(id, { eventName, callback });
-        return id;
-      },
-    };
-  }, legacyAbort);
+      };
+    },
+    { legacyAbort: legacyAbort || legacyUuid, legacyTimeout, legacyUuid },
+  );
   page = await context.newPage();
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
@@ -246,7 +263,9 @@ try {
     if (failureMode !== 'response')
       await page.getByRole('button', { name: 'Continue with ChatGPT', exact: true }).click();
     const alert = page.getByRole('alert');
-    await alert.filter({ hasText: `RB-AUTH-${code}` }).waitFor({ timeout: legacyAbort ? 5000 : 30000 });
+    await alert
+      .filter({ hasText: `RB-AUTH-${code}` })
+      .waitFor({ timeout: legacyAbort || legacyTimeout ? 5000 : 30000 });
     const box = await alert.boundingBox();
     assert.ok(
       box.y >= 0 && box.y + box.height < 892,
@@ -258,12 +277,29 @@ try {
     assert.doesNotMatch(replies.at(-1).body, /synthetic-access|synthetic-refresh|private upstream|Private credential/);
     assert.equal((await page.evaluate(() => window.research.account())).signedIn, false);
     assert.equal(files.has('account.enc'), false);
-    await page.getByText('Research Bot 0.3.7 · Android System WebView 115.0.fixture', { exact: true }).waitFor();
+    await page
+      .locator('p.help')
+      .filter({ hasText: `Research Bot ${buildVersion} · Android System WebView` })
+      .waitFor({ timeout: 5000 });
     if (failureMode === 'response') {
       await page.getByRole('button', { name: 'Close dialog', exact: true }).click();
       await page.reload();
       await page.getByRole('button', { name: 'Account and preferences', exact: true }).click();
       await page.locator('.callout').filter({ hasText: 'RB-AUTH-RESPONSE' }).waitFor();
+      await page.getByText('Previous sign-in attempt', { exact: true }).waitFor();
+      await page.getByRole('button', { name: 'Check connection', exact: true }).click();
+      const report = page.getByRole('status').filter({ hasText: 'Sign-in connection check' });
+      await report.waitFor();
+      assert.match(await report.textContent(), /Native HTTPS: HTTP 200/);
+      assert.match(await report.textContent(), /Dummy token exchange: HTTP 400/);
+      const diagnostic = await page.evaluate(() => window.research.checkSignInConnection(new AbortController().signal));
+      assert.equal(diagnostic.device.appVersion, buildVersion);
+      if (legacyUuid)
+        assert.deepEqual(diagnostic.features, { signalAny: false, signalTimeout: false, randomUuid: false });
+      assert.doesNotMatch(
+        JSON.stringify(diagnostic),
+        /synthetic-code|synthetic-access|synthetic-refresh|Fixture Researcher|private/,
+      );
     }
   }
   mode = 'success';
@@ -298,7 +334,7 @@ try {
   assert.equal((await page.evaluate(() => window.research.account())).signedIn, true);
   assert.deepEqual(errors, []);
   console.log(
-    `Packaged Android OAuth passed${legacyAbort ? ' without AbortSignal.any' : ''}: safe visible failures, safe native DNS code, WebView version, restart recovery, retained issued registration, PKCE, RSA verification, encrypted persistence and successful reconnect under production CSP. Native and OpenAI services were synthetic.`,
+    `Packaged Android OAuth passed${legacyUuid ? ' without AbortSignal.any, AbortSignal.timeout or crypto.randomUUID' : legacyTimeout ? ' without AbortSignal.timeout' : legacyAbort ? ' without AbortSignal.any' : ''}${missingInfo ? ' with optional native information unavailable' : ''}: safe visible failures, safe native DNS code, WebView version, restart recovery, retained issued registration, PKCE, RSA verification, encrypted persistence and successful reconnect under production CSP. Native and OpenAI services were synthetic.`,
   );
 } catch (error) {
   console.error('Packaged auth fixture failure:', {

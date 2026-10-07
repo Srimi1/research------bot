@@ -25,7 +25,9 @@ The current authorize/token endpoints, fixed loopback host/path, exact per-attem
 - Callback adapter regressions check awaited response ordering, safe error redaction, restart recovery, fresh PKCE/state and return-to-app flags on trusted versus untrusted callbacks.
 - Formatting, lint, toolchain compatibility and dependency audit passed; the audit reported zero vulnerabilities.
 
-The release must also pass compilation/lint and the actual signed APK launch/create/save/cold-restart workflow on Android 16 before publication. Mac DMGs must pass installation and runtime checks on their matching architectures.
+[All six source CI jobs](https://github.com/Srimi1/research------bot/actions/runs/37616249258) passed on source commit `21c2bc27cad9483bc8ce231f0074c9b78c41eeb8`, including debug APK startup/persistence and both installed Mac DMGs. [All seven release jobs](https://github.com/Srimi1/research------bot/actions/runs/37616964369) passed on installer commit `e625dde45c6c4e6b3e0af54f41a6663e0f2f2c25`. The actual signed APK passed native Android 16 launch/create/save/cold-restart checks before the release was published. Both released DMGs passed mount/install/runtime checks on their matching Mac architectures.
+
+Published [version 0.3.6](https://github.com/Srimi1/research------bot/releases/tag/v0.3.6) as the latest non-prerelease. The public APK and both DMGs returned HTTP 200 and matched GitHub asset digests and the platform checksum files; the DMGs had valid UDIF trailers. All 15 release assets were checked against metadata/checksums, including Windows/Linux update manifests. The public APK signing certificate, SDK targets and 16 KiB alignment were verified. APK SHA-256: `ebe0e194088890e2a686a6b34e0e9abe0d2e5efd895d504c551107769bcf1cd5` (4,768,995 bytes).
 
 ## Remaining limit
 

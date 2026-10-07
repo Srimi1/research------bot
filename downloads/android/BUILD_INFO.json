@@ -17,10 +17,11 @@
     "asyncNativeCallbackReplyOrdering": "passed",
     "safePersistentSignInDiagnostics": "passed",
     "issuedRegistrationRetryAcrossRestart": "passed",
-    "android16SignedApkStartupAndPersistence": "pending release workflow"
+    "android16SignedApkStartupAndPersistence": "passed"
   },
   "limits": [
     "Physical OnePlus/Legion OS behavior not reproduced",
     "Live ChatGPT eligibility and inference untested; the original device error remains unknown"
-  ]
+  ],
+  "githubReleaseRun": "https://github.com/Srimi1/research------bot/actions/runs/37616964369"
 }

@@ -24,6 +24,8 @@ The exact signed 0.3.4 APK passed project creation, note saving and restoration 
 
 A [parallel test](https://github.com/Srimi1/research------bot/actions/runs/37570997910) created a project with the truncated title `Andr` during automated input. The driver now waits for keyboard/focus to settle and enters characters at a human pace, while still requiring the complete title and saved notes after cold restarts. That run did not show a native crash; the physical phone's immediate close remains a separate validation item.
 
+The [published APK repeat test](https://github.com/Srimi1/research------bot/actions/runs/37571441035) passed the complete flow with paced typing. A separate debug run reached Chrome while seeking an offscreen control; the driver now restricts gestures to the app, avoids fixed header/bottom controls and re-dumps after its final swipe before declaring a target missing.
+
 ## Remaining limits
 
 - Stock emulator success cannot establish Legion OS-specific behavior on the maintainer's physical OnePlus.

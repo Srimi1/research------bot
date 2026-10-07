@@ -100,21 +100,25 @@ async function waitForTree(label, expected) {
 }
 
 async function tapNode(label, predicate) {
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let attempt = 0; attempt < 4; attempt++) {
     const list = nodes(await treeFor(label));
-    const target = list.find(node => predicate(node) && bounds(node));
+    const target = list.find(node => node.package === packageName && predicate(node) && bounds(node));
     if (target) {
       const { left, top, right, bottom } = bounds(target);
       console.log(`Tap ${label}: ${JSON.stringify(target)}`);
       adb('shell', 'input', 'tap', String(Math.round((left + right) / 2)), String(Math.round((top + bottom) / 2)));
       return;
     }
+    if (attempt === 3) break;
     // Find coordinates from the accessibility tree; scroll and re-dump before declaring it missing.
-    const scroll = list.find(node => node.scrollable === 'true' && bounds(node));
+    const scroll = list.find(node => node.package === packageName && node.scrollable === 'true' && bounds(node));
     assert.ok(scroll, `No visible target or scrollable region on ${label}`);
     const { left, top, right, bottom } = bounds(scroll);
-    const x = Math.round((left + right) / 2);
-    adb('shell', 'input', 'swipe', String(x), String(bottom - 150), String(x), String(top + 150), '350');
+    // The WebView bounds include fixed header/bottom controls. Swipe within its middle content.
+    const x = Math.round(left + (right - left) / 3);
+    const start = Math.round(top + (bottom - top) * 0.75);
+    const end = Math.round(top + (bottom - top) * 0.25);
+    adb('shell', 'input', 'swipe', String(x), String(start), String(x), String(end), '350');
     await pause(500);
   }
   throw new Error(`The ${label} target is not visible after scrolling`);

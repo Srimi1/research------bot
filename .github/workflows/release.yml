@@ -47,6 +47,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       RESEARCH_RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      ANDROID_SOURCE: ${{ github.event_name == 'workflow_dispatch' && inputs.android_source || 'prebuilt' }}
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
@@ -64,7 +65,7 @@ jobs:
             exit 1
           fi
       - name: Check Android signing configuration before building or creating a release
-        if: github.event_name != 'workflow_dispatch' || inputs.android_source != 'prebuilt'
+        if: env.ANDROID_SOURCE == 'build'
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -194,7 +195,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       RESEARCH_RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
-      ANDROID_SOURCE: ${{ inputs.android_source || 'build' }}
+      ANDROID_SOURCE: ${{ github.event_name == 'workflow_dispatch' && inputs.android_source || 'prebuilt' }}
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4

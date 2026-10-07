@@ -12,9 +12,14 @@
     "regressionTests": "passed (103 unit tests locally and source CI)",
     "androidReleaseBuildAndLint": "passed",
     "signatureAnd16KiBAlignment": "passed",
-    "android16SignedApkStartupAndPersistence": "pending dedicated signed APK check"
+    "android16SignedApkStartupAndPersistence": "passed twice; includes fresh accessibility window checks and 4-core/4-GiB emulator",
+    "android16ForegroundServiceConsent": "passed (20s, 75s and Data Saver; callback answered with browser in front; rejected dummy token exchanges)",
+    "android16InterruptedConsentRecovery": "passed (am kill protects the foreground service; force-stop and next launch show RB-AUTH-INTERRUPTED)"
   },
   "limits": [
     "Live ChatGPT sign-in and inference on the physical OnePlus 7T Pro / Legion OS require maintainer confirmation"
-  ]
+  ],
+  "artifactStatus": "locally signed test APK; official build release blocked by signing-secret configuration",
+  "githubSignedApkStartupRun": "https://github.com/Srimi1/research------bot/actions/runs/37661302546",
+  "githubCheckRun": "https://github.com/Srimi1/research------bot/actions/runs/37661146846"
 }

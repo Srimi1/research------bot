@@ -1,17 +1,15 @@
 # Download Research Bot for Android
 
-[**Download the signed Research Bot 0.3.7 APK**](https://github.com/Srimi1/research------bot/raw/refs/heads/main/downloads/android/research-bot-0.3.7-android.apk)
+[**Download the signed Research Bot 0.3.8 APK**](https://github.com/Srimi1/research------bot/raw/refs/heads/main/downloads/android/research-bot-0.3.8-android.apk)
 
-Supports Android 8 or later and targets Android 16. Open the downloaded APK on your phone, allow installation from your browser/file manager when prompted, and choose **Install**.
-
-This APK uses the same personal signing certificate as versions 0.3.1 through 0.3.6. Install over your existing build to retain projects. If your existing app uses another signing certificate, export projects before uninstalling it. This version is installed manually.
+Supports Android 8 or later and targets Android 16. Open the downloaded APK on your phone and choose **Install**. This APK uses the existing signing certificate from 0.3.1–0.3.7; install over your existing app to keep projects and notes.
 
 ## Verify the download
 
-[SHA256SUMS.txt](SHA256SUMS.txt) contains the APK's SHA-256:
+[SHA256SUMS.txt](SHA256SUMS.txt) contains the APK SHA-256:
 
 ```text
-3d53f4d5acd8f19b11a246a6335c8e561704c74f67013d342a7d563e9b2919fb
+df6362dad0964b43b91476123bbc781c1e655ba4dcef9883c985df0de32c46de
 ```
 
 From this folder on a computer:
@@ -20,12 +18,14 @@ From this folder on a computer:
 sha256sum -c SHA256SUMS.txt
 ```
 
-Package: `com.researchbot.android`. Version: `0.3.7` / code `307`. Signing certificate SHA-256: `98580ca053712555a2b8a3a8fecfc15c85d83c5d192480e3b6b09ca13a633441`.
+Package: `com.researchbot.android`. Version: `0.3.8` / code `308`. Signing certificate SHA-256: `98580ca053712555a2b8a3a8fecfc15c85d83c5d192480e3b6b09ca13a633441`.
 
-Built from [7c1d61a](https://github.com/Srimi1/research------bot/commit/7c1d61a37bff1a1b653d311969b3a50e523fa2b1), with passing regression tests, production Android SQLite/CSP and synthetic OAuth checks (including a missing `AbortSignal.any`), Android release compilation/lint, and signature/alignment checks. The release pipeline installs and checks this actual signed APK on Android 16 before publication. The signing key is private and is not included in the repository. Physical-phone behavior and live ChatGPT sign-in remain unverified.
+Built from [f741d2b](https://github.com/Srimi1/research------bot/commit/f741d2b24eb938f698b48fa925ecbdbfb5850d56). The production Android backend/OAuth fixtures, 93 unit tests and Android release build/lint pass. Publication requires the actual signed APK to pass fresh Android 16 launch/create/save/cold-restart checks and an upgrade from the published 0.3.7 APK retaining synthetic projects and notes. [BUILD_INFO.json](BUILD_INFO.json) records public metadata and validation results; the signing key remains private.
 
-[BUILD_INFO.json](BUILD_INFO.json) records public build metadata. The release workflow can verify this APK with `node scripts/verify-release-apk.mjs` and publish it without copying the signing key to CI.
+## Sign-in follow-up
 
-Version 0.3.7 fixes a reproduced sign-in failure when `AbortSignal.any` is unavailable in WebView. It also preserves safe native DNS/TLS/timeout/connection codes and shows the app and WebView versions beside an error. Install over your existing app, then start a fresh sign-in. If it still fails, share only the `RB-AUTH-…` error text and displayed versions. The actual cause on the maintainer’s phone remains unconfirmed. See the [transport investigation](../../docs/audits/2026-10-07-android-auth-transport.md).
+Version 0.3.8 fixes missing WebView timeout and secure-UUID APIs, preserves version information when optional Android queries fail, and labels saved errors **Previous sign-in attempt**. The maintainer's fresh 0.3.7 attempt still fails; these reproduced fixes do not establish that phone's cause.
 
-See the [Android guide](../../docs/android.md), [startup investigation](../../docs/audits/2026-10-07-android-startup.md) and [complete audit](../../docs/audits/2026-10-06.md).
+Start a fresh **Continue with ChatGPT** attempt after installing. If it fails, tap **Check connection** in **Account & preferences**, then **Copy connection results**. The report contains only versions, support flags and HTTP statuses/fixed error codes. The check uses public endpoints and deliberately invalid fixture credentials, never your account credentials. Share the new `RB-AUTH-…` message and the report; exclude callback URLs, codes and tokens.
+
+See the [Android guide](../../docs/android.md), [follow-up audit](../../docs/audits/2026-10-07-android-auth-follow-up.md) and [complete audit](../../docs/audits/2026-10-06.md).

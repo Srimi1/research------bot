@@ -1,31 +1,28 @@
 {
-  "version": "0.3.7",
-  "versionCode": 307,
+  "version": "0.3.8",
+  "versionCode": 308,
   "package": "com.researchbot.android",
   "minSdk": 26,
   "targetSdk": 36,
-  "sourceCommit": "7c1d61a37bff1a1b653d311969b3a50e523fa2b1",
+  "sourceCommit": "f741d2b24eb938f698b48fa925ecbdbfb5850d56",
   "certificateSha256": "98580ca053712555a2b8a3a8fecfc15c85d83c5d192480e3b6b09ca13a633441",
-  "apkSha256": "3d53f4d5acd8f19b11a246a6335c8e561704c74f67013d342a7d563e9b2919fb",
-  "apkBytes": 4769811,
+  "apkSha256": "df6362dad0964b43b91476123bbc781c1e655ba4dcef9883c985df0de32c46de",
+  "apkBytes": 4772011,
   "validation": {
-    "regressionTestsPassed": 86,
+    "regressionTestsPassed": 93,
     "productionAndroidBackendUnderCsp": "passed",
     "productionAndroidAuthenticationUnderCsp": "passed (synthetic native services and OpenAI responses)",
+    "productionAndroidAuthenticationWithoutNewerWebViewApis": "passed (AbortSignal.any, AbortSignal.timeout and crypto.randomUUID removed; optional native information unavailable)",
+    "safeConnectionDiagnostics": "passed (control, redaction, cancellation tests and production UI fixture)",
     "androidReleaseBuildAndLint": "passed",
     "signatureAnd16KiBAlignment": "passed",
-    "asyncNativeCallbackReplyOrdering": "passed",
-    "safePersistentSignInDiagnostics": "passed",
-    "issuedRegistrationRetryAcrossRestart": "passed",
-    "android16SignedApkStartupAndPersistence": "passed",
-    "productionAndroidAuthenticationWithoutAbortSignalAny": "passed (synthetic native services and OpenAI responses)",
-    "safeNativeNetworkDiagnostics": "passed (serialized bridge regression and production DNS fixture)",
-    "android16NativeAuthTransport": "passed (instrumented debug app; real HTTPS and rejected dummy token exchanges)"
+    "android16NativeAuthTransport": "passed (real WebView/HTTPS, rejected dummy exchanges while a browser was open, all newer APIs removed and safe native connection report)",
+    "android16SignedApkStartupAndPersistence": "pending release workflow",
+    "android16SignedApkUpgradeAndPersistence": "pending release workflow (from 0.3.7)"
   },
   "limits": [
-    "Physical OnePlus/Legion OS behavior not reproduced; installed WebView version unknown",
-    "Live ChatGPT sign-in, account eligibility and inference untested; reported EXCHANGE-NETWORK cause on phone unconfirmed"
+    "Fresh physical OnePlus/Legion OS sign-in reports RB-AUTH-EXCHANGE-NETWORK in 0.3.7; installed WebView version unknown",
+    "Live ChatGPT sign-in, eligibility and inference untested; reproduced compatibility fixes do not establish phone-specific cause"
   ],
-  "githubCheckRun": "https://github.com/Srimi1/research------bot/actions/runs/37623448889",
-  "githubReleaseRun": "https://github.com/Srimi1/research------bot/actions/runs/37624578805"
+  "githubCheckRun": "https://github.com/Srimi1/research------bot/actions/runs/37631157855"
 }

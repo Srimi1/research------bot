@@ -285,7 +285,7 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: Verify the signed release APK opens and saves projects on Android 16
+      - name: Verify fresh and upgraded signed APK persistence on Android 16
         uses: ReactiveCircus/android-emulator-runner@4c44018e59b437e86cdfc41da381398f93ed8808 # v2
         with:
           api-level: 36
@@ -294,7 +294,10 @@ jobs:
           profile: pixel_2
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           disable-animations: true
-          script: node scripts/android-startup-smoke.mjs "upload/research-bot-${RESEARCH_RELEASE_TAG#v}-android.apk" "${RESEARCH_PREVIOUS_APK:-}"
+          script: |
+            node scripts/android-startup-smoke.mjs "upload/research-bot-${RESEARCH_RELEASE_TAG#v}-android.apk"
+            # This action executes each script line separately; keep the conditional together.
+            if [ -n "${RESEARCH_PREVIOUS_APK:-}" ]; then adb uninstall com.researchbot.android && node scripts/android-startup-smoke.mjs "upload/research-bot-${RESEARCH_RELEASE_TAG#v}-android.apk" "$RESEARCH_PREVIOUS_APK"; fi
       - name: Record the passed signed APK runtime check
         if: env.ANDROID_SOURCE == 'prebuilt'
         run: |

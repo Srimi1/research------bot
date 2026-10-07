@@ -27,7 +27,7 @@ const files = new Map();
 const bodies = new Map();
 const authorizations = [];
 const replies = [];
-// Order of browser reply, foreground wait and token POST for the current attempt.
+// Native lifecycle and exchange order for the current attempt.
 let events = [];
 let mode = 'response';
 let authorization;
@@ -81,6 +81,11 @@ try {
     }
     if (method === 'loopbackStart') return { serverId: 'fixture-loopback', port: 37147 };
     if (method === 'loopbackClose') return {};
+    if (method === 'signInKeepAliveStart' || method === 'signInKeepAliveStop') {
+      events.push(method === 'signInKeepAliveStart' ? 'keepAliveStart' : 'keepAliveStop');
+      return {};
+    }
+    if (method === 'openBatterySettings') return {};
     if (method === 'loopbackRespond') {
       replies.push(options);
       events.push('reply');
@@ -98,6 +103,8 @@ try {
       authorization = new URL(options.url);
       assert.equal(authorization.origin + authorization.pathname, `${issuer}/api/accounts/authorize`);
       authorizations.push(authorization);
+      assert.equal(events.at(-1), 'keepAliveStart', 'The service must start before the browser opens');
+      if (mode === 'pending') return {};
       idToken = await new SignJWT({
         nonce: mode === 'nonce' ? 'incorrect-nonce' : authorization.searchParams.get('nonce'),
         name: 'Fixture Researcher',
@@ -214,6 +221,9 @@ try {
               'loopbackRespond',
               'loopbackClose',
               'awaitForeground',
+              'signInKeepAliveStart',
+              'signInKeepAliveStop',
+              'openBatterySettings',
               'openUrl',
               'httpOpen',
               'httpRead',
@@ -283,7 +293,7 @@ try {
     );
     // The browser is answered and the app brought back before any token request; Android blocks
     // networking for the app while the browser is in front. The outcome is shown only in the app.
-    assert.deepEqual(events.slice(0, 3), ['reply', 'foreground', 'token']);
+    assert.deepEqual(events, ['keepAliveStart', 'reply', 'foreground', 'token', 'keepAliveStop']);
     assert.equal(replies.at(-1).status, 200);
     assert.equal(replies.at(-1).returnToApp, true);
     assert.match(replies.at(-1).body, /Authorization received/);
@@ -318,6 +328,54 @@ try {
       );
     }
   }
+  // Native/browser pause and resume must keep the dialog and its pending operation alive.
+  mode = 'pending';
+  events = [];
+  await page.getByRole('button', { name: 'Continue with ChatGPT', exact: true }).click();
+  await page.getByRole('button', { name: 'Cancel sign-in', exact: true }).waitFor();
+  await page.waitForFunction(() => Boolean(window.research));
+  for (let attempt = 0; attempt < 50 && events.length === 0; attempt++)
+    await new Promise(resolve => setTimeout(resolve, 20));
+  assert.deepEqual(events, ['keepAliveStart']);
+  const marker = JSON.parse(Buffer.from(files.get('signin.json'), 'base64').toString('utf8'));
+  assert.deepEqual(Object.keys(marker), ['startedAt']);
+  await page.evaluate(() => {
+    window.__emitNative('pause', {});
+    window.__emitNative('appStateChange', { isActive: false });
+    window.__emitNative('resume', {});
+    window.__emitNative('appStateChange', { isActive: true });
+    window.dispatchEvent(new Event('focus'));
+  });
+  await page.getByRole('button', { name: 'Cancel sign-in', exact: true }).waitFor();
+  assert.deepEqual(events, ['keepAliveStart']);
+  await page.getByRole('button', { name: 'Close dialog', exact: true }).click();
+  await page.waitForFunction(async () => (await window.research.account()).message?.includes('RB-AUTH-CANCELLED'));
+  assert.deepEqual(events, ['keepAliveStart', 'keepAliveStop']);
+  await page.getByRole('button', { name: 'Account and preferences', exact: true }).click();
+
+  // Exercise the real sign-in timeout path with a shortened fixture clock.
+  await page.evaluate(() => {
+    const original = window.setTimeout.bind(window);
+    window.setTimeout = (handler, delay, ...args) => original(handler, delay === 165_000 ? 200 : delay, ...args);
+  });
+  events = [];
+  await page.getByRole('button', { name: 'Continue with ChatGPT', exact: true }).click();
+  await page.getByRole('alert').filter({ hasText: 'RB-AUTH-TIMEOUT' }).waitFor();
+  assert.deepEqual(events, ['keepAliveStart', 'keepAliveStop']);
+
+  // A reload models loss of the JS process without its finally block running.
+  events = [];
+  await page.reload();
+  await page.getByRole('button', { name: 'Account and preferences', exact: true }).click();
+  await page.getByRole('button', { name: 'Continue with ChatGPT', exact: true }).click();
+  for (let attempt = 0; attempt < 50 && events.length === 0; attempt++)
+    await new Promise(resolve => setTimeout(resolve, 20));
+  assert.deepEqual(events, ['keepAliveStart']);
+  await page.reload();
+  await page.getByRole('button', { name: 'Account and preferences', exact: true }).click();
+  await page.locator('.callout').filter({ hasText: 'RB-AUTH-INTERRUPTED' }).waitFor();
+  await page.getByRole('button', { name: 'Open battery settings', exact: true }).click();
+
   mode = 'success';
   events = [];
   await page.getByRole('button', { name: 'Continue with ChatGPT', exact: true }).click();
@@ -329,7 +387,7 @@ try {
   assert.equal(await page.getByRole('alert').count(), 0, await page.getByRole('alert').allTextContents());
   await page.getByText('Your ChatGPT account is connected.').waitFor();
   assert.equal(replies.at(-1).status, 200);
-  assert.deepEqual(events, ['reply', 'foreground', 'token']);
+  assert.deepEqual(events, ['keepAliveStart', 'reply', 'foreground', 'token', 'keepAliveStop']);
   assert.equal(authorizations[0].searchParams.get('client_id'), 'dynamic_agent_client');
   for (const retry of authorizations.slice(1)) {
     assert.equal(retry.searchParams.get('client_id'), clientId);

@@ -161,6 +161,10 @@ export function createForegroundWait(bridge: Pick<ResearchNativePlugin, 'awaitFo
 
 export const nativeForeground = createForegroundWait(Native);
 
+/** Start resolves only after Android has promoted the service, before the browser covers us. */
+export const nativeSignInKeepAlive = (active: boolean): Promise<void> =>
+  active ? Native.signInKeepAliveStart() : Native.signInKeepAliveStop();
+
 /** App-private files (Context.getFilesDir()/research), replaced atomically. */
 export const nativeFiles: FileStore = {
   async read(name) {

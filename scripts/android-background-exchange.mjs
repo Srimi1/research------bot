@@ -4,7 +4,7 @@
 // can only reject it; the check is whether the native token POST reaches the server at all.
 // Only fixed reason codes, HTTP statuses and process states are printed, never the callback URL.
 //
-//   node scripts/android-background-exchange.mjs <debug.apk> [--consent-seconds=N] [--data-saver]
+//   node scripts/android-background-exchange.mjs <debug.apk> [--consent-seconds=N] [--data-saver] [--kill-during-consent]
 //
 // --data-saver leaves only the emulator's metered cellular network and turns on Data Saver, an
 // Android policy that blocks networking for apps that are not in the foreground.
@@ -17,6 +17,7 @@ assert.ok(apk, 'Pass a debuggable APK (WebView debugging is enabled only in debu
 const option = name => process.argv.find(arg => arg.startsWith(`--${name}`));
 const consentSeconds = Number((option('consent-seconds') ?? '--consent-seconds=75').split('=')[1]);
 const dataSaver = Boolean(option('data-saver'));
+const killDuringConsent = Boolean(option('kill-during-consent'));
 const packageName = 'com.researchbot.android';
 const activity = `${packageName}/.MainActivity`;
 const serialArgs = process.env.ANDROID_SERIAL ? ['-s', process.env.ANDROID_SERIAL] : [];
@@ -30,7 +31,7 @@ const shell = command => {
   }
 };
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
-const label = `${dataSaver ? 'data-saver' : 'stock'} ${consentSeconds}s`;
+const label = `${killDuringConsent ? 'interrupted' : dataSaver ? 'data-saver' : 'stock'} ${consentSeconds}s`;
 
 let uid = '';
 function processState() {
@@ -238,18 +239,55 @@ async function main() {
 
     await pause(3_000);
     console.log(`[${label}] browser opened: ${processState()}`);
+    assert.match(processState(), /uid-state=[^;]*FOREGROUND_SERVICE/, 'Consent must run with a foreground service');
     for (let waited = 0; waited < consentSeconds; waited += 15) {
       await pause(Math.min(15, consentSeconds - waited) * 1000);
       console.log(`[${label}] consent +${Math.min(waited + 15, consentSeconds)}s: ${processState()}`);
+      assert.match(
+        processState(),
+        /uid-state=[^;]*FOREGROUND_SERVICE/,
+        'The sign-in service must remain foreground during consent',
+      );
+    }
+
+    if (killDuringConsent) {
+      // am kill deliberately skips foreground-service processes. Prove that protection, then
+      // force-stop to model a ROM/user killing even a protected process. Neither may save a code.
+      shell(`am kill ${packageName}`);
+      await pause(1_000);
+      assert.equal(shell(`pidof ${packageName}`), pid, 'am kill must spare the foreground service');
+      shell(`am force-stop ${packageName}`);
+      assert.equal(shell(`pidof ${packageName}`), '', 'The process must actually be gone');
+      devtools.close();
+      shell(`am start -W -n ${activity}`);
+      await pause(3_000);
+      const restarted = await DevTools.open(
+        forward(`localabstract:webview_devtools_remote_${shell(`pidof ${packageName}`)}`),
+      );
+      try {
+        await restarted.waitFor('window.research', 60);
+        const account = await restarted.evaluate('window.research.account()');
+        assert.equal(account.signedIn, false);
+        assert.match(account.message, /RB-AUTH-INTERRUPTED/);
+        await restarted.evaluate(`document.querySelector('[aria-label="Account and preferences"]').click()`);
+        await restarted.waitFor(
+          `document.querySelector('[role="dialog"]')?.textContent.includes('RB-AUTH-INTERRUPTED')`,
+          15,
+        );
+        await restarted.waitFor(
+          `Array.from(document.querySelectorAll('button')).some(b => b.textContent.includes('Open battery settings'))`,
+          15,
+        );
+        console.log(`[${label}] PASS: killed consent recovered with RB-AUTH-INTERRUPTED and battery settings`);
+      } finally {
+        restarted.close();
+      }
+      return;
     }
 
     const delivery = deliverCallback(callback.port, callback.target);
     const held = await Promise.race([delivery.then(() => false), pause(15_000).then(() => true)]);
-    if (held) {
-      // Android froze the cached app, so the browser's request waits. A researcher switches back.
-      console.log(`[${label}] callback held while Research Bot was frozen: ${processState()}`);
-      shell(`am start -n ${activity}`);
-    }
+    assert.equal(held, false, 'The callback must answer during consent without a manual switch back');
     const reply = await delivery;
     console.log(`[${label}] browser callback reply: ${reply.split('\r\n')[0]} (${safeReason(reply)})`);
 

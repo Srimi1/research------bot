@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createCipheriv, createDecipheriv, randomBytes, createHash } from 'node:crypto';
@@ -8,7 +8,7 @@ import { get } from 'node:http';
 import { exportJWK, generateKeyPair, SignJWT } from 'jose';
 import { MockAgent, getGlobalDispatcher, setGlobalDispatcher } from 'undici';
 import { AuthService, directoryFiles, nodeLoopback } from '../electron/auth';
-import { AuthService as CoreAuthService } from '../core/auth';
+import { AuthService as CoreAuthService, type AuthPlatform } from '../core/auth';
 import { fetchNetwork } from '../electron/network';
 import { createNativeLoopback } from '../src/android/adapters';
 import type { CallbackRequest, LoopbackServer } from '../core/platform';
@@ -34,7 +34,11 @@ function callback(url: URL): Promise<{ status: number; body: string }> {
     }).on('error', reject);
   });
 }
-async function fixture(deferredResponse = false, awaitForeground?: (signal: AbortSignal) => Promise<void>) {
+async function fixture(
+  deferredResponse = false,
+  awaitForeground?: AuthPlatform['awaitForeground'],
+  keepAlive?: AuthPlatform['keepAlive'],
+) {
   const directory = await mkdtemp(join(tmpdir(), 'research-bot-auth-'));
   const original = getGlobalDispatcher();
   const agent = new MockAgent();
@@ -88,6 +92,7 @@ async function fixture(deferredResponse = false, awaitForeground?: (signal: Abor
   const responseOrder: string[] = [];
   const returnToApps: boolean[] = [];
   const openBrowser = async (url: string) => {
+    if (keepAlive) responseOrder.push('browser');
     const authorize = new URL(url);
     authorizations.push(authorize);
     const jwt = await new SignJWT({
@@ -105,6 +110,7 @@ async function fixture(deferredResponse = false, awaitForeground?: (signal: Abor
     pool.intercept({ path: '/api/accounts/oauth/token', method: 'POST' }).reply(options => {
       const form = new URLSearchParams(String(options.body));
       exchanges.push(form);
+      if (keepAlive) responseOrder.push('token');
       const invalidGrant = state.invalidGrant || state.invalidGrantOnce;
       state.invalidGrantOnce = false;
       return state.tokenError
@@ -153,6 +159,12 @@ async function fixture(deferredResponse = false, awaitForeground?: (signal: Abor
         openBrowser,
         credentials: credentialStore,
         awaitForeground,
+        keepAlive: keepAlive
+          ? async active => {
+              responseOrder.push(active ? 'keepAliveStart' : 'keepAliveStop');
+              await keepAlive(active);
+            }
+          : undefined,
         startLoopback: (() => {
           let listener: Parameters<ResearchNativePlugin['addListener']>[1];
           let server: LoopbackServer;
@@ -213,6 +225,167 @@ async function fixture(deferredResponse = false, awaitForeground?: (signal: Abor
     },
   };
 }
+
+test('Android keep-alive starts before the browser and stops after success or an exchange failure', async () => {
+  for (const failed of [false, true]) {
+    const f = await fixture(
+      true,
+      async () => {
+        f.responseOrder.push('foreground');
+      },
+      async () => {},
+    );
+    try {
+      if (failed) f.state.tokenError = 'access_denied';
+      if (failed) await assert.rejects(f.auth.signIn(), /RB-AUTH-DECLINED/);
+      else assert.equal((await f.auth.signIn()).signedIn, true);
+      assert.deepEqual(f.responseOrder, [
+        'keepAliveStart',
+        'browser',
+        'respond',
+        'foreground',
+        'token',
+        'close',
+        'keepAliveStop',
+      ]);
+      if (failed)
+        assert.deepEqual(JSON.parse(await readFile(join(f.directory, 'signin.json'), 'utf8')), {
+          reason: 'declined',
+          status: 403,
+        });
+      else await assert.rejects(readFile(join(f.directory, 'signin.json')), { code: 'ENOENT' });
+    } finally {
+      await f.close();
+    }
+  }
+});
+
+function waitingAndroid(overrides: Partial<AuthPlatform> = {}) {
+  const files = new Map<string, Uint8Array>();
+  const order: string[] = [];
+  let opened!: () => void;
+  const browserOpened = new Promise<void>(resolve => (opened = resolve));
+  const platform: AuthPlatform = {
+    files: {
+      read: async name => files.get(name),
+      write: async (name, data) => {
+        files.set(name, data);
+      },
+      remove: async name => {
+        files.delete(name);
+      },
+    },
+    credentials: {
+      available: () => true,
+      encrypt: text => new TextEncoder().encode(text),
+      decrypt: bytes => new TextDecoder().decode(bytes),
+    },
+    fetch: async () => {
+      throw new Error('An unanswered consent must not send a request');
+    },
+    startLoopback: async () => ({
+      port: 37147,
+      close: () => {
+        order.push('close');
+      },
+    }),
+    keepAlive: async active => {
+      order.push(active ? 'keepAliveStart' : 'keepAliveStop');
+    },
+    openBrowser: async () => {
+      order.push('browser');
+      opened();
+    },
+    ...overrides,
+  };
+  return { auth: new CoreAuthService(platform), platform, files, order, browserOpened };
+}
+
+test('Android stops keep-alive on cancel and timeout, including while openBrowser is still pending', async context => {
+  for (const timeout of [false, true]) {
+    context.mock.timers.enable({ apis: ['setTimeout'] });
+    const f = waitingAndroid();
+    const originalOpen = f.platform.openBrowser;
+    f.platform.openBrowser = async url => {
+      await originalOpen(url);
+      await new Promise(() => {});
+    };
+    f.auth = new CoreAuthService(f.platform);
+    try {
+      const pending = f.auth.signIn();
+      const rejected = assert.rejects(pending, timeout ? /RB-AUTH-TIMEOUT/ : /RB-AUTH-CANCELLED/);
+      await f.browserOpened;
+      const marker = JSON.parse(new TextDecoder().decode(f.files.get('signin.json')));
+      assert.deepEqual(Object.keys(marker), ['startedAt']);
+      assert.ok(marker.startedAt > 0);
+      if (timeout) context.mock.timers.tick(165_000);
+      else f.auth.cancelSignIn();
+      await rejected;
+      assert.equal(f.order[0], 'keepAliveStart');
+      assert.equal(f.order[1], 'browser');
+      assert.equal(f.order.at(-1), 'keepAliveStop');
+      assert.equal(f.order.filter(event => event === 'keepAliveStop').length, 1);
+      assert.deepEqual(JSON.parse(new TextDecoder().decode(f.files.get('signin.json'))), {
+        reason: timeout ? 'timeout' : 'cancelled',
+      });
+    } finally {
+      f.auth.cancelSignIn();
+      context.mock.timers.reset();
+    }
+  }
+});
+
+test('Android stops keep-alive when its startup or opening the browser fails', async () => {
+  for (const startup of [false, true]) {
+    const f = waitingAndroid();
+    if (startup)
+      f.platform.keepAlive = async active => {
+        f.order.push(active ? 'keepAliveStart' : 'keepAliveStop');
+        if (active) throw new Error('Cannot start service');
+      };
+    else
+      f.platform.openBrowser = async () => {
+        f.order.push('browser');
+        throw new Error('No browser');
+      };
+    f.auth = new CoreAuthService(f.platform);
+    await assert.rejects(f.auth.signIn(), startup ? /RB-AUTH-SETUP/ : /RB-AUTH-BROWSER/);
+    assert.equal(f.order.at(-1), 'keepAliveStop');
+    assert.equal(f.order.includes('browser'), !startup);
+  }
+});
+
+test('a timestamp-only pending sign-in becomes RB-AUTH-INTERRUPTED after a restart', async () => {
+  const f = waitingAndroid();
+  const pending = f.auth.signIn();
+  const cancelled = assert.rejects(pending, /RB-AUTH-CANCELLED/);
+  await f.browserOpened;
+  try {
+    const restarted = new CoreAuthService(f.platform);
+    const account = await restarted.account();
+    assert.equal(account.signedIn, false);
+    assert.match(account.message!, /Android closed Research Bot.*Unrestricted.*RB-AUTH-INTERRUPTED/);
+    assert.deepEqual(JSON.parse(new TextDecoder().decode(f.files.get('signin.json'))), { reason: 'interrupted' });
+    assert.match((await new CoreAuthService(f.platform).account()).message!, /RB-AUTH-INTERRUPTED/);
+  } finally {
+    f.auth.cancelSignIn();
+    await cancelled;
+  }
+});
+
+test('credentials saved just before a process kill do not produce an interrupted notice', async () => {
+  const f = await fixture();
+  try {
+    await f.auth.signIn();
+    await writeFile(join(f.directory, 'signin.json'), JSON.stringify({ startedAt: Date.now() }));
+    const restarted = new AuthService(f.directory, f.openBrowser, f.credentialStore);
+    assert.equal((await restarted.account()).signedIn, true);
+    assert.equal((await restarted.account()).message, undefined);
+    await assert.rejects(readFile(join(f.directory, 'signin.json')), { code: 'ENOENT' });
+  } finally {
+    await f.close();
+  }
+});
 
 test('asynchronous native callback replies finish before the sign-in server closes', async () => {
   for (const declined of [false, true]) {

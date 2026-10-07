@@ -280,6 +280,7 @@ function AccountSettings({
   const [checkingConnection, setCheckingConnection] = useState(false);
   const [connection, setConnection] = useState<ConnectionDiagnostics | null>(null);
   const connectionController = useRef<AbortController | null>(null);
+  const signingRef = useRef(false);
   useEffect(() => () => connectionController.current?.abort(), []);
   useEffect(() => {
     let mounted = true;
@@ -303,6 +304,8 @@ function AccountSettings({
     };
   }, [account?.signedIn]);
   const signIn = async () => {
+    if (signingRef.current) return;
+    signingRef.current = true;
     setSigning(true);
     setConnection(null);
     setError('');
@@ -325,22 +328,18 @@ function AccountSettings({
         /* Keep the original sign-in error visible. */
       }
     } finally {
+      signingRef.current = false;
       setSigning(false);
     }
   };
-  const signingRef = useRef(false);
-  signingRef.current = signing;
-  // Closing the dialog any way (Close, Escape, the Android back gesture) ends a sign-in still waiting
-  // on the browser, so a later "Sign in with ChatGPT" starts fresh instead of reporting a busy sign-in.
-  useEffect(
-    () => () => {
-      if (signingRef.current)
-        void api()
-          .cancelSignIn()
-          .catch(() => undefined);
-    },
-    [],
-  );
+  // Only an explicit dialog close cancels. Android pause/resume leaves this state and request alive.
+  const close = () => {
+    if (signingRef.current)
+      void api()
+        .cancelSignIn()
+        .catch(() => undefined);
+    onClose();
+  };
   const signInRef = useRef(signIn);
   signInRef.current = signIn;
   const autoStarted = useRef(false);
@@ -351,7 +350,7 @@ function AccountSettings({
     void signInRef.current();
   }, [autoSignIn, account?.signedIn]);
   return (
-    <Modal title="Account & preferences" onClose={onClose}>
+    <Modal title="Account & preferences" onClose={close}>
       <div className="account-box">
         <div className="account-mark">
           <Sparkles size={22} />
@@ -390,6 +389,18 @@ function AccountSettings({
         <p className="error" role="alert">
           {error}
         </p>
+      )}
+      {platform === 'android' && !signing && (error || account?.message)?.includes('[RB-AUTH-INTERRUPTED]') && (
+        <button
+          className="button secondary"
+          onClick={() =>
+            api()
+              .openBatterySettings?.()
+              .catch(error => setError(errorText(error)))
+          }
+        >
+          Open battery settings
+        </button>
       )}
       {platform === 'android' && (
         <p className="help">

@@ -49,6 +49,8 @@ const messages = {
   browser: 'The system browser could not open ChatGPT sign-in. Check that a browser is installed and try again.',
   timeout: 'ChatGPT sign-in timed out. Continue with ChatGPT again.',
   cancelled: 'ChatGPT sign-in was cancelled.',
+  interrupted:
+    "Android closed Research Bot during sign-in. Try again. If it repeats, set Research Bot's battery usage to Unrestricted.",
   setup: 'Research Bot could not start ChatGPT sign-in. Restart the app and try again.',
 } as const;
 

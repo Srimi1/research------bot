@@ -27,4 +27,13 @@ Mac apps use ad hoc signing for local executable integrity. There is no Apple De
 
 The first CI attempt exposed two driver mistakes: the Mac `lipo -verify_arch` argument order, and an Android tap on an accessibility node obscured by fixed bottom navigation. Corrected the command and bounded Android touches/scrolls using the current XML header/footer geometry. That Android run launched and created its project but did not add notes; it is not counted as a passing persistence check.
 
-See linked GitHub workflow results for the completed runs; builds still in progress are not evidence of success. No real account credentials or private signing keys are included. Live consent/inference, the physical OnePlus/Legion OS and the researcher's physical MacBook remain outside automated validation.
+## Completed release evidence
+
+- [All six CI jobs passed on b45a2a9](https://github.com/Srimi1/research------bot/actions/runs/37595123945): 80 backend tests, 24 Electron Node tests, five UI/backend browser suites, desktop GUI checks, Linux/Windows packages, both installed Mac DMGs and Android 16 debug-APK persistence.
+- [All seven release jobs passed](https://github.com/Srimi1/research------bot/actions/runs/37595146294), including installed Apple Silicon/Intel DMGs and the actual signed Android APK's native launch, project creation, note saving and cold restart. Only then was [0.3.5](https://github.com/Srimi1/research------bot/releases/tag/v0.3.5) published.
+- Downloaded the public APK and both DMGs without authentication: HTTP 200, sizes and SHA-256 values matched the published assets/checksums. Both Mac files had valid UDIF disk-image trailers. Verified all 15 asset entries against their checksum files, Android build metadata/signing certificate/alignment, and the Windows/Linux update manifests.
+- APK: 4,767,775 bytes, SHA-256 `d3b1e346aa06abf04699cac35bfef84844c3c3e9739c7f66e3ed5b4bcb2aecdd`.
+- Apple Silicon DMG: 125,957,814 bytes, SHA-256 `9db502382ab78717d869c180f98d0e81fc7c187205b7c97d72a50fc7b0af8d21`.
+- Intel DMG: 131,830,249 bytes, SHA-256 `307cde30c219d754d6dbe5174a1770dcb3d6a71425efa63b557fd347ed3fce8b`.
+
+No real account credentials or private signing keys are included. Live consent/inference, the physical OnePlus/Legion OS and the researcher's physical MacBook remain outside automated validation. Mac downloads are ad hoc signed and have not passed Developer ID notarization or a quarantined first-launch test on a physical Mac.

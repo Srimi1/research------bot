@@ -22,7 +22,7 @@ sha256sum -c SHA256SUMS.txt
 
 Package: `com.researchbot.android`. Version: `0.3.5` / code `305`. Signing certificate SHA-256: `98580ca053712555a2b8a3a8fecfc15c85d83c5d192480e3b6b09ca13a633441`.
 
-Built from [1a462cd](https://github.com/Srimi1/research------bot/commit/1a462cd42ee703227d1f930c9ad4d54a7317b918), with passing regression tests, production Android SQLite/CSP checks, Android release compilation/lint and signature/alignment checks. The release workflow verifies the actual signed APK on Android 16 before publication. The signing key is private and is not included in the repository. Physical-phone behavior and live ChatGPT sign-in remain unverified.
+Built from [1a462cd](https://github.com/Srimi1/research------bot/commit/1a462cd42ee703227d1f930c9ad4d54a7317b918), with passing regression tests, production Android SQLite/CSP checks, Android release compilation/lint and signature/alignment checks. [The release workflow](https://github.com/Srimi1/research------bot/actions/runs/37595146294) passed native launch, project creation, note saving and cold-restart checks for this actual signed APK on Android 16 before publication. The public release download was then verified against the SHA-256 above. The signing key is private and is not included in the repository. Physical-phone behavior and live ChatGPT sign-in remain unverified.
 
 [BUILD_INFO.json](BUILD_INFO.json) records public build metadata. The release workflow can verify this APK with `node scripts/verify-release-apk.mjs` and publish it without copying the signing key to CI.
 

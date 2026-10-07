@@ -13,10 +13,12 @@
     "productionAndroidBackendUnderCsp": "passed",
     "androidReleaseBuildAndLint": "passed",
     "signatureAnd16KiBAlignment": "passed",
-    "asyncNativeCallbackReplyOrdering": "passed"
+    "asyncNativeCallbackReplyOrdering": "passed",
+    "android16SignedApkStartupAndPersistence": "passed"
   },
   "limits": [
     "Physical OnePlus/Legion OS immediate close remains unverified",
     "Live ChatGPT eligibility and inference untested"
-  ]
+  ],
+  "githubReleaseRun": "https://github.com/Srimi1/research------bot/actions/runs/37595146294"
 }

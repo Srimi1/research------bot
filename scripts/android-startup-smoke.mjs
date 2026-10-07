@@ -1,7 +1,7 @@
 // Launch the packaged APK on a real Android runtime, including the native bridge and WebView.
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const apk = process.argv[2];
@@ -71,6 +71,7 @@ async function tapNode(label, predicate) {
     const target = list.find(node => predicate(node) && bounds(node));
     if (target) {
       const { left, top, right, bottom } = bounds(target);
+      console.log(`Tap ${label}: ${JSON.stringify(target)}`);
       adb('shell', 'input', 'tap', String(Math.round((left + right) / 2)), String(Math.round((top + bottom) / 2)));
       return;
     }
@@ -101,8 +102,18 @@ try {
     console.log(adb('shell', 'am', 'start', '-W', '-n', `${packageName}/.MainActivity`).trim());
     if (launch === 1) {
       await waitForTree(label, tree => tree.includes('Create your first project'));
-      await tapNode('start-project', named('Create your first project'));
-      await waitForTree('project-form', tree => tree.includes('Project title'));
+      // Wait for the first screen to settle; an initial touch can focus a newly opened WebView.
+      let form;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        await tapNode('start-project', named('Create your first project'));
+        await pause(1_000);
+        form = treeFor('project-form');
+        if (nodes(form).some(node => node.class === 'android.widget.EditText')) break;
+      }
+      assert.ok(
+        nodes(form).some(node => node.class === 'android.widget.EditText'),
+        'Create project must open its form',
+      );
       await tapNode('project-title', node => node.class === 'android.widget.EditText');
       adb('shell', 'input', 'text', 'AndroidStartupTest');
       adb('shell', 'input', 'keyevent', '4');
@@ -129,11 +140,18 @@ try {
 } catch (error) {
   try {
     const { log, crash } = capture('failure');
+    const shot = readFileSync(`${output}/failure.png`).toString('base64');
+    for (let offset = 0; offset < shot.length; offset += 4_000)
+      console.log(`ANDROID_FAILURE_SCREENSHOT_CHUNK:${shot.slice(offset, offset + 4_000)}`);
     console.log(crash);
     console.log(
       log
         .split('\n')
-        .filter(line => /Capacitor|AndroidRuntime|chromium|WebView|com\.researchbot\.android/.test(line))
+        .filter(
+          line =>
+            /Capacitor|AndroidRuntime|chromium|WebView|com\.researchbot\.android/.test(line) &&
+            !line.includes('"data":"'),
+        )
         .slice(-200)
         .join('\n'),
     );

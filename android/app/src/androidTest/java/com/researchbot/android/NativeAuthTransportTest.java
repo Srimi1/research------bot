@@ -3,6 +3,7 @@ package com.researchbot.android;
 import static org.junit.Assert.*;
 
 import android.webkit.WebView;
+import android.app.ActivityManager;
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
@@ -19,6 +20,16 @@ import org.junit.runner.RunWith;
 @RunWith(AndroidJUnit4.class)
 public class NativeAuthTransportTest {
     private WebView webView;
+
+    @SuppressWarnings("deprecation")
+    private boolean signInServiceIsForeground() {
+        android.content.Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        ActivityManager manager = context.getSystemService(ActivityManager.class);
+        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(50)) {
+            if (service.service.getClassName().equals(SignInService.class.getName())) return service.foreground;
+        }
+        return false;
+    }
 
     private String evaluate(String script) throws Exception {
         AtomicReference<String> value = new AtomicReference<>();
@@ -94,8 +105,20 @@ public class NativeAuthTransportTest {
                 window.__qaAuthorize = null;
                 window.__qaAuthorizeCount = 0;
                 window.__qaTokenHead = null;
+                window.__qaKeepAliveStarts = 0;
+                window.__qaKeepAliveStops = 0;
                 const original = window.Capacitor.nativePromise.bind(window.Capacitor);
                 window.Capacitor.nativePromise = async (plugin, method, options) => {
+                  if (plugin === 'ResearchNative' && method === 'signInKeepAliveStart') {
+                    const result = await original(plugin, method, options);
+                    window.__qaKeepAliveStarts++;
+                    return result;
+                  }
+                  if (plugin === 'ResearchNative' && method === 'signInKeepAliveStop') {
+                    const result = await original(plugin, method, options);
+                    window.__qaKeepAliveStops++;
+                    return result;
+                  }
                   if (plugin === 'ResearchNative' && method === 'openUrl') {
                     window.__qaAuthorize = options.url;
                     window.__qaAuthorizeCount++;
@@ -128,6 +151,7 @@ public class NativeAuthTransportTest {
                 // A real callback only arrives after the browser has loaded consent, so wait until the
                 // browser actually covers the app; otherwise its late launch could land on top again.
                 waitFor("document.visibilityState === 'hidden'", 20);
+                assertTrue("The real sign-in service must already be foreground during browser consent", signInServiceIsForeground());
                 // Raw loopback sockets keep the app's HTTPS-only outbound policy intact.
                 try (Socket socket = new Socket("127.0.0.1", callback.getInt("port"))) {
                     socket.setSoTimeout(45000);
@@ -148,6 +172,9 @@ public class NativeAuthTransportTest {
                 if ("true".equals(evaluate("Boolean(window.__qaAuthResult)"))) break;
             }
             waitFor("window.__qaAuthResult", 15);
+            assertEquals("Every started sign-in service must be stopped", evaluate("window.__qaKeepAliveStarts"), evaluate("window.__qaKeepAliveStops"));
+            for (int i = 0; i < 25 && signInServiceIsForeground(); i++) Thread.sleep(200);
+            assertFalse("The foreground service must not outlive sign-in", signInServiceIsForeground());
             JSONObject head = new JSONObject((String) new org.json.JSONTokener(evaluate("JSON.stringify(window.__qaTokenHead)")).nextValue());
             assertTrue("Native token POST did not produce an HTTP response: " + head, head.optInt("status") >= 400);
             JSONObject outcome = new JSONObject((String) new org.json.JSONTokener(evaluate("JSON.stringify(window.__qaAuthResult)")).nextValue());

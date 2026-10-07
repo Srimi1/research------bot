@@ -1,11 +1,12 @@
 # Changelog
 
-## 0.4.0 (2026-10-07)
+## 0.4.0 (release preparation)
 
-- Android ChatGPT sign-in stays alive while the consent page is in front: a short foreground service keeps the app from being frozen or closed and keeps its network available, so the browser's return is always answered.
-- If Android still closes the app during sign-in, the next start explains it (`RB-AUTH-INTERRUPTED`) and offers the battery settings.
-- Includes the 0.3.9 fix: the code is exchanged only after returning to the app, ending `RB-AUTH-EXCHANGE-DNS`.
-- Signed with a new release key. Installations of 0.3.x must export projects, uninstall and install 0.4.0 once.
+- Keep Android ChatGPT sign-in alive with a foreground service during browser consent; retain the exchange-after-foreground fix. The service and attempt are bounded to less than three minutes and cleaned up on success, rejection, cancellation and timeout.
+- Recover interrupted sign-in after a process kill with `RB-AUTH-INTERRUPTED` and an **Open battery settings** action. Set Research Bot's battery usage to **Unrestricted** if your ROM repeatedly closes it during consent.
+- Preserve the account dialog across browser pause/resume; explicitly closing it still cancels sign-in.
+- Prepare a new release signing key because the original key was lost. The public SHA-256 is recorded in `android/release-signing-certificate.sha256` during setup and checked before building and publishing. Existing 0.3.x installations must export their projects, uninstall once, then install the new signed APK; subsequent 0.4.x updates keep the new key.
+- Add unit and production-bundle checks plus Android 16 CI cases for 75-second consent without a manual return, foreground-service process state, Data Saver and killed-attempt recovery. Phone sign-in and inference remain a separate maintainer check before Phase 2.
 
 ## 0.3.9 (2026-10-07)
 

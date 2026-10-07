@@ -10,7 +10,7 @@ On the phone, 0.3.8's **Check connection** reached every identity endpoint: nati
 
 The OAuth redirect reaches the app's RFC 8252 loopback listener while the browser's consent page is still in front. In 0.3.8 and earlier, the token exchange ran inside that callback handler. That was before Research Bot returned to the foreground, and the app returned only after the exchange finished.
 
-Android blocks networking for an app whose process is not in a foreground state. Android 15 and later do this by default for apps outside a valid process lifecycle. Data Saver and battery restrictions block background apps the same way. A blocked app's DNS lookup fails, so Java raises `UnknownHostException` and the app reports `RB-AUTH-EXCHANGE-DNS`. Wi-Fi and mobile data behave the same because the block is per app, not per network.
+Android can block networking while an app is cached behind the browser. The Android 16 emulator reproduced this with its stock network policy; Data Saver and battery restrictions can also block background access. A blocked app's DNS lookup fails, so Java raises `UnknownHostException` and the app reports `RB-AUTH-EXCHANGE-DNS`. Wi-Fi and mobile data behave the same because the block is per app, not per network.
 
 Earlier emulator checks missed this for two reasons. An instrumented test process counts as foreground. Those tests also answered the callback within seconds, before Android's background block took effect.
 
@@ -53,3 +53,15 @@ HTTP 400 is the token server rejecting the dummy code. The app then starts its s
 Other checks on that commit: 95 unit tests (including the new ordering and cancellation cases), the production-bundle Android OAuth smoke in normal and legacy-WebView modes, the instrumented native transport test on Android 16, startup and saved-project recovery on Android 16, lint, format, type checks and desktop packaging. The signed release additionally installs the APK fresh and over the published 0.3.8 APK, then verifies saved notes after a cold restart before publishing.
 
 All of this ran on the emulator. Live ChatGPT sign-in on the reporting OnePlus 7T Pro remains unconfirmed until the maintainer tries 0.3.9.
+
+## Android-only release follow-up
+
+Version 0.3.9 was present as an unpublished draft. The previous release attempts stopped at GitHub's signing-key restoration step and attached no APK. The original private signing backup is available locally, so the release was completed with a locally signed APK and the existing **prebuilt** workflow path. No private signing material is uploaded to GitHub.
+
+The APK is built from merged commit `202b077ef54620e10211bf268277c3cf1a253afe`; all six jobs in [source CI 37649730288](https://github.com/Srimi1/research------bot/actions/runs/37649730288) passed. That run confirms real rejected token requests after 20-second and 75-second browser consent waits and the Data Saver case without instrumentation. Local formatting, lint, dependency/toolchain checks and all 95 unit tests pass; the dependency audit reports zero vulnerabilities. Signed fresh-install/0.3.8-upgrade and public-download checks also passed, as recorded below.
+
+The local signed release build and Android lint passed. The APK is 4,772,587 bytes with SHA-256 `4ecaac44c15ea2d500b9e2be85e971fa583b6f3ed92c8453c91f3aedff3df2ff`. Verification confirms the existing signing certificate, package/version 0.3.9 (309), SDK 26–36, 16 KiB alignment, no release debug flag, and packaged WebView debugging disabled.
+
+[Release run 37653997201](https://github.com/Srimi1/research------bot/actions/runs/37653997201) passed the actual signed APK checks on Android 16: fresh launch, SQLite project creation and note save, cold restart, upgrade over the published 0.3.8 APK with project/notes retained, and a second cold restart. Only the Android jobs ran. The workflow then published [v0.3.9](https://github.com/Srimi1/research------bot/releases/tag/v0.3.9) with exactly three Android assets.
+
+The public APK, `BUILD_INFO-android.json` and `SHA256SUMS-android.txt` each downloaded with HTTP 200 and matched their GitHub SHA-256 digests and declared sizes. The public APK independently passed signature, package/version, SDK and 16 KiB alignment checks; release debugging is disabled. Published metadata records both signed runtime checks as passed and is mirrored in `downloads/android/BUILD_INFO.json`. The APK hash and certificate above are unchanged. Physical-device ChatGPT sign-in remains unconfirmed.

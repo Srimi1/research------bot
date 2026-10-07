@@ -77,6 +77,10 @@ jobs:
               exit 1
             fi
           done
+          if ! test -f android/release-signing-certificate.sha256 || ! rg -q '^[a-f0-9]{64}$' android/release-signing-certificate.sha256; then
+            echo "::error::Create the new signing key on the maintainer's computer and commit android/release-signing-certificate.sha256 before release. See docs/android.md."
+            exit 1
+          fi
       # A release created with the workflow token does not start this workflow again,
       # so the build jobs below run exactly once.
       - name: Create the release if it does not exist yet
@@ -236,20 +240,20 @@ jobs:
             echo "::error::ANDROID_KEYSTORE_BASE64 could not be decoded. Copy the complete base64 output of the keystore file."
             exit 1
           fi
-          # Fail before building when the password or alias is wrong, or the key is not the one installed copies trust.
+          # Fail before building when the password or alias is wrong, or the key differs from the committed release certificate.
           if ! listing="$(keytool -list -v -keystore "$RUNNER_TEMP/release.jks" -storepass:env ANDROID_KEYSTORE_PASSWORD -alias "$ANDROID_KEY_ALIAS" 2>&1)"; then
             echo "::error::The keystore could not be opened with ANDROID_KEYSTORE_PASSWORD and ANDROID_KEY_ALIAS. Check both secrets."
             exit 1
           fi
           actual="$(printf '%s\n' "$listing" | sed -n 's/^[[:space:]]*SHA256:[[:space:]]*//p' | head -1 | tr -d ':' | tr 'A-F' 'a-f')"
-          # The public fingerprint of the release key, committed when the key is created (docs/android.md).
-          if ! expected="$(tr -d '[:space:]' < android/release-signing-certificate.sha256 2>/dev/null)" || [ -z "$expected" ]; then
-            echo "::error::Commit the release key's certificate SHA-256 to android/release-signing-certificate.sha256."
+          expected="$(tr -d '[:space:]' < android/release-signing-certificate.sha256)"
+          if ! [[ "$expected" =~ ^[a-f0-9]{64}$ ]]; then
+            echo "::error::Commit the new public signing certificate fingerprint in android/release-signing-certificate.sha256 first."
             exit 1
           fi
           echo "Signing certificate SHA-256: $actual"
           if [ "$actual" != "$expected" ]; then
-            echo "::error::This key's certificate ($actual) differs from the one installed copies use ($expected). Use the original signing key."
+            echo "::error::This key's certificate ($actual) differs from the committed release certificate ($expected). Check the signing backup and repository fingerprint."
             exit 1
           fi
           echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
@@ -282,6 +286,9 @@ jobs:
           fi
           apksigner="$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)"
           "$apksigner" verify --print-certs "upload/research-bot-$version-android.apk"
+          if [ "$ANDROID_SOURCE" = build ]; then
+            node scripts/record-android-build.mjs "upload/research-bot-$version-android.apk" upload/BUILD_INFO-android.json
+          fi
           cd upload
           sha256sum -- * > SHA256SUMS-android.txt
           cat SHA256SUMS-android.txt
@@ -326,7 +333,6 @@ jobs:
             # This action executes each script line separately; keep the conditional together.
             if [ -n "${RESEARCH_PREVIOUS_APK:-}" ]; then adb uninstall com.researchbot.android && node scripts/android-startup-smoke.mjs "upload/research-bot-${RESEARCH_RELEASE_TAG#v}-android.apk" "$RESEARCH_PREVIOUS_APK"; fi
       - name: Record the passed signed APK runtime check
-        if: env.ANDROID_SOURCE == 'prebuilt'
         run: |
           node --input-type=module <<'NODE'
           import { readFileSync, writeFileSync } from 'node:fs';

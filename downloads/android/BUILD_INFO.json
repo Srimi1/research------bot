@@ -1,29 +1,31 @@
 {
-  "version": "0.3.8",
-  "versionCode": 308,
+  "version": "0.3.9",
+  "versionCode": 309,
   "package": "com.researchbot.android",
   "minSdk": 26,
   "targetSdk": 36,
-  "sourceCommit": "f741d2b24eb938f698b48fa925ecbdbfb5850d56",
+  "sourceCommit": "202b077ef54620e10211bf268277c3cf1a253afe",
   "certificateSha256": "98580ca053712555a2b8a3a8fecfc15c85d83c5d192480e3b6b09ca13a633441",
-  "apkSha256": "df6362dad0964b43b91476123bbc781c1e655ba4dcef9883c985df0de32c46de",
-  "apkBytes": 4772011,
+  "apkSha256": "4ecaac44c15ea2d500b9e2be85e971fa583b6f3ed92c8453c91f3aedff3df2ff",
+  "apkBytes": 4772587,
   "validation": {
-    "regressionTestsPassed": 93,
-    "productionAndroidBackendUnderCsp": "passed",
+    "regressionTestsPassed": 95,
+    "productionAndroidBackendUnderCsp": "passed (source CI)",
     "productionAndroidAuthenticationUnderCsp": "passed (synthetic native services and OpenAI responses)",
     "productionAndroidAuthenticationWithoutNewerWebViewApis": "passed (AbortSignal.any, AbortSignal.timeout and crypto.randomUUID removed; optional native information unavailable)",
-    "safeConnectionDiagnostics": "passed (control, redaction, cancellation tests and production UI fixture)",
+    "foregroundExchangeOrderingAndCancellation": "passed (unit and production-bundle controls)",
+    "android16NativeAuthTransport": "passed (instrumented debug app; real HTTPS and rejected dummy exchanges)",
+    "android16BackgroundConsentExchange": "passed (debug app without instrumentation; real browser waits of 20s and 75s, plus 20s with Data Saver; rejected dummy exchanges)",
     "androidReleaseBuildAndLint": "passed",
     "signatureAnd16KiBAlignment": "passed",
-    "android16NativeAuthTransport": "passed (real WebView/HTTPS, rejected dummy exchanges while a browser was open, all newer APIs removed and safe native connection report)",
+    "releaseWebViewDebuggingDisabled": "passed (release debug flag absent and packaged WebView debugging disabled)",
     "android16SignedApkStartupAndPersistence": "passed",
     "android16SignedApkUpgradeAndPersistence": "passed"
   },
   "limits": [
-    "Fresh physical OnePlus/Legion OS sign-in reports RB-AUTH-EXCHANGE-NETWORK in 0.3.7; installed WebView version unknown",
-    "Live ChatGPT sign-in, eligibility and inference untested; reproduced compatibility fixes do not establish phone-specific cause"
+    "Live ChatGPT sign-in, eligibility and inference on the physical OnePlus 7T Pro / Legion OS remain unconfirmed",
+    "Native transport tests use public metadata and deliberately invalid credentials, not a real account"
   ],
-  "githubCheckRun": "https://github.com/Srimi1/research------bot/actions/runs/37631157855",
-  "githubReleaseRun": "https://github.com/Srimi1/research------bot/actions/runs/37633791255"
+  "githubCheckRun": "https://github.com/Srimi1/research------bot/actions/runs/37649730288",
+  "githubReleaseRun": "https://github.com/Srimi1/research------bot/actions/runs/37653997201"
 }

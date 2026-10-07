@@ -4,12 +4,10 @@
 // can only reject it; the check is whether the native token POST reaches the server at all.
 // Only fixed reason codes, HTTP statuses and process states are printed, never the callback URL.
 //
-//   node scripts/android-background-exchange.mjs <debug.apk> [--consent-seconds=N] [--data-saver] [--killed]
+//   node scripts/android-background-exchange.mjs <debug.apk> [--consent-seconds=N] [--data-saver] [--kill-during-consent]
 //
 // --data-saver leaves only the emulator's metered cellular network and turns on Data Saver, an
 // Android policy that blocks networking for apps that are not in the foreground.
-// --killed stops the app during consent, as an aggressive ROM might, and checks that the next
-// launch explains the interrupted sign-in.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { connect } from 'node:net';
@@ -19,7 +17,7 @@ assert.ok(apk, 'Pass a debuggable APK (WebView debugging is enabled only in debu
 const option = name => process.argv.find(arg => arg.startsWith(`--${name}`));
 const consentSeconds = Number((option('consent-seconds') ?? '--consent-seconds=75').split('=')[1]);
 const dataSaver = Boolean(option('data-saver'));
-const killed = Boolean(option('killed'));
+const killDuringConsent = Boolean(option('kill-during-consent') || option('killed'));
 const packageName = 'com.researchbot.android';
 const activity = `${packageName}/.MainActivity`;
 const serialArgs = process.env.ANDROID_SERIAL ? ['-s', process.env.ANDROID_SERIAL] : [];
@@ -33,7 +31,7 @@ const shell = command => {
   }
 };
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
-const label = `${killed ? 'killed' : dataSaver ? 'data-saver' : 'stock'} ${consentSeconds}s`;
+const label = `${killDuringConsent ? 'interrupted' : dataSaver ? 'data-saver' : 'stock'} ${consentSeconds}s`;
 
 let uid = '';
 function processState() {
@@ -240,43 +238,56 @@ async function main() {
     })()`);
 
     await pause(3_000);
-    const consentStates = [processState()];
-    console.log(`[${label}] browser opened: ${consentStates[0]}`);
-    if (killed) {
-      // The OS closes Research Bot while the researcher is still on the consent page.
+    console.log(`[${label}] browser opened: ${processState()}`);
+    assert.match(processState(), /uid-state=[^;]*FOREGROUND_SERVICE/, 'Consent must run with a foreground service');
+    for (let waited = 0; waited < consentSeconds; waited += 15) {
+      await pause(Math.min(15, consentSeconds - waited) * 1000);
+      console.log(`[${label}] consent +${Math.min(waited + 15, consentSeconds)}s: ${processState()}`);
+      assert.match(
+        processState(),
+        /uid-state=[^;]*FOREGROUND_SERVICE/,
+        'The sign-in service must remain foreground during consent',
+      );
+    }
+
+    if (killDuringConsent) {
+      // am kill deliberately skips foreground-service processes. Prove that protection, then
+      // force-stop to model a ROM/user killing even a protected process. Neither may save a code.
+      shell(`am kill ${packageName}`);
+      await pause(1_000);
+      assert.equal(shell(`pidof ${packageName}`), pid, 'am kill must spare the foreground service');
       shell(`am force-stop ${packageName}`);
+      assert.equal(shell(`pidof ${packageName}`), '', 'The process must actually be gone');
       devtools.close();
       shell(`am start -W -n ${activity}`);
       await pause(3_000);
-      const relaunched = await DevTools.open(
+      const restarted = await DevTools.open(
         forward(`localabstract:webview_devtools_remote_${shell(`pidof ${packageName}`)}`),
       );
       try {
-        await relaunched.waitFor('window.research', 60);
-        const message = await relaunched.evaluate('window.research.account().then(a => a.message || "")');
-        console.log(`[${label}] after relaunch: ${safeReason(message)}`);
-        assert.match(message, /RB-AUTH-INTERRUPTED/, 'A sign-in ended by the OS must be explained on the next start');
+        await restarted.waitFor('window.research', 60);
+        const account = await restarted.evaluate('window.research.account()');
+        assert.equal(account.signedIn, false);
+        assert.match(account.message, /RB-AUTH-INTERRUPTED/);
+        await restarted.evaluate(`document.querySelector('[aria-label="Account and preferences"]').click()`);
+        await restarted.waitFor(
+          `document.querySelector('[role="dialog"]')?.textContent.includes('RB-AUTH-INTERRUPTED')`,
+          15,
+        );
+        await restarted.waitFor(
+          `Array.from(document.querySelectorAll('button')).some(b => b.textContent.includes('Open battery settings'))`,
+          15,
+        );
+        console.log(`[${label}] PASS: killed consent recovered with RB-AUTH-INTERRUPTED and battery settings`);
       } finally {
-        relaunched.close();
+        restarted.close();
       }
-      console.log(`[${label}] PASS: the interrupted sign-in is explained after Android closed the app`);
       return;
     }
-    for (let waited = 0; waited < consentSeconds; waited += 15) {
-      await pause(Math.min(15, consentSeconds - waited) * 1000);
-      const state = processState();
-      consentStates.push(state);
-      console.log(`[${label}] consent +${Math.min(waited + 15, consentSeconds)}s: ${state}`);
-    }
-    // The sign-in service keeps the app a foreground service, so it is neither frozen nor offline.
-    assert.ok(
-      consentStates.every(state => state.includes('FOREGROUND_SERVICE')),
-      'Research Bot must stay a foreground service while the consent page is in front',
-    );
 
     const delivery = deliverCallback(callback.port, callback.target);
     const held = await Promise.race([delivery.then(() => false), pause(15_000).then(() => true)]);
-    assert.ok(!held, `The callback must be answered while the browser is in front: ${processState()}`);
+    assert.equal(held, false, 'The callback must answer during consent without a manual switch back');
     const reply = await delivery;
     console.log(`[${label}] browser callback reply: ${reply.split('\r\n')[0]} (${safeReason(reply)})`);
 

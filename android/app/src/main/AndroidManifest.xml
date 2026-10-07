@@ -4,9 +4,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Sign-in waits until Android stops blocking the app's network after the browser closes. -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <!-- A short foreground service keeps sign-in alive while the ChatGPT consent page is in front. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SHORT_SERVICE" />
+    <!-- shortService has no type-specific permission; dataSync is used before API 34. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <!-- In-app updates hand a verified APK from GitHub Releases to Android's installer. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
@@ -48,6 +47,7 @@
         <service
             android:name=".SignInService"
             android:exported="false"
+            android:stopWithTask="true"
             android:foregroundServiceType="shortService|dataSync" />
 
         <provider

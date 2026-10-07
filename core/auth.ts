@@ -25,6 +25,8 @@ const TOKEN = `${ISSUER}/api/accounts/oauth/token`;
 const SCOPES = 'openid profile email offline_access resource.invoke chatgpt.tokens.use.direct';
 const PLAN_SCOPE = 'chatgpt.tokens.use.direct';
 const SIGN_IN_MS = 5 * 60_000;
+// Finish before Android's shortService limit, even if its timeout stops the native service.
+const ANDROID_SIGN_IN_MS = 165_000;
 interface Registration {
   issuer: string;
   subject: string;
@@ -96,10 +98,7 @@ export interface AuthPlatform {
    * blocks networking for an app behind the browser, so the token exchange must not run there.
    */
   awaitForeground?: (signal: AbortSignal) => Promise<void>;
-  /**
-   * Android only. Keeps the app running and online while the browser is in front, so Android
-   * neither freezes the callback listener nor kills the app during consent. Best effort.
-   */
+  /** Android only. Promote the process before opening the browser; stop on every outcome. */
   keepAlive?: { start(): Promise<void>; stop(): Promise<void> };
 }
 
@@ -159,10 +158,16 @@ export class AuthService {
           this.hostId = `urn:uuid:${randomId()}`;
           await this.files.write('host.json', new TextEncoder().encode(JSON.stringify({ id: this.hostId })));
         }
-        // Keep only allowlisted diagnostics and the public issued client ID here; never tokens or URLs.
+        // Keep only allowlisted diagnostics or a timestamp here; never tokens or callback URLs.
+        let interrupted = false;
         try {
           const notice = await this.files.read('signin.json');
-          if (notice) this.signInFailure = readAuthFailure(JSON.parse(new TextDecoder().decode(notice)));
+          if (notice) {
+            const value = JSON.parse(new TextDecoder().decode(notice)) as { startedAt?: unknown };
+            interrupted =
+              typeof value?.startedAt === 'number' && Number.isFinite(value.startedAt) && value.startedAt > 0;
+            this.signInFailure = readAuthFailure(value);
+          }
         } catch {
           /* A diagnostic file must not prevent account recovery. */
         }
@@ -175,8 +180,8 @@ export class AuthService {
         } catch {
           /* An incomplete registration can be started again. */
         }
-        if (!this.credentialStore.available()) return;
         try {
+          if (!this.credentialStore.available()) return;
           const saved = await this.files.read('account.enc');
           if (!saved) return;
           const value = JSON.parse(await this.credentialStore.decrypt(saved)) as Registration;
@@ -197,6 +202,13 @@ export class AuthService {
           this.registration = value;
         } catch {
           this.loadMessage = 'Saved ChatGPT credentials could not be unlocked. Continue with ChatGPT to reconnect.';
+        } finally {
+          if (interrupted) {
+            // Credentials may have been saved immediately before Android killed the process.
+            if (this.registration?.accessToken || this.registration?.refreshToken)
+              await this.files.remove('signin.json').catch(() => undefined);
+            else await this.rememberFailure(new AuthFailure('interrupted'));
+          }
         }
       })();
     await this.loaded;
@@ -362,11 +374,7 @@ export class AuthService {
     try {
       await this.initialize();
       this.signInFailure = undefined;
-      // Saved now so the next start explains an attempt the OS ended by closing the app. Success
-      // removes it and any other outcome replaces it.
-      await this.files
-        .write('signin.json', new TextEncoder().encode(JSON.stringify(new AuthFailure('interrupted').notice())))
-        .catch(() => undefined);
+      await this.files.remove('signin.json').catch(() => undefined);
       try {
         return await this.performSignIn();
       } catch (error) {
@@ -559,10 +567,13 @@ export class AuthService {
       throw cancellation();
     }
     redirectUri = `http://127.0.0.1:${server.port}/auth/callback`;
-    const timer = setTimeout(() => {
-      controller.abort();
-      reject(new AuthFailure('timeout'));
-    }, SIGN_IN_MS);
+    const timer = setTimeout(
+      () => {
+        controller.abort();
+        reject(new AuthFailure('timeout'));
+      },
+      this.keepAlive ? ANDROID_SIGN_IN_MS : SIGN_IN_MS,
+    );
     this.pending = { controller, server, reject, timer };
     const authorize = new URL(AUTHORIZE);
     authorize.search = new URLSearchParams({
@@ -580,26 +591,30 @@ export class AuthService {
       ...(previous?.idToken ? { id_token_hint: previous.idToken } : {}),
       ...(live && previous?.email ? { login_hint: previous.email } : {}),
     }).toString();
-    let keptAlive = false;
     try {
-      if (this.keepAlive)
-        keptAlive = await this.keepAlive.start().then(
-          () => true,
-          () => false,
-        );
-      try {
-        await this.openBrowser(authorize.toString());
-      } catch {
-        throw new AuthFailure('browser');
+      if (this.keepAlive) {
+        try {
+          await this.files.write('signin.json', new TextEncoder().encode(JSON.stringify({ startedAt: Date.now() })));
+        } catch {
+          throw new AuthFailure('storage');
+        }
+        await this.keepAlive.start().catch(() => undefined);
       }
+      if (controller.signal.aborted || cancellationGeneration !== this.signInCancellation) throw cancellation();
+      await Promise.race([
+        this.openBrowser(authorize.toString()).catch(() => {
+          throw new AuthFailure('browser');
+        }),
+        result,
+      ]);
       await result;
       return await this.account();
     } finally {
-      if (keptAlive) await this.keepAlive?.stop().catch(() => undefined);
       clearTimeout(timer);
       controller.abort();
       server.close();
       if (this.pending?.controller === controller) this.pending = undefined;
+      await this.keepAlive?.stop().catch(() => undefined);
     }
   }
 

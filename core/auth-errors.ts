@@ -50,7 +50,7 @@ const messages = {
   timeout: 'ChatGPT sign-in timed out. Continue with ChatGPT again.',
   cancelled: 'ChatGPT sign-in was cancelled.',
   interrupted:
-    'Research Bot was closed before ChatGPT sign-in finished. Try again. On Android, if this repeats, set Research Bot’s battery usage to Unrestricted.',
+    "Android closed Research Bot during sign-in. Try again. If it repeats, set Research Bot's battery usage to Unrestricted.",
   setup: 'Research Bot could not start ChatGPT sign-in. Restart the app and try again.',
 } as const;
 

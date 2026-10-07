@@ -141,7 +141,7 @@ jobs:
             node scripts/android-background-exchange.mjs android/app/build/outputs/apk/debug/app-debug.apk --consent-seconds=20
             node scripts/android-background-exchange.mjs android/app/build/outputs/apk/debug/app-debug.apk --consent-seconds=75
             node scripts/android-background-exchange.mjs android/app/build/outputs/apk/debug/app-debug.apk --consent-seconds=20 --data-saver
-            node scripts/android-background-exchange.mjs android/app/build/outputs/apk/debug/app-debug.apk --consent-seconds=10 --killed
+            node scripts/android-background-exchange.mjs android/app/build/outputs/apk/debug/app-debug.apk --consent-seconds=20 --kill-during-consent
       - uses: actions/upload-artifact@v4
         with:
           name: research-bot-android-debug

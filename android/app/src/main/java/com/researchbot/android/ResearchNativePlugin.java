@@ -11,6 +11,9 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.ResultReceiver;
 import android.provider.Settings;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
@@ -18,8 +21,8 @@ import android.util.Base64;
 import android.webkit.WebView;
 import androidx.activity.result.ActivityResult;
 import androidx.browser.customtabs.CustomTabsIntent;
-import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
+import androidx.core.content.ContextCompat;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
@@ -109,6 +112,7 @@ public class ResearchNativePlugin extends Plugin {
 
     @Override
     protected void handleOnDestroy() {
+        getContext().stopService(new Intent(getContext(), SignInService.class));
         for (String id : connections.keySet()) closeHttp(id);
         for (String id : servers.keySet()) closeServer(id);
         executor.shutdownNow();
@@ -232,6 +236,59 @@ public class ResearchNativePlugin extends Plugin {
 
     // Foreground network -------------------------------------------------------------------------
 
+    @PluginMethod
+    public void signInKeepAliveStart(PluginCall call) {
+        getActivity().runOnUiThread(() -> {
+            synchronized (foregroundWaiters) {
+                if (!resumed) {
+                    call.reject("Return to Research Bot before starting sign-in.");
+                    return;
+                }
+            }
+            Handler handler = new Handler(Looper.getMainLooper());
+            Runnable timeout = () -> {
+                getContext().stopService(new Intent(getContext(), SignInService.class));
+                call.reject("The sign-in service did not start.");
+            };
+            ResultReceiver reply = new ResultReceiver(handler) {
+                @Override
+                protected void onReceiveResult(int resultCode, android.os.Bundle data) {
+                    handler.removeCallbacks(timeout);
+                    if (resultCode == 0) call.resolve();
+                    else call.reject("The sign-in service could not start.");
+                }
+            };
+            try {
+                handler.postDelayed(timeout, 10_000);
+                ContextCompat.startForegroundService(
+                    getContext(), new Intent(getContext(), SignInService.class).putExtra("reply", reply)
+                );
+            } catch (RuntimeException error) {
+                handler.removeCallbacks(timeout);
+                call.reject("The sign-in service could not start.");
+            }
+        });
+    }
+
+    @PluginMethod
+    public void signInKeepAliveStop(PluginCall call) {
+        getContext().stopService(new Intent(getContext(), SignInService.class));
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void openAppSettings(PluginCall call) {
+        try {
+            getActivity().startActivity(new Intent(
+                Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                Uri.parse("package:" + getContext().getPackageName())
+            ));
+            call.resolve();
+        } catch (RuntimeException error) {
+            call.reject("Android app settings could not open.");
+        }
+    }
+
     /**
      * Resolves once the activity is resumed and Android reports this app's network as usable.
      * While the browser is in front, Android may block the app's networking (Android 15+ background
@@ -270,36 +327,6 @@ public class ResearchNativePlugin extends Plugin {
             return info != null && info.isConnected();
         } catch (RuntimeException unavailable) {
             return true;
-        }
-    }
-
-    /** Starts the sign-in foreground service; it stops on signInKeepAliveStop or its own timeout. */
-    @PluginMethod
-    public void signInKeepAliveStart(PluginCall call) {
-        try {
-            ContextCompat.startForegroundService(getContext(), new Intent(getContext(), SignInService.class));
-            call.resolve();
-        } catch (RuntimeException refused) {
-            call.reject("Android did not allow the sign-in service to start.");
-        }
-    }
-
-    @PluginMethod
-    public void signInKeepAliveStop(PluginCall call) {
-        getContext().stopService(new Intent(getContext(), SignInService.class));
-        call.resolve();
-    }
-
-    /** Research Bot's system settings page, where battery usage can be set to Unrestricted. */
-    @PluginMethod
-    public void openAppSettings(PluginCall call) {
-        try {
-            getActivity().startActivity(
-                new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + getContext().getPackageName()))
-            );
-            call.resolve();
-        } catch (RuntimeException unavailable) {
-            call.reject("Android settings could not be opened.");
         }
     }
 

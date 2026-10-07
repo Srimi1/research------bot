@@ -1,6 +1,6 @@
 // Launch the packaged APK on a real Android runtime, including the native bridge and WebView.
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -40,6 +40,11 @@ try {
       assert.ok(!crash.includes(`Process: ${packageName}`), `Native startup crash:\n${crash}`);
       if (attempt % 3 !== 0) continue;
       adb('shell', 'uiautomator', 'dump', '/sdcard/research-bot-startup.xml');
+      const dumped = spawnSync('adb', [...serialArgs, 'shell', 'test', '-s', '/sdcard/research-bot-startup.xml'], {
+        timeout: 15_000,
+      });
+      // Immediately after boot, Android can return a null accessibility root. Retry the dump.
+      if (dumped.status !== 0) continue;
       const tree = adb('shell', 'cat', '/sdcard/research-bot-startup.xml');
       writeFileSync(`${output}/${label}-ui.xml`, tree);
       if (tree.includes('Create your first project')) {
@@ -55,7 +60,17 @@ try {
   }
 } catch (error) {
   try {
-    capture('failure');
+    const { log, crash } = capture('failure');
+    console.log(crash);
+    console.log(
+      log
+        .split('\n')
+        .filter(line => /Capacitor|AndroidRuntime|chromium|WebView|com\.researchbot\.android/.test(line))
+        .slice(-200)
+        .join('\n'),
+    );
+    console.log(adb('shell', 'dumpsys', 'webviewupdate'));
+    console.log(adb('shell', 'dumpsys', 'activity', 'top').slice(-12_000));
   } catch {}
   throw error;
 }

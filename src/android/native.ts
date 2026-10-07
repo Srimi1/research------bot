@@ -14,7 +14,7 @@ export interface ResearchNativePlugin {
   httpRead(options: { id: string }): Promise<{ done: boolean; data?: string }>;
   httpClose(options: { id: string }): Promise<void>;
   loopbackStart(): Promise<{ serverId: string; port: number }>;
-  loopbackRespond(options: { requestId: string; status: number; body: string }): Promise<void>;
+  loopbackRespond(options: { requestId: string; status: number; body: string; returnToApp?: boolean }): Promise<void>;
   loopbackClose(options: { serverId: string }): Promise<void>;
   addListener(
     event: 'loopbackRequest',

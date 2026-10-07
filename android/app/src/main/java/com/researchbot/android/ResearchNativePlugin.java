@@ -267,11 +267,11 @@ public class ResearchNativePlugin extends Plugin {
             respond(requestId, status, body);
             // Acknowledge only after the socket write: JS closes the server after this resolves.
             call.resolve();
-            if (status == 200) returnToApp();
+            if (status == 200 || call.getBoolean("returnToApp", false)) returnToApp();
         });
     }
 
-    /** After a successful sign-in, close the browser tab by bringing the app back on top of it. */
+    /** Bring the app back after a state-validated sign-in outcome, including a failed attempt. */
     private void returnToApp() {
         Activity activity = getActivity();
         if (activity == null) return;

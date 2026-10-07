@@ -21,7 +21,7 @@ Cover each surface and record evidence or an explicit limit:
 - Product workflows: project creation, switching and deletion; notes and undo/redo; source discovery and reading notes; plans; assistant review; cancellation; import/export where implemented.
 - Android UX: phone layouts, safe areas, touch targets, contrast, dialogs, navigation, keyboard behavior, screen-reader labels and reduced motion.
 - Persistence: schema migration, project isolation, concurrent edits, atomic writes, interruption recovery, failed saves and bounded history.
-- Authentication: system-browser OAuth, PKCE, state and nonce, verified tokens, refresh, cancellation, sign-out, protected credential storage and redaction.
+- Authentication: system-browser OAuth, PKCE, state and nonce, verified tokens, refresh, cancellation, sign-out, protected credential storage and redaction. Check failure feedback in the initial phone viewport and after an app restart. Retain an issued registration on failed exchange without promoting an unverified identity. Exercise both success and failure through the shipped Android backend under CSP.
 - Network boundaries: allowed protocols and destinations, response limits, redirects, timeouts, external links and untrusted source/model content.
 - Desktop/native adapters: preload and IPC restrictions, renderer isolation, native permissions, files, callbacks and exported components.
 - Updates and releases: versioning, package identity, checksums, signing certificates, installer permissions, CI workflows and build artifacts.

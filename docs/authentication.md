@@ -1,6 +1,6 @@
 # Authentication decision
 
-Checked against official OpenAI documentation on 2026-10-05.
+Checked against official OpenAI documentation and public OpenID metadata on 2026-10-07.
 
 ## Intended route
 
@@ -19,6 +19,10 @@ Sign-in and authorization to use the ChatGPT plan are distinct. The flow does no
 - Handle denied consent, unsupported accounts, exhausted allowance, and cancellation clearly; do not silently incur API charges.
 
 The shared Android/desktop authentication flow is implemented with mocked protocol tests. Callback replies are awaited before closing the local server; Android's native bridge acknowledges them after writing to the browser socket. This avoids server cleanup replacing a completed reply with “This sign-in is no longer active.” Explicit cancellation and the five-minute timeout still end inactive attempts. See the [callback investigation](audits/2026-10-07-signin-and-macos.md).
+
+Version 0.3.6 retains the public issued client ID after a state-validated registration, even when the later exchange or identity check fails. A retry reuses that registration and the stable host ID; a verified identity remains mandatory before saving tokens or enabling AI. Account tokens stay encrypted in the OS keychain/Keystore.
+
+Failed attempts show a fixed, safe `RB-AUTH-…` diagnostic near the sign-in button and on the callback page. The reason and optional HTTP status survive reopening the account dialog or restarting the app. Android returns to the app after state-validated success or failure; untrusted callbacks cannot trigger that return. Notices contain no callback URL, authorization code, token, email, upstream response body or untrusted error description. See the [failure investigation](audits/2026-10-07-signin-diagnostics.md).
 
 Live account consent, eligibility, and inference remain unverified until the researcher signs in. The app does not copy cookies, scrape ChatGPT sessions, or reuse Codex credential files.
 

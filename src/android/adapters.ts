@@ -102,10 +102,12 @@ export function createNativeLoopback(bridge: LoopbackBridge): StartLoopback {
       handler({
         method: event.method,
         url: event.url,
-        async respond(status, body) {
+        async respond(status, body, returnToApp = false) {
           if (answered) return;
           answered = true;
-          await bridge.loopbackRespond({ requestId: event.requestId, status, body }).catch(() => undefined);
+          await bridge
+            .loopbackRespond({ requestId: event.requestId, status, body, returnToApp })
+            .catch(() => undefined);
         },
       });
     });

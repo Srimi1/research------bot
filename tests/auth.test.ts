@@ -80,11 +80,13 @@ async function fixture(deferredResponse = false) {
     invalidGrant: false,
     invalidGrantOnce: false,
     callbackCode: 'issued-code',
+    tokenError: undefined as string | undefined,
   };
   const authorizations: URL[] = [];
   const exchanges: URLSearchParams[] = [];
   let callbackReply: Promise<{ status: number; body: string }> | undefined;
   const responseOrder: string[] = [];
+  const returnToApps: boolean[] = [];
   const openBrowser = async (url: string) => {
     const authorize = new URL(url);
     authorizations.push(authorize);
@@ -105,19 +107,27 @@ async function fixture(deferredResponse = false) {
       exchanges.push(form);
       const invalidGrant = state.invalidGrant || state.invalidGrantOnce;
       state.invalidGrantOnce = false;
-      return invalidGrant
-        ? { statusCode: 400, data: JSON.stringify({ error: 'invalid_grant' }) }
-        : {
-            statusCode: 200,
+      return state.tokenError
+        ? {
+            statusCode: 403,
             data: JSON.stringify({
-              access_token: 'access-secret',
-              refresh_token: 'refresh-secret',
-              id_token: jwt,
-              token_type: 'Bearer',
-              expires_in: state.expiresIn,
-              scope: state.scope,
+              error: state.tokenError,
+              error_description: 'access-secret refresh-secret private URL',
             }),
-          };
+          }
+        : invalidGrant
+          ? { statusCode: 400, data: JSON.stringify({ error: 'invalid_grant' }) }
+          : {
+              statusCode: 200,
+              data: JSON.stringify({
+                access_token: 'access-secret',
+                refresh_token: 'refresh-secret',
+                id_token: jwt,
+                token_type: 'Bearer',
+                expires_in: state.expiresIn,
+                scope: state.scope,
+              }),
+            };
     });
     const returning = authorize.searchParams.get('client_id') !== 'dynamic_agent_client';
     const redirect = new URL(authorize.searchParams.get('redirect_uri')!);
@@ -159,10 +169,11 @@ async function fixture(deferredResponse = false) {
               });
               return { serverId: 'native-test', port: server.port };
             },
-            async loopbackRespond({ requestId, status, body }) {
+            async loopbackRespond({ requestId, status, body, returnToApp }) {
               // Native acknowledgements arrive after the worker has written the browser reply.
               await new Promise(resolve => setTimeout(resolve, 20));
               responseOrder.push('respond');
+              returnToApps.push(Boolean(returnToApp));
               requests.get(requestId)!.respond(status, body);
               requests.delete(requestId);
             },
@@ -185,6 +196,8 @@ async function fixture(deferredResponse = false) {
     authorizations,
     exchanges,
     responseOrder,
+    returnToApps,
+    openBrowser,
     get callbackReply() {
       return callbackReply;
     },
@@ -208,6 +221,7 @@ test('asynchronous native callback replies finish before the sign-in server clos
       if (declined) await assert.rejects(f.auth.signIn(), /identity verification failed/);
       else assert.equal((await f.auth.signIn()).signedIn, true);
       assert.deepEqual(f.responseOrder, ['respond', 'close']);
+      assert.deepEqual(f.returnToApps, [true]);
       const reply = await f.callbackReply!;
       assert.equal(reply.status, declined ? 400 : 200);
       assert.match(reply.body, declined ? /sign-in did not complete/ : /ChatGPT is connected/);
@@ -253,6 +267,66 @@ test('dynamic registration uses PKCE, exact loopback URI and verified identity; 
       authorize.searchParams.get('ext_agent_host_id'),
     );
     assert.equal(f.jwksCalls, 1);
+  } finally {
+    await f.close();
+  }
+});
+
+test('a failed identity check survives restart without tokens and reuses the issued registration', async () => {
+  const f = await fixture();
+  try {
+    f.state.nonceOverride = 'wrong-nonce';
+    await assert.rejects(f.auth.signIn(), /RB-AUTH-IDENTITY-NONCE/);
+    assert.equal((await f.auth.account()).signedIn, false);
+    const restored = new AuthService(f.directory, f.openBrowser, f.credentialStore);
+    assert.match((await restored.account()).message!, /RB-AUTH-IDENTITY-NONCE/);
+    assert.equal((await restored.account()).signedIn, false);
+    assert.deepEqual(JSON.parse(await readFile(join(f.directory, 'signin.json'), 'utf8')), {
+      reason: 'identity_nonce',
+    });
+    assert.deepEqual(JSON.parse(await readFile(join(f.directory, 'registration.json'), 'utf8')), { clientId });
+    await assert.rejects(readFile(join(f.directory, 'account.enc')), { code: 'ENOENT' });
+    f.state.nonceOverride = undefined;
+    assert.equal((await restored.signIn()).signedIn, true);
+    assert.equal(f.authorizations[1].searchParams.get('client_id'), clientId);
+    assert.equal(f.authorizations[1].searchParams.get('agent_name_hint'), null);
+    assert.equal(
+      f.authorizations[1].searchParams.get('ext_agent_host_id'),
+      f.authorizations[0].searchParams.get('ext_agent_host_id'),
+    );
+    assert.equal((await restored.account()).message, undefined);
+    await assert.rejects(readFile(join(f.directory, 'signin.json')), { code: 'ENOENT' });
+    await assert.rejects(readFile(join(f.directory, 'registration.json')), { code: 'ENOENT' });
+  } finally {
+    await f.close();
+  }
+});
+
+test('callback and saved sign-in diagnostics never expose unknown OAuth errors or credentials', async () => {
+  const f = await fixture(true);
+  try {
+    f.state.tokenError = 'access-secret refresh-secret private URL';
+    await assert.rejects(f.auth.signIn(), /RB-AUTH-REJECTED/);
+    const reply = await f.callbackReply!;
+    assert.equal(reply.status, 400);
+    assert.match(reply.body, /HTTP 403/);
+    assert.match(reply.body, /RB-AUTH-REJECTED/);
+    const saved = await readFile(join(f.directory, 'signin.json'), 'utf8');
+    for (const value of [reply.body, saved, (await f.auth.account()).message!]) {
+      assert.doesNotMatch(value, /access-secret|refresh-secret|private URL/);
+    }
+    assert.deepEqual(JSON.parse(saved), { reason: 'rejected', status: 403 });
+  } finally {
+    await f.close();
+  }
+});
+
+test('an untrusted callback cannot return the user to the app, but the verified outcome can', async () => {
+  const f = await fixture(true);
+  try {
+    f.state.wrongStateFirst = true;
+    assert.equal((await f.auth.signIn()).signedIn, true);
+    assert.deepEqual(f.returnToApps, [false, true]);
   } finally {
     await f.close();
   }

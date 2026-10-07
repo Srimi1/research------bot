@@ -1,5 +1,6 @@
 import { createLocalJWKSet, jwtVerify, type JSONWebKeySet, type JWTPayload } from 'jose';
 import type { Account } from '../src/shared/types';
+import { AuthFailure, oauthFailure, readAuthFailure, safeAuthFailure, type AuthStage } from './auth-errors';
 import {
   constantEqual,
   randomSecret,
@@ -53,7 +54,7 @@ interface Pending {
 }
 
 function cancellation(): Error {
-  return new Error('ChatGPT sign-in was cancelled.');
+  return new AuthFailure('cancelled');
 }
 function validatedClient(value: unknown): value is string {
   return (
@@ -105,6 +106,7 @@ export class AuthService {
   private signInCancellation = 0;
   private signInActive = false;
   private recoveryClientId?: string;
+  private signInFailure?: AuthFailure;
 
   private fetch: Fetch;
   private files: FileStore;
@@ -138,6 +140,22 @@ export class AuthService {
         if (!host) {
           this.hostId = `urn:uuid:${crypto.randomUUID()}`;
           await this.files.write('host.json', new TextEncoder().encode(JSON.stringify({ id: this.hostId })));
+        }
+        // Keep only allowlisted diagnostics and the public issued client ID here; never tokens or URLs.
+        try {
+          const notice = await this.files.read('signin.json');
+          if (notice) this.signInFailure = readAuthFailure(JSON.parse(new TextDecoder().decode(notice)));
+        } catch {
+          /* A diagnostic file must not prevent account recovery. */
+        }
+        try {
+          const pending = await this.files.read('registration.json');
+          if (pending) {
+            const value = JSON.parse(new TextDecoder().decode(pending)) as { clientId?: unknown };
+            if (validatedClient(value.clientId)) this.recoveryClientId = value.clientId;
+          }
+        } catch {
+          /* An incomplete registration can be started again. */
         }
         if (!this.credentialStore.available()) return;
         try {
@@ -197,6 +215,7 @@ export class AuthService {
       message: !this.credentialStore.available()
         ? 'An OS keychain is required to store ChatGPT credentials securely.'
         : (this.signOutMessage ??
+          this.signInFailure?.message ??
           this.loadMessage ??
           (signedIn && !value?.scopes.includes(PLAN_SCOPE)
             ? 'Your identity is connected, but ChatGPT plan usage is not authorized. Enable app access in ChatGPT Settings → Usage.'
@@ -233,9 +252,15 @@ export class AuthService {
           this.jwksPromise = undefined;
           throw error;
         });
+    let jwks: Awaited<NonNullable<typeof this.jwksPromise>>;
+    try {
+      jwks = await this.jwksPromise;
+    } catch {
+      throw new AuthFailure('identity_keys');
+    }
     let payload: JWTPayload;
     try {
-      ({ payload } = await jwtVerify(token, await this.jwksPromise, {
+      ({ payload } = await jwtVerify(token, jwks, {
         issuer: ISSUER,
         audience: clientId,
         algorithms: ['RS256'],
@@ -243,18 +268,22 @@ export class AuthService {
       }));
     } catch (error) {
       // A key rotation may happen during a long-running app session. Refetch once.
-      if (retried || (error as { code?: string }).code !== 'ERR_JWKS_NO_MATCHING_KEY')
-        throw new Error('ChatGPT identity verification failed. Start a new sign-in.');
-      this.jwksPromise = undefined;
-      return this.verifyIdentity(token, clientId, nonce, true);
+      const detail = error as { code?: string; claim?: string };
+      if (!retried && detail.code === 'ERR_JWKS_NO_MATCHING_KEY') {
+        this.jwksPromise = undefined;
+        return this.verifyIdentity(token, clientId, nonce, true);
+      }
+      if (detail.code === 'ERR_JWT_EXPIRED') throw new AuthFailure('identity_expired');
+      if (detail.code === 'ERR_JWT_CLAIM_VALIDATION_FAILED') {
+        if (detail.claim === 'aud') throw new AuthFailure('identity_audience');
+        if (detail.claim === 'iss') throw new AuthFailure('identity_issuer');
+        throw new AuthFailure('identity_claims');
+      }
+      throw new AuthFailure('identity_signature');
     }
-    if (
-      typeof payload.sub !== 'string' ||
-      !payload.sub ||
-      (nonce !== undefined && (typeof payload.nonce !== 'string' || !constantEqual(payload.nonce, nonce)))
-    ) {
-      throw new Error('ChatGPT identity verification failed. Start a new sign-in.');
-    }
+    if (typeof payload.sub !== 'string' || !payload.sub) throw new AuthFailure('identity_claims');
+    if (nonce !== undefined && (typeof payload.nonce !== 'string' || !constantEqual(payload.nonce, nonce)))
+      throw new AuthFailure('identity_nonce');
     return payload;
   }
 
@@ -270,11 +299,11 @@ export class AuthService {
     try {
       value = JSON.parse(await readLimited(response, 1_000_000));
     } catch {
-      throw new Error(`ChatGPT returned an invalid authorization response (HTTP ${response.status}).`);
+      throw new AuthFailure('response', response.status);
     }
     if (!response.ok) {
       const code = (value as { error?: unknown })?.error;
-      const error = new Error(publicError(code));
+      const error = oauthFailure(code, response.status);
       Object.assign(error, { oauthCode: code });
       throw error;
     }
@@ -284,14 +313,15 @@ export class AuthService {
       typeof token !== 'object' ||
       typeof token.access_token !== 'string' ||
       !token.access_token ||
-      token.token_type?.toLowerCase() !== 'bearer' ||
+      typeof token.token_type !== 'string' ||
+      token.token_type.toLowerCase() !== 'bearer' ||
       !Number.isFinite(token.expires_in) ||
       token.expires_in <= 0 ||
       (token.scope !== undefined && typeof token.scope !== 'string') ||
       (token.refresh_token !== undefined && typeof token.refresh_token !== 'string') ||
       (token.id_token !== undefined && typeof token.id_token !== 'string')
     ) {
-      throw new Error('ChatGPT returned an invalid credential response.');
+      throw new AuthFailure('credentials');
     }
     return token;
   }
@@ -301,6 +331,9 @@ export class AuthService {
     this.signInActive = true;
     const cancellationGeneration = this.signInCancellation;
     try {
+      await this.initialize();
+      this.signInFailure = undefined;
+      await this.files.remove('signin.json').catch(() => undefined);
       try {
         return await this.performSignIn();
       } catch (error) {
@@ -313,17 +346,27 @@ export class AuthService {
           throw error;
         return await this.performSignIn();
       }
+    } catch (error) {
+      const failure = safeAuthFailure(error, 'setup');
+      await this.rememberFailure(failure);
+      throw failure;
     } finally {
       this.signInActive = false;
     }
+  }
+
+  private async rememberFailure(failure: AuthFailure): Promise<void> {
+    this.signInFailure = failure;
+    await this.files
+      .write('signin.json', new TextEncoder().encode(JSON.stringify(failure.notice())))
+      .catch(() => undefined);
   }
 
   private async performSignIn(): Promise<Account> {
     const cancellationGeneration = this.signInCancellation;
     await this.initialize();
     if (cancellationGeneration !== this.signInCancellation) throw cancellation();
-    if (!this.credentialStore.available())
-      throw new Error('Encrypted system credential storage is unavailable. Enable an OS keychain before signing in.');
+    if (!this.credentialStore.available()) throw new AuthFailure('storage_unavailable');
     if (this.pending) throw new Error('A ChatGPT sign-in is already in progress.');
     const previous = this.registration;
     // After sign-out (or an invalid_grant reset) the saved registration keeps only its client ID.
@@ -365,8 +408,9 @@ export class AuthService {
           return;
         }
         callbackUsed = true;
+        let stage: AuthStage = 'setup';
         try {
-          if (url.searchParams.has('error')) throw new Error(publicError(url.searchParams.get('error')));
+          if (url.searchParams.has('error')) throw oauthFailure(url.searchParams.get('error'));
           const clientId = requestedClientId ?? url.searchParams.get('client_id');
           if (
             !validatedClient(clientId) ||
@@ -374,7 +418,7 @@ export class AuthService {
               url.searchParams.has('client_id') &&
               url.searchParams.get('client_id') !== requestedClientId)
           ) {
-            throw new Error('ChatGPT returned an unexpected client registration. Start a new sign-in.');
+            throw new AuthFailure('registration');
           }
           const code = url.searchParams.get('code');
           if (
@@ -383,28 +427,29 @@ export class AuthService {
             url.searchParams.getAll('code').length !== 1 ||
             url.searchParams.getAll('client_id').length > 1
           )
-            throw new Error('ChatGPT did not return a valid authorization code.');
-          let tokens: TokenResponse;
-          try {
-            tokens = await this.tokenRequest(
-              new URLSearchParams({
-                grant_type: 'authorization_code',
-                client_id: clientId,
-                code,
-                code_verifier: verifier,
-                redirect_uri: redirectUri,
-                resource: RESOURCE,
-              }),
-              controller.signal,
-            );
-          } catch (error) {
-            if ((error as { oauthCode?: string }).oauthCode === 'invalid_grant') this.recoveryClientId = clientId;
-            throw error;
-          }
-          if (!tokens.id_token) throw new Error('ChatGPT did not return an identity token.');
+            throw new AuthFailure('code');
+          // Consent already issued a registration. Retain it for retries even if the subsequent
+          // network request or identity check fails; it never grants access without a verified token.
+          this.recoveryClientId = clientId;
+          await this.files
+            .write('registration.json', new TextEncoder().encode(JSON.stringify({ clientId })))
+            .catch(() => undefined);
+          stage = 'exchange_network';
+          const tokens = await this.tokenRequest(
+            new URLSearchParams({
+              grant_type: 'authorization_code',
+              client_id: clientId,
+              code,
+              code_verifier: verifier,
+              redirect_uri: redirectUri,
+              resource: RESOURCE,
+            }),
+            controller.signal,
+          );
+          if (!tokens.id_token) throw new AuthFailure('identity_missing');
+          stage = 'identity_claims';
           const identity = await this.verifyIdentity(tokens.id_token, clientId, nonce);
-          if (previous && live && identity.sub !== previous.subject)
-            throw new Error('The signed-in ChatGPT account does not match this saved registration.');
+          if (previous && live && identity.sub !== previous.subject) throw new AuthFailure('account');
           const registration: Registration = {
             issuer: ISSUER,
             subject: identity.sub!,
@@ -418,6 +463,7 @@ export class AuthService {
             expiresAt: Date.now() + tokens.expires_in * 1000,
           };
           if (controller.signal.aborted || epoch !== this.epoch) throw cancellation();
+          stage = 'storage';
           await this.persist(registration, () => !controller.signal.aborted && epoch === this.epoch);
           if (controller.signal.aborted || epoch !== this.epoch) throw cancellation();
           ++this.epoch;
@@ -428,15 +474,28 @@ export class AuthService {
           this.recoveryClientId = undefined;
           this.loadMessage = undefined;
           this.signOutMessage = undefined;
+          this.signInFailure = undefined;
+          await Promise.all([
+            this.files.remove('signin.json').catch(() => undefined),
+            this.files.remove('registration.json').catch(() => undefined),
+          ]);
           // The native bridge queues the socket write. Wait before finally closes its server,
           // otherwise closeServer can replace this reply with "sign-in is no longer active".
-          await request.respond(200, 'ChatGPT is connected. You can close this tab and return to Research Bot.');
+          await request.respond(200, 'ChatGPT is connected. You can close this tab and return to Research Bot.', true);
           finish();
         } catch (error) {
+          const failure = safeAuthFailure(error, stage);
+          if (this.pending?.controller === controller && epoch === this.epoch) await this.rememberFailure(failure);
           try {
-            await request.respond(400, 'ChatGPT sign-in did not complete. Return to Research Bot to try again.');
+            await request.respond(
+              400,
+              `ChatGPT sign-in did not complete.\n\n${failure.message}\n\nReturn to Research Bot. Your research is saved.`,
+              true,
+            );
           } finally {
-            reject(error instanceof Error ? error : new Error('ChatGPT sign-in failed.'));
+            if ((error as { oauthCode?: string }).oauthCode === 'invalid_grant')
+              Object.assign(failure, { oauthCode: 'invalid_grant' });
+            reject(failure);
           }
         }
       })().catch(() => {
@@ -450,7 +509,7 @@ export class AuthService {
     redirectUri = `http://127.0.0.1:${server.port}/auth/callback`;
     const timer = setTimeout(() => {
       controller.abort();
-      reject(new Error('ChatGPT sign-in timed out. Continue with ChatGPT again.'));
+      reject(new AuthFailure('timeout'));
     }, SIGN_IN_MS);
     this.pending = { controller, server, reject, timer };
     const authorize = new URL(AUTHORIZE);
@@ -473,7 +532,7 @@ export class AuthService {
       try {
         await this.openBrowser(authorize.toString());
       } catch {
-        throw new Error('The system browser could not open ChatGPT sign-in. Try again from Research Bot.');
+        throw new AuthFailure('browser');
       }
       await result;
       return await this.account();

@@ -307,7 +307,14 @@ function AccountSettings({
       setSettings({ ...preferences, model: catalog.includes(preferences.model) ? preferences.model : '' });
       setMessage(next.signedIn ? 'Your ChatGPT account is connected.' : next.message || 'Sign-in has not completed.');
     } catch (error) {
+      setMessage('');
       setError(errorText(error));
+      // The backend retains safe sign-in diagnostics across dialog closure and app restarts.
+      try {
+        setAccount(await api().account());
+      } catch {
+        /* Keep the original sign-in error visible. */
+      }
     } finally {
       setSigning(false);
     }
@@ -354,7 +361,17 @@ function AccountSettings({
         </div>
         {account?.signedIn && <span className="tag green">Connected</span>}
       </div>
-      {account?.message && <p className="callout">{account.message}</p>}
+      {account?.message && account.message !== error && <p className="callout">{account.message}</p>}
+      {message && (
+        <p className="muted" role="status">
+          {message}
+        </p>
+      )}
+      {error && (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      )}
       <div className="account-actions">
         {account?.signedIn ? (
           <button
@@ -455,16 +472,6 @@ function AccountSettings({
             Only the app version is checked; nothing about your research is sent.
           </p>
         </>
-      )}
-      {message && (
-        <p className="muted" role="status">
-          {message}
-        </p>
-      )}
-      {error && (
-        <p className="error" role="alert">
-          {error}
-        </p>
       )}
       <div className="modal-actions">
         <button className="button secondary" onClick={onClose}>

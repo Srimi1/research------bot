@@ -91,6 +91,11 @@ export interface AuthPlatform {
   openBrowser(url: string): Promise<void>;
   credentials: CredentialStore;
   startLoopback: StartLoopback;
+  /**
+   * Android only. Resolves once the app is back in front with its network unblocked. Android
+   * blocks networking for an app behind the browser, so the token exchange must not run there.
+   */
+  awaitForeground?: (signal: AbortSignal) => Promise<void>;
 }
 
 /** Credentials and OAuth traffic stay in this service; the interface only sees the Account summary. */
@@ -117,6 +122,7 @@ export class AuthService {
   private openBrowser: (url: string) => Promise<void>;
   private credentialStore: CredentialStore;
   private startLoopback: StartLoopback;
+  private awaitForeground?: (signal: AbortSignal) => Promise<void>;
 
   constructor(platform: AuthPlatform) {
     this.fetch = platform.fetch;
@@ -124,6 +130,7 @@ export class AuthService {
     this.openBrowser = platform.openBrowser;
     this.credentialStore = platform.credentials;
     this.startLoopback = platform.startLoopback;
+    this.awaitForeground = platform.awaitForeground;
   }
 
   private async initialize(): Promise<void> {
@@ -424,6 +431,7 @@ export class AuthService {
         }
         callbackUsed = true;
         let stage: AuthStage = 'setup';
+        let answered = false;
         try {
           if (url.searchParams.has('error')) throw oauthFailure(url.searchParams.get('error'));
           const clientId = requestedClientId ?? url.searchParams.get('client_id');
@@ -449,6 +457,18 @@ export class AuthService {
           await this.files
             .write('registration.json', new TextEncoder().encode(JSON.stringify({ clientId })))
             .catch(() => undefined);
+          if (this.awaitForeground) {
+            // The state matched, so this browser reply may bring the app back. The code is only
+            // exchanged from the app itself; nothing about the outcome is sent to the browser.
+            answered = true;
+            await request.respond(
+              200,
+              'Authorization received. Return to Research Bot to finish connecting ChatGPT.',
+              true,
+            );
+            await this.awaitForeground(controller.signal);
+            if (controller.signal.aborted || epoch !== this.epoch) throw cancellation();
+          }
           stage = 'exchange_network';
           const tokens = await this.tokenRequest(
             new URLSearchParams({
@@ -496,17 +516,23 @@ export class AuthService {
           ]);
           // The native bridge queues the socket write. Wait before finally closes its server,
           // otherwise closeServer can replace this reply with "sign-in is no longer active".
-          await request.respond(200, 'ChatGPT is connected. You can close this tab and return to Research Bot.', true);
+          if (!answered)
+            await request.respond(
+              200,
+              'ChatGPT is connected. You can close this tab and return to Research Bot.',
+              true,
+            );
           finish();
         } catch (error) {
           const failure = safeAuthFailure(error, stage);
           if (this.pending?.controller === controller && epoch === this.epoch) await this.rememberFailure(failure);
           try {
-            await request.respond(
-              400,
-              `ChatGPT sign-in did not complete.\n\n${failure.message}\n\nReturn to Research Bot. Your research is saved.`,
-              true,
-            );
+            if (!answered)
+              await request.respond(
+                400,
+                `ChatGPT sign-in did not complete.\n\n${failure.message}\n\nReturn to Research Bot. Your research is saved.`,
+                true,
+              );
           } finally {
             if ((error as { oauthCode?: string }).oauthCode === 'invalid_grant')
               Object.assign(failure, { oauthCode: 'invalid_grant' });

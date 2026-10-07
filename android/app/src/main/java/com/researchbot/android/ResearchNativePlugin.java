@@ -253,6 +253,11 @@ public class ResearchNativePlugin extends Plugin {
             ResultReceiver reply = new ResultReceiver(handler) {
                 @Override
                 protected void onReceiveResult(int resultCode, android.os.Bundle data) {
+                    if (resultCode == SignInService.RESULT_EXPIRED) {
+                        // The service hit its own deadline; tell JS to abandon the attempt.
+                        notifyListeners("signInExpired", new JSObject());
+                        return;
+                    }
                     handler.removeCallbacks(timeout);
                     if (resultCode == 0) call.resolve();
                     else call.reject("The sign-in service could not start.");

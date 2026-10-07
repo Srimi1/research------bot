@@ -161,10 +161,27 @@ export function createForegroundWait(bridge: Pick<ResearchNativePlugin, 'awaitFo
 
 export const nativeForeground = createForegroundWait(Native);
 
-export const nativeKeepAlive = {
-  start: () => Native.signInKeepAliveStart(),
-  stop: () => Native.signInKeepAliveStop(),
-};
+/** The service stops itself at its deadline and reports it here so sign-in is abandoned cleanly. */
+export function createKeepAlive(
+  bridge: Pick<ResearchNativePlugin, 'addListener' | 'signInKeepAliveStart' | 'signInKeepAliveStop'>,
+) {
+  return {
+    start: () => bridge.signInKeepAliveStart(),
+    stop: () => bridge.signInKeepAliveStop(),
+    onExpired(listener: () => void): () => void {
+      let removed = false;
+      const handle = bridge.addListener('signInExpired', () => {
+        if (!removed) listener();
+      });
+      return () => {
+        removed = true;
+        void handle.then(registration => registration.remove()).catch(() => undefined);
+      };
+    },
+  };
+}
+
+export const nativeKeepAlive = createKeepAlive(Native);
 
 /** App-private files (Context.getFilesDir()/research), replaced atomically. */
 export const nativeFiles: FileStore = {

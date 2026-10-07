@@ -98,8 +98,12 @@ export interface AuthPlatform {
    * blocks networking for an app behind the browser, so the token exchange must not run there.
    */
   awaitForeground?: (signal: AbortSignal) => Promise<void>;
-  /** Android only. Promote the process before opening the browser; stop on every outcome. */
-  keepAlive?: { start(): Promise<void>; stop(): Promise<void> };
+  /**
+   * Android only. Promote the process before opening the browser; stop on every outcome.
+   * onExpired reports that the service reached its own deadline, so the attempt is abandoned
+   * instead of leaving a listener open with nothing keeping the app alive. It returns an unsubscribe.
+   */
+  keepAlive?: { start(): Promise<void>; stop(): Promise<void>; onExpired?(listener: () => void): () => void };
 }
 
 /** Credentials and OAuth traffic stay in this service; the interface only sees the Account summary. */
@@ -567,13 +571,12 @@ export class AuthService {
       throw cancellation();
     }
     redirectUri = `http://127.0.0.1:${server.port}/auth/callback`;
-    const timer = setTimeout(
-      () => {
-        controller.abort();
-        reject(new AuthFailure('timeout'));
-      },
-      this.keepAlive ? ANDROID_SIGN_IN_MS : SIGN_IN_MS,
-    );
+    const expire = () => {
+      controller.abort();
+      reject(new AuthFailure('timeout'));
+    };
+    const timer = setTimeout(expire, this.keepAlive ? ANDROID_SIGN_IN_MS : SIGN_IN_MS);
+    let unsubscribeExpired: (() => void) | undefined;
     this.pending = { controller, server, reject, timer };
     const authorize = new URL(AUTHORIZE);
     authorize.search = new URLSearchParams({
@@ -598,6 +601,7 @@ export class AuthService {
         } catch {
           throw new AuthFailure('storage');
         }
+        unsubscribeExpired = this.keepAlive.onExpired?.(expire);
         await this.keepAlive.start().catch(() => undefined);
       }
       if (controller.signal.aborted || cancellationGeneration !== this.signInCancellation) throw cancellation();
@@ -611,6 +615,7 @@ export class AuthService {
       return await this.account();
     } finally {
       clearTimeout(timer);
+      unsubscribeExpired?.();
       controller.abort();
       server.close();
       if (this.pending?.controller === controller) this.pending = undefined;

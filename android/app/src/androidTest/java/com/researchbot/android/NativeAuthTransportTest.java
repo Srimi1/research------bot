@@ -77,11 +77,13 @@ public class NativeAuthTransportTest {
                 Object.defineProperty(AbortSignal, 'any', {value: undefined, configurable: true});
                 window.__qaAuthResult = null;
                 window.__qaAuthorize = null;
+                window.__qaAuthorizeCount = 0;
                 window.__qaTokenHead = null;
                 const original = window.Capacitor.nativePromise.bind(window.Capacitor);
                 window.Capacitor.nativePromise = async (plugin, method, options) => {
                   if (plugin === 'ResearchNative' && method === 'openUrl') {
                     window.__qaAuthorize = options.url;
+                    window.__qaAuthorizeCount++;
                     // The system browser really opens, but on public metadata instead of account consent.
                     return original(plugin, method, {url: 'https://auth.openai.com/.well-known/openid-configuration'});
                   }
@@ -104,16 +106,26 @@ public class NativeAuthTransportTest {
                 );
                 """);
             waitFor("window.__qaAuthorize", 15);
-            // The pending state and loopback URI remain private to this test and are never logged.
-            String callbackJson = evaluate("JSON.stringify((() => { const u = new URL(window.__qaAuthorize); const r = new URL(u.searchParams.get('redirect_uri')); r.search = new URLSearchParams({state: u.searchParams.get('state'), code: 'synthetic-invalid-code', client_id: 'oaiapp_native_transport_fixture'}); return {port: Number(r.port), target: r.pathname + r.search}; })())");
-            JSONObject callback = new JSONObject((String) new org.json.JSONTokener(callbackJson).nextValue());
-            // Raw loopback sockets keep the app's HTTPS-only outbound policy intact.
-            try (Socket socket = new Socket("127.0.0.1", callback.getInt("port"))) {
-                socket.setSoTimeout(45000);
-                String request = "GET " + callback.getString("target") + " HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n";
-                socket.getOutputStream().write(request.getBytes(StandardCharsets.US_ASCII));
-                byte[] reply = socket.getInputStream().readAllBytes();
-                assertTrue("The actual callback must answer the browser", reply.length > 0);
+            for (int attempt = 1; attempt <= 2; attempt++) {
+                // The pending state and loopback URI remain private to this test and are never logged.
+                String callbackJson = evaluate("JSON.stringify((() => { const u = new URL(window.__qaAuthorize); const r = new URL(u.searchParams.get('redirect_uri')); r.search = new URLSearchParams({state: u.searchParams.get('state'), code: 'synthetic-invalid-code', client_id: 'oaiapp_native_transport_fixture'}); return {port: Number(r.port), target: r.pathname + r.search}; })())");
+                JSONObject callback = new JSONObject((String) new org.json.JSONTokener(callbackJson).nextValue());
+                // Raw loopback sockets keep the app's HTTPS-only outbound policy intact.
+                try (Socket socket = new Socket("127.0.0.1", callback.getInt("port"))) {
+                    socket.setSoTimeout(45000);
+                    String request = "GET " + callback.getString("target") + " HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n";
+                    socket.getOutputStream().write(request.getBytes(StandardCharsets.US_ASCII));
+                    byte[] reply = socket.getInputStream().readAllBytes();
+                    assertTrue("The actual callback must answer the browser", reply.length > 0);
+                    String text = new String(reply, StandardCharsets.UTF_8);
+                    assertTrue("Dummy authorization must return a failed callback", text.startsWith("HTTP/1.1 400"));
+                    // Print only a fixed local reason, never the callback URL or raw provider reply.
+                    java.util.regex.Matcher reason = java.util.regex.Pattern.compile("RB-AUTH-[A-Z-]+").matcher(text);
+                    System.out.println("Native dummy exchange callback: " + (reason.find() ? reason.group() : "missing safe reason"));
+                }
+                // invalid_grant intentionally starts one fresh attempt. Answer that attempt too.
+                waitFor("window.__qaAuthResult || window.__qaAuthorizeCount > " + attempt, 15);
+                if ("true".equals(evaluate("Boolean(window.__qaAuthResult)"))) break;
             }
             waitFor("window.__qaAuthResult", 15);
             JSONObject head = new JSONObject((String) new org.json.JSONTokener(evaluate("JSON.stringify(window.__qaTokenHead)")).nextValue());

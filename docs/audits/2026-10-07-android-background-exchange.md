@@ -40,4 +40,16 @@ PKCE, state, nonce, issuer, audience and RS256 signature checks, account binding
 
 ## Validation
 
-Fixed-build results are recorded in [docs/releases/v0.3.9.md](../releases/v0.3.9.md) and the PR. Emulator results do not substitute for a live sign-in on the reporting phone, which remains unconfirmed until the maintainer tries 0.3.9.
+The same script on the fixed debug build ([CI run 37641427802](https://github.com/Srimi1/research------bot/actions/runs/37641427802), commit `456a868`, Android 16 emulator):
+
+| Scenario                                                   | Browser reply        | Back in front        | Native token POST      |
+| ---------------------------------------------------------- | -------------------- | -------------------- | ---------------------- |
+| Stock, 20 s at consent (`APP_BACKGROUND` blocked)          | HTTP 200, no outcome | By itself            | HTTP 400 after 1046 ms |
+| Stock, 75 s at consent (app frozen until the user returns) | HTTP 200 once back   | After switching back | HTTP 400 after 625 ms  |
+| Data Saver on metered data, 20 s                           | HTTP 200, no outcome | By itself            | HTTP 400 after 378 ms  |
+
+HTTP 400 is the token server rejecting the dummy code. The app then starts its single fresh authorization for `invalid_grant`, as designed. Before the fix the same Data Saver case failed with `RB_NET_DNS` in 5 ms.
+
+Other checks on that commit: 95 unit tests (including the new ordering and cancellation cases), the production-bundle Android OAuth smoke in normal and legacy-WebView modes, the instrumented native transport test on Android 16, startup and saved-project recovery on Android 16, lint, format, type checks and desktop packaging. The signed release additionally installs the APK fresh and over the published 0.3.8 APK, then verifies saved notes after a cold restart before publishing.
+
+All of this ran on the emulator. Live ChatGPT sign-in on the reporting OnePlus 7T Pro remains unconfirmed until the maintainer tries 0.3.9.

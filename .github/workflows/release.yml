@@ -219,12 +219,35 @@ jobs:
         if: env.ANDROID_SOURCE == 'build'
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
         run: |
           if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
             echo "::error::The ANDROID_KEYSTORE_BASE64 secret is not set. Follow docs/android.md to add the signing key."
             exit 1
           fi
-          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.jks"
+          # Pasted secrets often carry line breaks, spaces or Windows line endings; base64 has none.
+          encoded="$(printf '%s' "$ANDROID_KEYSTORE_BASE64" | tr -d '[:space:]')"
+          if ! printf '%s' "$encoded" | grep -Eq '^[A-Za-z0-9+/]+={0,2}$'; then
+            echo "::error::ANDROID_KEYSTORE_BASE64 is not base64 text. Paste the output of 'base64 -i <keystore>' (macOS) or 'base64 -w0 <keystore>' (Linux), not the file path or a password."
+            exit 1
+          fi
+          if ! printf '%s' "$encoded" | base64 --decode > "$RUNNER_TEMP/release.jks"; then
+            echo "::error::ANDROID_KEYSTORE_BASE64 could not be decoded. Copy the complete base64 output of the keystore file."
+            exit 1
+          fi
+          # Fail before building when the password or alias is wrong, or the key is not the one installed copies trust.
+          if ! listing="$(keytool -list -v -keystore "$RUNNER_TEMP/release.jks" -storepass:env ANDROID_KEYSTORE_PASSWORD -alias "$ANDROID_KEY_ALIAS" 2>&1)"; then
+            echo "::error::The keystore could not be opened with ANDROID_KEYSTORE_PASSWORD and ANDROID_KEY_ALIAS. Check both secrets."
+            exit 1
+          fi
+          actual="$(printf '%s\n' "$listing" | sed -n 's/^[[:space:]]*SHA256:[[:space:]]*//p' | head -1 | tr -d ':' | tr 'A-F' 'a-f')"
+          expected="$(node -p "require('./downloads/android/BUILD_INFO.json').certificateSha256")"
+          echo "Signing certificate SHA-256: $actual"
+          if [ "$actual" != "$expected" ]; then
+            echo "::error::This key's certificate ($actual) differs from the one installed copies use ($expected). Use the original signing key."
+            exit 1
+          fi
           echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
       - run: npm ci
         if: env.ANDROID_SOURCE == 'build'

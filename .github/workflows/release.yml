@@ -77,8 +77,8 @@ jobs:
               exit 1
             fi
           done
-          if ! test -f android/release-signing-certificate.sha256 || ! rg -q '^[a-f0-9]{64}$' android/release-signing-certificate.sha256; then
-            echo "::error::Create the new signing key on the maintainer's computer and commit android/release-signing-certificate.sha256 before release. See docs/android.md."
+          if ! test -f android/release-signing-certificate.sha256 || ! grep -Eq '^[a-f0-9]{64}$' android/release-signing-certificate.sha256; then
+            echo "::error::Commit the release key's public certificate SHA-256 to android/release-signing-certificate.sha256 before release. See docs/android.md."
             exit 1
           fi
       # A release created with the workflow token does not start this workflow again,
@@ -248,7 +248,7 @@ jobs:
           actual="$(printf '%s\n' "$listing" | sed -n 's/^[[:space:]]*SHA256:[[:space:]]*//p' | head -1 | tr -d ':' | tr 'A-F' 'a-f')"
           expected="$(tr -d '[:space:]' < android/release-signing-certificate.sha256)"
           if ! [[ "$expected" =~ ^[a-f0-9]{64}$ ]]; then
-            echo "::error::Commit the new public signing certificate fingerprint in android/release-signing-certificate.sha256 first."
+            echo "::error::Commit the release key's public certificate SHA-256 to android/release-signing-certificate.sha256 first."
             exit 1
           fi
           echo "Signing certificate SHA-256: $actual"

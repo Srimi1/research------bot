@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.9 (2026-10-07)
+
+- Fixed Android ChatGPT sign-in failing with `RB-AUTH-EXCHANGE-DNS` while Check connection succeeded. The code was exchanged while the browser was in front, and Android blocks networking for background apps. Android now returns to the app and waits for its network before the exchange.
+- Added an Android 16 emulator reproduction that drives the real app without instrumentation behind a real browser (stock, frozen-app and Data Saver cases).
+
 ## 0.3.5 — 2026-10-07
 
 - Fixed Android sign-in replies racing callback-server cleanup, which could show “This sign-in is no longer active” instead of the completed response.

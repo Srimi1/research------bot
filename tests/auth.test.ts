@@ -152,10 +152,11 @@ async function fixture(
       void callbackReply.catch(() => undefined);
     } else await callback(redirect);
   };
+  const files = directoryFiles(directory);
   const auth = deferredResponse
     ? new CoreAuthService({
         fetch: fetchNetwork,
-        files: directoryFiles(directory),
+        files,
         openBrowser,
         credentials: credentialStore,
         awaitForeground,
@@ -169,6 +170,7 @@ async function fixture(
                 responseOrder.push('keepAliveStop');
                 await keepAlive.stop();
               },
+              onExpired: keepAlive.onExpired?.bind(keepAlive),
             }
           : undefined,
         startLoopback: (() => {
@@ -211,6 +213,7 @@ async function fixture(
     api,
     state,
     directory,
+    files,
     credentialStore,
     authorizations,
     exchanges,
@@ -384,6 +387,65 @@ test('Android abandons sign-in cleanly when the foreground service reaches its d
   await new Promise(resolve => setTimeout(resolve, 10));
   f.auth.cancelSignIn();
   await cancelled;
+});
+
+test('Android native service expiry aborts the foreground wait and closes the loopback listener', async () => {
+  let expire = () => {};
+  let removed = 0;
+  let foregroundSignal!: AbortSignal;
+  let waiting!: () => void;
+  const foregroundStarted = new Promise<void>(resolve => (waiting = resolve));
+  const keepAlive = createKeepAlive({
+    signInKeepAliveStart: async () => {},
+    signInKeepAliveStop: async () => {},
+    addListener: (async (_event: string, listener: () => void) => {
+      expire = listener;
+      return { remove: async () => void removed++ };
+    }) as never,
+  });
+  const f = await fixture(
+    true,
+    signal => {
+      foregroundSignal = signal;
+      waiting();
+      return new Promise<void>((_resolve, reject) => {
+        signal.addEventListener('abort', () => reject(signal.reason), { once: true });
+      });
+    },
+    keepAlive,
+  );
+  const notices: unknown[] = [];
+  const write = f.files.write;
+  f.files.write = async (name, data) => {
+    if (name === 'signin.json') {
+      const notice = JSON.parse(new TextDecoder().decode(data));
+      if (notice.reason) notices.push(notice);
+    }
+    await write(name, data);
+  };
+  try {
+    const pending = f.auth.signIn();
+    const rejected = assert.rejects(pending, /RB-AUTH-TIMEOUT/);
+    await foregroundStarted;
+    assert.equal(foregroundSignal.aborted, false);
+    assert.equal(f.exchanges.length, 0);
+    expire();
+    await rejected;
+    assert.equal(foregroundSignal.aborted, true);
+    assert.equal(f.exchanges.length, 0, 'Expiry must not start a token exchange');
+    assert.equal(removed, 1);
+    assert.equal(f.responseOrder.filter(event => event === 'close').length, 1);
+    assert.equal(f.responseOrder.filter(event => event === 'keepAliveStop').length, 1);
+    assert.deepEqual(notices, [{ reason: 'timeout' }], 'An aborted callback must not replace the expiry notice');
+    const listener = new URL(f.authorizations[0].searchParams.get('redirect_uri')!);
+    listener.search = '';
+    await assert.rejects(callback(listener), { code: 'ECONNREFUSED' });
+    assert.deepEqual(JSON.parse(await readFile(join(f.directory, 'signin.json'), 'utf8')), { reason: 'timeout' });
+    assert.match((await f.auth.account()).message!, /RB-AUTH-TIMEOUT/);
+    await assert.rejects(readFile(join(f.directory, 'account.enc')), { code: 'ENOENT' });
+  } finally {
+    await f.close();
+  }
 });
 
 test('Android releases a refused service and falls back to the foreground exchange path', async () => {

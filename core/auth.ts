@@ -548,7 +548,10 @@ export class AuthService {
           finish();
         } catch (error) {
           const failure = safeAuthFailure(error, stage);
-          if (this.pending?.controller === controller && epoch === this.epoch) await this.rememberFailure(failure);
+          // Cancellation/expiry owns the diagnostic. An aborted foreground wait or request can
+          // finish later; it must not overwrite that outcome with a generic callback failure.
+          if (!controller.signal.aborted && this.pending?.controller === controller && epoch === this.epoch)
+            await this.rememberFailure(failure);
           try {
             if (!answered)
               await request.respond(

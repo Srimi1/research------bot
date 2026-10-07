@@ -17,12 +17,13 @@
     "androidReleaseBuildAndLint": "passed",
     "signatureAnd16KiBAlignment": "passed",
     "android16NativeAuthTransport": "passed (real WebView/HTTPS, rejected dummy exchanges while a browser was open, all newer APIs removed and safe native connection report)",
-    "android16SignedApkStartupAndPersistence": "pending release workflow",
-    "android16SignedApkUpgradeAndPersistence": "pending release workflow (from 0.3.7)"
+    "android16SignedApkStartupAndPersistence": "passed",
+    "android16SignedApkUpgradeAndPersistence": "passed"
   },
   "limits": [
     "Fresh physical OnePlus/Legion OS sign-in reports RB-AUTH-EXCHANGE-NETWORK in 0.3.7; installed WebView version unknown",
     "Live ChatGPT sign-in, eligibility and inference untested; reproduced compatibility fixes do not establish phone-specific cause"
   ],
-  "githubCheckRun": "https://github.com/Srimi1/research------bot/actions/runs/37631157855"
+  "githubCheckRun": "https://github.com/Srimi1/research------bot/actions/runs/37631157855",
+  "githubReleaseRun": "https://github.com/Srimi1/research------bot/actions/runs/37633791255"
 }

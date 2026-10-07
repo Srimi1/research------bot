@@ -4,9 +4,15 @@ on:
   workflow_dispatch:
     inputs:
       apk_version:
-        description: Published APK version to install and launch.
+        description: APK version to install and launch.
         required: true
         default: 0.3.4
+      apk_source:
+        description: Test a published release or the signed APK committed on this ref.
+        type: choice
+        required: true
+        default: published
+        options: [published, committed]
       api_level:
         description: Android API level to test.
         type: choice
@@ -33,11 +39,19 @@ jobs:
           distribution: temurin
           java-version: 21
       - name: Download the published signed APK
+        if: inputs.apk_source == 'published'
         run: |
           [[ "$APK_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
           mkdir apk
           base="https://github.com/$GITHUB_REPOSITORY/releases/download/v$APK_VERSION"
           curl --fail --location --retry 3 "$base/research-bot-$APK_VERSION-android.apk" -o apk/app.apk
+      - name: Use the committed signed APK
+        if: inputs.apk_source == 'committed'
+        run: |
+          [[ "$APK_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
+          mkdir apk
+          (cd downloads/android && sha256sum --check SHA256SUMS.txt)
+          cp "downloads/android/research-bot-$APK_VERSION-android.apk" apk/app.apk
       - name: Enable KVM for the emulator
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules

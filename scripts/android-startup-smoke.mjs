@@ -1,7 +1,7 @@
 // Launch the packaged APK on a real Android runtime, including the native bridge and WebView.
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync, writeSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const apk = process.argv[2];
@@ -108,6 +108,7 @@ try {
         await tapNode('start-project', named('Create your first project'));
         await pause(1_000);
         form = treeFor('project-form');
+        console.log(`Project form nodes: ${JSON.stringify(nodes(form))}`);
         if (nodes(form).some(node => node.class === 'android.widget.EditText')) break;
       }
       assert.ok(
@@ -140,9 +141,6 @@ try {
 } catch (error) {
   try {
     const { log, crash } = capture('failure');
-    const shot = readFileSync(`${output}/failure.png`).toString('base64');
-    for (let offset = 0; offset < shot.length; offset += 4_000)
-      console.log(`ANDROID_FAILURE_SCREENSHOT_CHUNK:${shot.slice(offset, offset + 4_000)}`);
     console.log(crash);
     console.log(
       log
@@ -164,6 +162,10 @@ try {
       ),
     );
     console.log(adb('shell', 'dumpsys', 'activity', 'top').slice(-12_000));
+    // Flush evidence before throwing: console's pipe writes can otherwise be truncated at process exit.
+    const shot = readFileSync(`${output}/failure.png`).toString('base64');
+    for (let offset = 0; offset < shot.length; offset += 4_000)
+      writeSync(1, `ANDROID_FAILURE_SCREENSHOT_CHUNK:${shot.slice(offset, offset + 4_000)}\n`);
   } catch {}
   throw error;
 }

@@ -96,6 +96,11 @@ export interface AuthPlatform {
    * blocks networking for an app behind the browser, so the token exchange must not run there.
    */
   awaitForeground?: (signal: AbortSignal) => Promise<void>;
+  /**
+   * Android only. Keeps the app running and online while the browser is in front, so Android
+   * neither freezes the callback listener nor kills the app during consent. Best effort.
+   */
+  keepAlive?: { start(): Promise<void>; stop(): Promise<void> };
 }
 
 /** Credentials and OAuth traffic stay in this service; the interface only sees the Account summary. */
@@ -123,6 +128,7 @@ export class AuthService {
   private credentialStore: CredentialStore;
   private startLoopback: StartLoopback;
   private awaitForeground?: (signal: AbortSignal) => Promise<void>;
+  private keepAlive?: AuthPlatform['keepAlive'];
 
   constructor(platform: AuthPlatform) {
     this.fetch = platform.fetch;
@@ -131,6 +137,7 @@ export class AuthService {
     this.credentialStore = platform.credentials;
     this.startLoopback = platform.startLoopback;
     this.awaitForeground = platform.awaitForeground;
+    this.keepAlive = platform.keepAlive;
   }
 
   private async initialize(): Promise<void> {
@@ -355,7 +362,11 @@ export class AuthService {
     try {
       await this.initialize();
       this.signInFailure = undefined;
-      await this.files.remove('signin.json').catch(() => undefined);
+      // Saved now so the next start explains an attempt the OS ended by closing the app. Success
+      // removes it and any other outcome replaces it.
+      await this.files
+        .write('signin.json', new TextEncoder().encode(JSON.stringify(new AuthFailure('interrupted').notice())))
+        .catch(() => undefined);
       try {
         return await this.performSignIn();
       } catch (error) {
@@ -569,7 +580,13 @@ export class AuthService {
       ...(previous?.idToken ? { id_token_hint: previous.idToken } : {}),
       ...(live && previous?.email ? { login_hint: previous.email } : {}),
     }).toString();
+    let keptAlive = false;
     try {
+      if (this.keepAlive)
+        keptAlive = await this.keepAlive.start().then(
+          () => true,
+          () => false,
+        );
       try {
         await this.openBrowser(authorize.toString());
       } catch {
@@ -578,6 +595,7 @@ export class AuthService {
       await result;
       return await this.account();
     } finally {
+      if (keptAlive) await this.keepAlive?.stop().catch(() => undefined);
       clearTimeout(timer);
       controller.abort();
       server.close();

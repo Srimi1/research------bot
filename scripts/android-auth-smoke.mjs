@@ -86,13 +86,17 @@ try {
       events.push('reply');
       return {};
     }
+    if (method === 'signInKeepAliveStart' || method === 'signInKeepAliveStop') {
+      events.push(method === 'signInKeepAliveStart' ? 'keepalive-start' : 'keepalive-stop');
+      return {};
+    }
     if (method === 'awaitForeground') {
       events.push('foreground');
       return {};
     }
     if (method === 'appInfo') {
       if (missingInfo) throw new Error('Optional device information is unavailable.');
-      return { version: buildVersion, versionCode: 309, sdk: 36, webviewVersion: '115.0.0.0', canInstall: false };
+      return { version: buildVersion, versionCode: 400, sdk: 36, webviewVersion: '115.0.0.0', canInstall: false };
     }
     if (method === 'openUrl') {
       authorization = new URL(options.url);
@@ -214,6 +218,8 @@ try {
               'loopbackRespond',
               'loopbackClose',
               'awaitForeground',
+              'signInKeepAliveStart',
+              'signInKeepAliveStop',
               'openUrl',
               'httpOpen',
               'httpRead',
@@ -283,7 +289,8 @@ try {
     );
     // The browser is answered and the app brought back before any token request; Android blocks
     // networking for the app while the browser is in front. The outcome is shown only in the app.
-    assert.deepEqual(events.slice(0, 3), ['reply', 'foreground', 'token']);
+    // Kept alive from before the browser opens until the attempt ends, whatever the outcome.
+    assert.deepEqual(events, ['keepalive-start', 'reply', 'foreground', 'token', 'keepalive-stop']);
     assert.equal(replies.at(-1).status, 200);
     assert.equal(replies.at(-1).returnToApp, true);
     assert.match(replies.at(-1).body, /Authorization received/);
@@ -329,7 +336,7 @@ try {
   assert.equal(await page.getByRole('alert').count(), 0, await page.getByRole('alert').allTextContents());
   await page.getByText('Your ChatGPT account is connected.').waitFor();
   assert.equal(replies.at(-1).status, 200);
-  assert.deepEqual(events, ['reply', 'foreground', 'token']);
+  assert.deepEqual(events, ['keepalive-start', 'reply', 'foreground', 'token', 'keepalive-stop']);
   assert.equal(authorizations[0].searchParams.get('client_id'), 'dynamic_agent_client');
   for (const retry of authorizations.slice(1)) {
     assert.equal(retry.searchParams.get('client_id'), clientId);
@@ -352,7 +359,7 @@ try {
   assert.equal((await page.evaluate(() => window.research.account())).signedIn, true);
   assert.deepEqual(errors, []);
   console.log(
-    `Packaged Android OAuth passed${legacyUuid ? ' without AbortSignal.any, AbortSignal.timeout or crypto.randomUUID' : legacyTimeout ? ' without AbortSignal.timeout' : legacyAbort ? ' without AbortSignal.any' : ''}${missingInfo ? ' with optional native information unavailable' : ''}: safe visible failures, token exchange only after returning to the app, safe native DNS code, WebView version, restart recovery, retained issued registration, PKCE, RSA verification, encrypted persistence and successful reconnect under production CSP. Native and OpenAI services were synthetic.`,
+    `Packaged Android OAuth passed${legacyUuid ? ' without AbortSignal.any, AbortSignal.timeout or crypto.randomUUID' : legacyTimeout ? ' without AbortSignal.timeout' : legacyAbort ? ' without AbortSignal.any' : ''}${missingInfo ? ' with optional native information unavailable' : ''}: safe visible failures, sign-in kept alive in the background, token exchange only after returning to the app, safe native DNS code, WebView version, restart recovery, retained issued registration, PKCE, RSA verification, encrypted persistence and successful reconnect under production CSP. Native and OpenAI services were synthetic.`,
   );
 } catch (error) {
   console.error('Packaged auth fixture failure:', {

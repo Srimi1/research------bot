@@ -147,6 +147,8 @@ export interface ResearchAPI {
   onRunEvent(callback: (event: RunEvent) => void): () => void;
   /** Android-only check using public metadata and a rejected dummy token request. */
   checkSignInConnection?(signal: AbortSignal): Promise<ConnectionDiagnostics>;
+  /** Android only: opens Research Bot's system settings, where battery usage can be unrestricted. */
+  openAppSettings?(): Promise<void>;
   /** Native desktop menu commands; absent on Android and browser previews. */
   onDesktopAction?(callback: (action: DesktopAction) => void): () => void;
 }

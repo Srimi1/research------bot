@@ -472,6 +472,21 @@ function AccountSettings({
             {checkingConnection ? 'Checking connection…' : 'Check connection'}
           </button>
         )}
+        {platform === 'android' &&
+          !signing &&
+          api().openAppSettings &&
+          `${error} ${account?.message ?? ''}`.includes('RB-AUTH-INTERRUPTED') && (
+            <button
+              className="button secondary"
+              onClick={() =>
+                void api()
+                  .openAppSettings?.()
+                  .catch(() => setError('Android settings could not be opened.'))
+              }
+            >
+              Battery settings
+            </button>
+          )}
       </div>
       {connection && (
         <div className="callout" role="status">

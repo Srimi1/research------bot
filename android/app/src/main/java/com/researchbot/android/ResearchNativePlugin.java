@@ -18,6 +18,7 @@ import android.util.Base64;
 import android.webkit.WebView;
 import androidx.activity.result.ActivityResult;
 import androidx.browser.customtabs.CustomTabsIntent;
+import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -269,6 +270,36 @@ public class ResearchNativePlugin extends Plugin {
             return info != null && info.isConnected();
         } catch (RuntimeException unavailable) {
             return true;
+        }
+    }
+
+    /** Starts the sign-in foreground service; it stops on signInKeepAliveStop or its own timeout. */
+    @PluginMethod
+    public void signInKeepAliveStart(PluginCall call) {
+        try {
+            ContextCompat.startForegroundService(getContext(), new Intent(getContext(), SignInService.class));
+            call.resolve();
+        } catch (RuntimeException refused) {
+            call.reject("Android did not allow the sign-in service to start.");
+        }
+    }
+
+    @PluginMethod
+    public void signInKeepAliveStop(PluginCall call) {
+        getContext().stopService(new Intent(getContext(), SignInService.class));
+        call.resolve();
+    }
+
+    /** Research Bot's system settings page, where battery usage can be set to Unrestricted. */
+    @PluginMethod
+    public void openAppSettings(PluginCall call) {
+        try {
+            getActivity().startActivity(
+                new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + getContext().getPackageName()))
+            );
+            call.resolve();
+        } catch (RuntimeException unavailable) {
+            call.reject("Android settings could not be opened.");
         }
     }
 

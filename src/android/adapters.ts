@@ -161,6 +161,11 @@ export function createForegroundWait(bridge: Pick<ResearchNativePlugin, 'awaitFo
 
 export const nativeForeground = createForegroundWait(Native);
 
+export const nativeKeepAlive = {
+  start: () => Native.signInKeepAliveStart(),
+  stop: () => Native.signInKeepAliveStop(),
+};
+
 /** App-private files (Context.getFilesDir()/research), replaced atomically. */
 export const nativeFiles: FileStore = {
   async read(name) {

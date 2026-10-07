@@ -34,7 +34,11 @@ function callback(url: URL): Promise<{ status: number; body: string }> {
     }).on('error', reject);
   });
 }
-async function fixture(deferredResponse = false, awaitForeground?: (signal: AbortSignal) => Promise<void>) {
+async function fixture(
+  deferredResponse = false,
+  awaitForeground?: (signal: AbortSignal) => Promise<void>,
+  keepAlive?: { start(): Promise<void>; stop(): Promise<void> },
+) {
   const directory = await mkdtemp(join(tmpdir(), 'research-bot-auth-'));
   const original = getGlobalDispatcher();
   const agent = new MockAgent();
@@ -153,6 +157,7 @@ async function fixture(deferredResponse = false, awaitForeground?: (signal: Abor
         openBrowser,
         credentials: credentialStore,
         awaitForeground,
+        keepAlive,
         startLoopback: (() => {
           let listener: Parameters<ResearchNativePlugin['addListener']>[1];
           let server: LoopbackServer;
@@ -275,6 +280,67 @@ test('Android answers the browser and returns to the app before exchanging the c
     } finally {
       await f.close();
     }
+  }
+});
+
+test('Android keeps sign-in alive while the browser is in front and always releases it', async () => {
+  for (const outcome of ['success', 'rejected', 'cancelled', 'unavailable'] as const) {
+    const events: string[] = [];
+    let f!: Awaited<ReturnType<typeof fixture>>;
+    f = await fixture(
+      true,
+      async () => {
+        events.push(`foreground:${f.exchanges.length}`);
+        if (outcome === 'cancelled') {
+          f.auth.cancelSignIn();
+          await new Promise(resolve => setTimeout(resolve, 10));
+        }
+      },
+      {
+        async start() {
+          events.push(`start:${f.authorizations.length}`);
+          if (outcome === 'unavailable') throw new Error('refused');
+        },
+        async stop() {
+          events.push('stop');
+        },
+      },
+    );
+    try {
+      if (outcome === 'rejected') f.state.tokenError = 'unsupported_country';
+      const signingIn = f.auth.signIn();
+      if (outcome === 'success' || outcome === 'unavailable') assert.equal((await signingIn).signedIn, true);
+      else await assert.rejects(signingIn);
+      // Started before the browser opened, and released exactly once whatever happened.
+      assert.equal(events[0], 'start:0');
+      assert.equal(events.filter(event => event === 'stop').length, outcome === 'unavailable' ? 0 : 1);
+      assert.equal(events.at(-1), outcome === 'unavailable' ? 'foreground:0' : 'stop');
+    } finally {
+      await f.close();
+    }
+  }
+});
+
+test('an attempt the OS ended by closing the app is explained on the next start', async () => {
+  const f = await fixture();
+  try {
+    // A browser that never returns: the app is closed while consent is still open.
+    const closed = new AuthService(f.directory, async () => {}, f.credentialStore);
+    const pending = closed.signIn();
+    void pending.catch(() => undefined);
+    await new Promise(resolve => setTimeout(resolve, 50));
+    const restarted = new AuthService(f.directory, async () => {}, f.credentialStore);
+    const account = await restarted.account();
+    assert.equal(account.signedIn, false);
+    assert.match(account.message!, /RB-AUTH-INTERRUPTED/);
+    assert.match(account.message!, /battery usage to Unrestricted/);
+    closed.cancelSignIn();
+    await assert.rejects(pending, /RB-AUTH-CANCELLED/);
+    // A completed attempt leaves no notice behind.
+    assert.equal((await f.auth.signIn()).signedIn, true);
+    await assert.rejects(readFile(join(f.directory, 'signin.json')), { code: 'ENOENT' });
+  } finally {
+    await f.close();
   }
 });
 

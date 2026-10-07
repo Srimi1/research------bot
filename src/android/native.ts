@@ -18,6 +18,10 @@ export interface ResearchNativePlugin {
   loopbackClose(options: { serverId: string }): Promise<void>;
   /** Resolves when the activity is resumed and Android no longer blocks this app's network. */
   awaitForeground(): Promise<void>;
+  /** A short foreground service that keeps the app alive and online during browser consent. */
+  signInKeepAliveStart(): Promise<void>;
+  signInKeepAliveStop(): Promise<void>;
+  openAppSettings(): Promise<void>;
   addListener(
     event: 'loopbackRequest',
     listener: (event: { serverId: string; requestId: string; method: string; url: string }) => void,

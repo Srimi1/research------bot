@@ -77,22 +77,30 @@ CI runs the same flow on Android 16. The release workflow additionally tests the
 
 ## Release signing (one-time setup)
 
-Every Android release must be signed with the same key, or installed copies cannot update. The release workflow reads the key from four repository secrets. For an existing installation, use its original key. The personally signed APKs supplied to the maintainer use a separate private signing backup; do not generate a replacement key when preparing updates for those installations. Keys and passwords must stay out of Git. For a new distribution, create the secrets once:
+Every Android release must be signed with the same key, or installed copies cannot update. The release workflow reads the key from four repository secrets and refuses a key whose certificate differs from `android/release-signing-certificate.sha256`. Keys and passwords stay out of Git.
 
-1. Generate a key on your own computer (keep the file and passwords somewhere safe; losing them means users must uninstall and reinstall):
+Version 0.4.0 uses a new release key because the key behind 0.3.x was not kept. Installations of 0.3.x must export their projects, uninstall and install 0.4.0 once; later versions update in place.
 
-   ```sh
-   keytool -genkeypair -v -keystore research-bot-release.jks -alias research-bot \
-     -keyalg RSA -keysize 4096 -validity 10000
-   ```
+To create the key once, on a Mac (it needs `keytool`, which comes with Java or Android Studio):
 
-2. In GitHub, open **Settings → Secrets and variables → Actions** for this repository and add:
-   - `ANDROID_KEYSTORE_BASE64`: the output of `base64 -w0 research-bot-release.jks` (on macOS: `base64 -i research-bot-release.jks`)
-   - `ANDROID_KEYSTORE_PASSWORD`: the keystore password
-   - `ANDROID_KEY_ALIAS`: `research-bot`
-   - `ANDROID_KEY_PASSWORD`: the key password (the same as the keystore password if you pressed Enter at that prompt)
+```sh
+cd ~/Documents
+KEYTOOL="/Applications/Android Studio.app/Contents/jbr/Contents/Home/bin/keytool"
+[ -x "$KEYTOOL" ] || KEYTOOL=keytool
+PASS="$(openssl rand -base64 24 | tr -d '/+=')"
+"$KEYTOOL" -genkeypair -keystore research-bot-release.jks -storetype PKCS12 -alias research-bot \
+  -keyalg RSA -keysize 4096 -validity 10000 -storepass "$PASS" -keypass "$PASS" -dname "CN=Research Bot"
+echo "ANDROID_KEY_ALIAS:         research-bot"
+echo "ANDROID_KEYSTORE_PASSWORD: $PASS"
+echo "ANDROID_KEY_PASSWORD:      $PASS"
+echo "Certificate SHA-256:       $("$KEYTOOL" -list -v -keystore research-bot-release.jks -storepass "$PASS" | sed -n 's/^[[:space:]]*SHA256:[[:space:]]*//p' | tr -d ':' | tr 'A-F' 'a-f')"
+base64 -i research-bot-release.jks | tr -d '\n' | pbcopy && echo "ANDROID_KEYSTORE_BASE64 is on the clipboard."
+```
 
-3. With **Android source: build**, the workflow validates that all four secrets exist before creating a manual draft. It publishes the draft only after the desktop and Android uploads succeed. Release as usual (see [Releases and updates](implementation.md#releases-and-updates)). The **android** job builds, lints, verifies the signature, and attaches the APK and `SHA256SUMS-android.txt` to the release.
+1. Keep `~/Documents/research-bot-release.jks` and the printed password in a password manager or another safe place. Losing them means every user must uninstall and reinstall again.
+2. In **Settings → Secrets and variables → Actions → Repository secrets**, add `ANDROID_KEYSTORE_BASE64` (paste the clipboard), `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD` from the output.
+3. Commit the printed certificate SHA-256 (lowercase, no colons) to `android/release-signing-certificate.sha256`. It is public and lets the release reject any other key.
+4. Run **Publish release** with **Android source: build**. The **android** job checks the key, builds, lints, verifies the signature, tests the signed APK on Android 16 and attaches the APK and `SHA256SUMS-android.txt`. Leave **Android upgrade from** empty for 0.4.0, since 0.3.x was signed by the old key.
 
 ### Release an existing signed APK
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.0 (2026-10-07)
+
+- Android ChatGPT sign-in stays alive while the consent page is in front: a short foreground service keeps the app from being frozen or closed and keeps its network available, so the browser's return is always answered.
+- If Android still closes the app during sign-in, the next start explains it (`RB-AUTH-INTERRUPTED`) and offers the battery settings.
+- Includes the 0.3.9 fix: the code is exchanged only after returning to the app, ending `RB-AUTH-EXCHANGE-DNS`.
+- Signed with a new release key. Installations of 0.3.x must export projects, uninstall and install 0.4.0 once.
+
 ## 0.3.9 (2026-10-07)
 
 - Fixed Android ChatGPT sign-in failing with `RB-AUTH-EXCHANGE-DNS` while Check connection succeeded. The code was exchanged while the browser was in front, and Android blocks networking for background apps. Android now returns to the app and waits for its network before the exchange.

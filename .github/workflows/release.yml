@@ -11,9 +11,9 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Release tag, for example v0.3.9. Must match the version in package.json.
+        description: Release tag, for example v0.4.0. Must match the version in package.json.
         required: true
-        default: v0.3.9
+        default: v0.4.0
       platforms:
         description: Publish all installers, or only the Android APK.
         type: choice
@@ -242,7 +242,11 @@ jobs:
             exit 1
           fi
           actual="$(printf '%s\n' "$listing" | sed -n 's/^[[:space:]]*SHA256:[[:space:]]*//p' | head -1 | tr -d ':' | tr 'A-F' 'a-f')"
-          expected="$(node -p "require('./downloads/android/BUILD_INFO.json').certificateSha256")"
+          # The public fingerprint of the release key, committed when the key is created (docs/android.md).
+          if ! expected="$(tr -d '[:space:]' < android/release-signing-certificate.sha256 2>/dev/null)" || [ -z "$expected" ]; then
+            echo "::error::Commit the release key's certificate SHA-256 to android/release-signing-certificate.sha256."
+            exit 1
+          fi
           echo "Signing certificate SHA-256: $actual"
           if [ "$actual" != "$expected" ]; then
             echo "::error::This key's certificate ($actual) differs from the one installed copies use ($expected). Use the original signing key."

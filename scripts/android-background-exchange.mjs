@@ -30,7 +30,7 @@ const shell = command => {
   }
 };
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
-const label = dataSaver ? 'data-saver' : 'stock';
+const label = `${dataSaver ? 'data-saver' : 'stock'} ${consentSeconds}s`;
 
 let uid = '';
 function processState() {
@@ -176,10 +176,18 @@ async function main() {
   try {
     await devtools.waitFor('window.research && window.Capacitor && window.Capacitor.nativePromise', 60);
 
-    // The same opt-in check the phone ran, while Research Bot is in front.
-    const check = await devtools.evaluate(
-      'window.research.checkSignInConnection(new AbortController().signal).then(r => r.checks.map(c => `${c.service}: ${c.result}`))',
-    );
+    // The same opt-in check the phone ran, while Research Bot is in front. A freshly booted
+    // emulator may not have a usable network yet, so wait for it rather than test nothing.
+    let check = [];
+    for (let attempt = 0; attempt < 9; attempt++) {
+      check = await devtools.evaluate(
+        'window.research.checkSignInConnection(new AbortController().signal).then(r => r.checks.map(c => `${c.service}: ${c.result}`))',
+      );
+      if (check[0]?.endsWith('HTTP 200')) break;
+      console.log(`[${label}] network not ready yet: ${check.join('; ')}`);
+      await pause(10_000);
+    }
+    assert.ok(check[0]?.endsWith('HTTP 200'), 'The emulator network never became usable in the foreground');
     console.log(`[${label}] foreground connection check: ${check.join('; ')}`);
     console.log(`[${label}] foreground: ${processState()}`);
 
@@ -230,7 +238,14 @@ async function main() {
       console.log(`[${label}] consent +${Math.min(waited + 15, consentSeconds)}s: ${processState()}`);
     }
 
-    const reply = await deliverCallback(callback.port, callback.target);
+    const delivery = deliverCallback(callback.port, callback.target);
+    const held = await Promise.race([delivery.then(() => false), pause(15_000).then(() => true)]);
+    if (held) {
+      // Android froze the cached app, so the browser's request waits. A researcher switches back.
+      console.log(`[${label}] callback held while Research Bot was frozen: ${processState()}`);
+      shell(`am start -n ${activity}`);
+    }
+    const reply = await delivery;
     console.log(`[${label}] browser callback reply: ${reply.split('\r\n')[0]} (${safeReason(reply)})`);
 
     let returned = false;

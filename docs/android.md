@@ -10,7 +10,35 @@ The Android app is the same Research Bot as the desktop app: the same interface,
 2. Open the downloaded file. Android asks to allow installs from your browser or file manager the first time; allow it, then choose **Install**.
 3. Open **Research Bot**. Your projects are stored only on this phone.
 
-To check this download, compare its SHA-256 with [downloads/android/SHA256SUMS.txt](../downloads/android/SHA256SUMS.txt). This APK uses the same personal certificate as the previously supplied 0.3.1, 0.3.2 and released 0.3.3 APKs, so it can update those installations. Install this version manually; automatic updates require an APK and checksums attached to a newer published GitHub release.
+To check this download, compare its SHA-256 with [downloads/android/SHA256SUMS.txt](../downloads/android/SHA256SUMS.txt). This APK uses the new 0.4.0 certificate, not the certificate used for 0.3.1–0.3.9. Install 0.4.0 manually after preparing for the signing-key change; later automatic updates require an APK and checksums attached to a newer published GitHub release signed with the same key as the installed app.
+
+### If Android says “App not installed”
+
+This message does not identify the cause. A key mismatch explains an attempted update from 0.3.x, but it does not establish why a fresh installation failed.
+
+If you only have the phone:
+
+1. Download a new copy from the signed APK link above and open it in **Files**. If Android asks, allow **Install unknown apps** for the file manager you are using.
+2. Check **Settings → Apps → See all apps** for Research Bot. If you use other users, a work profile, Private Space or cloned apps, check those too. Removing the app from one profile can leave the old package installed in another, which can still conflict with the new signing key. Export and verify any projects in an existing copy before removing it.
+3. If installation still fails, report the Android version, ROM, download link, whether another profile has Research Bot, and the installer's detailed error if it provides one. The generic popup alone cannot distinguish a damaged download, a remaining package or an installation restriction.
+
+With a computer, extract [Android SDK Platform-Tools](https://developer.android.com/tools/releases/platform-tools) and connect a phone with USB debugging authorized. On Windows, open PowerShell in the extracted `platform-tools` folder and run:
+
+```powershell
+.\adb.exe devices
+.\adb.exe install -r "C:\path\to\research-bot-0.4.0-android.apk"
+```
+
+Replace the example path with the downloaded APK's actual path. On macOS/Linux, use `./adb` in place of `.\adb.exe`. If no authorized device is listed, resolve the USB connection before retrying the install command. Report its `Failure [INSTALL_…]` result; “adb is not recognized” means the command could not run and is not an APK installation result.
+
+| Installer result                                                              | Next step                                                                                                                        |
+| ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `INSTALL_FAILED_UPDATE_INCOMPATIBLE` or `INSTALL_FAILED_DUPLICATE_PERMISSION` | Check for the old package or permission owner in every user/profile. Preserve projects before removing a remaining installation. |
+| `INSTALL_FAILED_VERSION_DOWNGRADE`                                            | Check which version remains installed. Do not force a downgrade over existing research data.                                     |
+| `INSTALL_PARSE_FAILED_NO_CERTIFICATES` or `INSTALL_FAILED_INVALID_APK`        | Compare the downloaded file with the published checksum, then download a fresh copy if it differs.                               |
+| `INSTALL_FAILED_USER_RESTRICTED`                                              | Check the profile's installation policy and permission for the chosen installer.                                                 |
+
+The [0.4.0 installation investigation](audits/2026-10-08-android-installation.md) records package verification and the remaining device-specific uncertainty.
 
 ## Sign in with ChatGPT
 

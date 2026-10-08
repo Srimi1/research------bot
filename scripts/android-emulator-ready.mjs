@@ -9,6 +9,24 @@ const output = 'android-startup-results';
 mkdirSync(output, { recursive: true });
 const adb = (...args) => execFileSync('adb', [...serialArgs, ...args], { encoding: 'utf8', timeout: 15_000 });
 
+async function restartAdbd(mode) {
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const message = adb(mode).trim();
+      adb('wait-for-device');
+      assert.equal(adb('shell', 'id', '-u').trim(), mode === 'root' ? '0' : '2000');
+      console.log(message);
+      return;
+    } catch (error) {
+      if (attempt === 3) throw error;
+      // adbd can close its transport while restarting during first boot.
+      // Retry only emulator setup, before installing or exercising the app.
+      console.log(`ADB ${mode} transport restart interrupted; reconnecting (${attempt}/3)`);
+      await new Promise(resolve => setTimeout(resolve, 2_000));
+    }
+  }
+}
+
 function counters() {
   // dumpsys cpuinfo can return its unchanged boot-time snapshot for several minutes.
   const stat = adb('shell', 'cat', '/proc/stat');
@@ -26,9 +44,8 @@ function counters() {
 // The Google APIs CI image is userdebug. Root is needed only to read its restricted
 // kernel counters; restore normal adb before installing or launching the tested app.
 assert.equal(adb('shell', 'getprop', 'ro.kernel.qemu').trim(), '1', 'Run this readiness check on an emulator');
-console.log(adb('root').trim());
-adb('wait-for-device');
 try {
+  await restartAdbd('root');
   const deadline = Date.now() + 180_000;
   let readySamples = 0;
   let previous = counters();
@@ -44,6 +61,5 @@ try {
   }
   assert.equal(readySamples, 3, 'Android first-boot CPU activity did not settle within 180 seconds');
 } finally {
-  console.log(adb('unroot').trim());
-  adb('wait-for-device');
+  await restartAdbd('unroot');
 }

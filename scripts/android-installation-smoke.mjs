@@ -11,6 +11,11 @@ const testApk = process.argv[2];
 assert.ok(testApk, 'Pass the separately packaged install-check APK');
 const serial = process.env.ANDROID_SERIAL ? ['-s', process.env.ANDROID_SERIAL] : [];
 const adb = (...args) => execFileSync('adb', [...serial, ...args], { encoding: 'utf8', timeout: 60_000 });
+const adbResult = (...args) => {
+  const result = spawnSync('adb', [...serial, ...args], { encoding: 'utf8', timeout: 60_000 });
+  assert.equal(result.error, undefined, result.error?.message);
+  return { status: result.status, text: `${result.stdout || ''}\n${result.stderr || ''}`.trim() };
+};
 const packageName = 'com.researchbot.android';
 const testPackage = `${packageName}.installcheck`;
 const output = resolve('android-startup-results/installation');
@@ -43,14 +48,7 @@ let profile;
 let canonicalInstalled = false;
 let testInstalled = false;
 const report = { sdk: adb('shell', 'getprop', 'ro.build.version.sdk').trim(), testApk: testInfo, checks: {} };
-const install = (apk, user = '0') => {
-  const result = spawnSync('adb', [...serial, 'install', '--no-streaming', '--user', user, resolve(apk)], {
-    encoding: 'utf8',
-    timeout: 60_000,
-  });
-  assert.equal(result.error, undefined, result.error?.message);
-  return { status: result.status, text: `${result.stdout || ''}\n${result.stderr || ''}`.trim() };
-};
+const install = (apk, user = '0') => adbResult('install', '--no-streaming', '--user', user, resolve(apk));
 try {
   const separate = install(testApk);
   assert.equal(separate.status, 0, separate.text);
@@ -59,9 +57,13 @@ try {
   const previous = install(files.previous[0]);
   assert.equal(previous.status, 0, previous.text);
   canonicalInstalled = true;
-  const created = adb('shell', 'pm', 'create-user', 'Research APK signing fixture');
-  profile = created.match(/Success: created user id (\d+)/)?.[1];
-  assert.ok(profile, `A separate user is required for this regression check: ${created}`);
+  const created = adbResult('shell', 'pm', 'create-user', 'research-apk-signing-fixture');
+  // Android 8 returns status 1 even when this command successfully creates a user.
+  // Check its success message and the resulting user before using the fixture.
+  profile = created.text.match(/Success: created user id (\d+)/)?.[1];
+  assert.ok(profile, `A separate user is required for this regression check: ${created.text}`);
+  assert.ok(created.status === 0 || created.status === 1, created.text);
+  assert.match(adb('shell', 'pm', 'list', 'users'), new RegExp(`UserInfo\\{${profile}:`));
   assert.match(adb('shell', 'pm', 'install-existing', '--user', profile, packageName), /installed for user/);
   assert.match(adb('shell', 'pm', 'uninstall', '--user', '0', packageName), /Success/);
   const conflict = install(files.published[0]);

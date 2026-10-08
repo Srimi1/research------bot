@@ -331,6 +331,7 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           disable-animations: true
           script: |
+            node scripts/android-emulator-ready.mjs
             node scripts/android-startup-smoke.mjs "upload/research-bot-${RESEARCH_RELEASE_TAG#v}-android.apk"
             # This action executes each script line separately; keep the conditional together.
             if [ -n "${RESEARCH_PREVIOUS_APK:-}" ]; then adb uninstall com.researchbot.android && node scripts/android-startup-smoke.mjs "upload/research-bot-${RESEARCH_RELEASE_TAG#v}-android.apk" "$RESEARCH_PREVIOUS_APK"; fi

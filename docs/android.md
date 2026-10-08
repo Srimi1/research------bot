@@ -4,7 +4,7 @@ The Android app is the same Research Bot as the desktop app: the same interface,
 
 ## Install
 
-**0.4.0 is in release preparation. Install 0.4.0 over 0.3.9; no uninstall needed.** It uses the original signing certificate, keeping your projects, notes and settings. The current download below is 0.3.9 until 0.4.0 is published.
+**0.4.0 is in release preparation and uses a new signing key.** It cannot update an existing 0.3.x installation. Export every project and verify the saved files before removing the old app; uninstalling deletes its local projects, notes and settings. Exports are JSON/Markdown archives and automatic project import is not available. The current download below remains 0.3.9 until 0.4.0 is published.
 
 1. Download the [signed Research Bot 0.3.9 APK](https://github.com/Srimi1/research------bot/releases/download/v0.3.9/research-bot-0.3.9-android.apk). It is stored in the repository's [downloads/android folder](../downloads/android/README.md).
 2. Open the downloaded file. Android asks to allow installs from your browser or file manager the first time; allow it, then choose **Install**.
@@ -62,7 +62,7 @@ npm run build:android                       # web bundle + Capacitor sync
 cd android && ./gradlew assembleDebug       # android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
-The debug APK is available at `android/app/build/outputs/apk/debug/app-debug.apk` and as `research-bot-android-debug` in successful CI runs. Debug and release APKs use different signing certificates. Use a fresh emulator for debug builds and the original signed release APK to update an existing installation.
+The debug APK is available at `android/app/build/outputs/apk/debug/app-debug.apk` and as `research-bot-android-debug` in successful CI runs. Debug and release APKs use different signing certificates. Use a fresh emulator for debug builds. Updating an existing installation requires a release APK with the same signing certificate; 0.4.0 cannot update 0.3.x.
 
 `npm run icon:android` regenerates the launcher icons from `public/app-icon.png`.
 
@@ -79,22 +79,22 @@ RESEARCH_UIAUTOMATOR_PYTHON=.venv-android-qa/bin/python \
 
 Use a fresh emulator without Research Bot data; the test creates synthetic projects. Set `ANDROID_SERIAL` when multiple devices are connected. The driver uses an active Android accessibility connection and UI-tree-derived taps. It creates a project through the form's keyboard navigation and verifies it after a cold reopen, adds notes, then cold-restarts again and verifies persistence. This avoids relying on stale within-page snapshots from the emulator's WebView 133. Evidence is written to `android-startup-results/`.
 
-CI runs the same flow on Android 16. The release workflow additionally tests the exact signed APK before publication, while the **Android APK startup** workflow can test a published APK or the signed APK committed on the selected ref.
+CI runs the same flow on Android 16, after a bounded check that the emulator's first-boot CPU activity has settled. The release workflow additionally tests the exact signed APK before publication, while the **Android APK startup** workflow can test a published APK or the signed APK committed on the selected ref.
 
 ## Release signing (one-time setup)
 
-Every Android release is signed with the same private key, so installed copies update in place. Releases 0.3.1 onward use the certificate whose SHA-256 is committed in `android/release-signing-certificate.sha256` (`98580ca053712555a2b8a3a8fecfc15c85d83c5d192480e3b6b09ca13a633441`). The key itself and its passwords stay out of Git, in four repository secrets: **Settings → Secrets and variables → Actions → Repository secrets**:
+Releases 0.4.0 and later use the new certificate whose SHA-256 is committed in `android/release-signing-certificate.sha256` (`e07d0f1bb2e400e248c1b2af756d314686d912718127aed1e65d4344ad555a35`). Keep this private key for all later releases so 0.4.x installations can update in place. Releases 0.3.1–0.3.9 used the original certificate (`98580ca053712555a2b8a3a8fecfc15c85d83c5d192480e3b6b09ca13a633441`); Android cannot update those installations with the new key. The key itself and its passwords stay out of Git. For CI builds, configure four repository secrets under **Settings → Secrets and variables → Actions → Repository secrets**:
 
 - `ANDROID_KEYSTORE_BASE64`: the keystore file as one line of base64 (`base64 -i <keystore> | tr -d '\n' | pbcopy` on macOS, `base64 -w0 <keystore>` on Linux)
 - `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`
 
 The release workflow tolerates whitespace-wrapped base64, checks the password and alias, and refuses to build unless the key's certificate matches the committed fingerprint. It verifies the built APK against that fingerprint again and records `BUILD_INFO-android.json` from the actual APK.
 
-Keep a private backup of the original keystore and its passwords outside GitHub. If signing restoration fails, correct the four secrets using that backup. Do not generate a replacement key or change the pinned fingerprint to make a release pass.
+Keep a private backup of the 0.4.0 keystore and its passwords outside GitHub. If signing restoration fails, correct the four secrets using that backup. Do not generate another key or change the pinned fingerprint to make a release pass. A locally signed APK can also use the verified prebuilt release path below without exposing its private key to CI.
 
 ### Publish an Android release
 
-Run **Publish release** from `main` with the version tag (for example `v0.4.0`), **Platforms: android**, **Android source: build**, and **Android upgrade from** set to the previous published tag (for example `v0.3.9`). Before publication the exact signed APK must pass fresh install, persistence, cold restart and the in-place upgrade with notes retained on Android 16. Afterwards commit the published APK and `BUILD_INFO-android.json` as `downloads/android/research-bot-VERSION-android.apk` and `downloads/android/BUILD_INFO.json`, regenerate `downloads/android/SHA256SUMS.txt`, and update the download links. Emulator evidence and the maintainer's phone result are reported separately.
+Run **Publish release** from `main` with the version tag (for example `v0.4.0`), **Platforms: android**, and **Android source: build**. For 0.4.0 leave **Android upgrade from** empty because the signing certificate changed. For later releases, set it to a published version signed with the same key. Before publication the exact signed APK must pass fresh install, persistence and cold restart on Android 16; an optional same-key upgrade must also retain notes. Afterwards commit the published APK and `BUILD_INFO-android.json` as `downloads/android/research-bot-VERSION-android.apk` and `downloads/android/BUILD_INFO.json`, regenerate `downloads/android/SHA256SUMS.txt`, and update the download links. Emulator evidence and the maintainer's phone result are reported separately.
 
 ### Release an existing signed APK
 
@@ -114,7 +114,7 @@ The app targets SDK 36 and supports this Android version. It bundles the interfa
 
 ## If the app closes at launch
 
-Install the current APK over your existing copy first; do not clear app data or uninstall it while diagnosing startup. Version 0.3.4 fixes SQLite's blocked WebAssembly initialization and corrects the splash-screen handoff. Its actual signed APK is tested on stock Android 16 before release; this does not establish behavior on every custom ROM.
+For an installation already signed with the 0.4.0 key, install a same-key release over your existing copy; keep app data while diagnosing startup. Moving from 0.3.x to 0.4.0 requires the fresh-install precautions above. Version 0.3.4 fixes SQLite's blocked WebAssembly initialization and corrects the splash-screen handoff. Each release's actual signed APK is tested on stock Android 16 before release; this does not establish behavior on every custom ROM.
 
 Check that your ROM has an enabled, current Android System WebView provider. If the app still closes, connect the phone to a computer with Android Platform Tools and USB debugging enabled, then capture the Android crash buffer:
 
@@ -138,7 +138,7 @@ Version 0.3.7 fixes a reproduced compatibility bug: older WebView providers with
 
 ### DNS error during sign-in, but Check connection works
 
-The reproduced cause was exchanging the authorization code while the browser was still in front. Android blocked the background app's networking, producing `RB-AUTH-EXCHANGE-DNS`. The 0.3.9 source fix waits for Research Bot to return to the foreground, but it has not been confirmed on the maintainer's phone. Version 0.4.0 keeps that fix and protects the callback with the foreground service. Install the published 0.4.0 APK over 0.3.9 and begin a fresh sign-in. See the [investigation](audits/2026-10-07-android-background-exchange.md).
+The reproduced cause was exchanging the authorization code while the browser was still in front. Android blocked the background app's networking, producing `RB-AUTH-EXCHANGE-DNS`. The 0.3.9 source fix waits for Research Bot to return to the foreground, but it has not been confirmed on the maintainer's phone. Version 0.4.0 keeps that fix and protects the callback with the foreground service. Follow the fresh-install instructions above for 0.4.0, then begin a fresh sign-in. See the [investigation](audits/2026-10-07-android-background-exchange.md).
 
 ### Connection check in Android 0.3.8
 

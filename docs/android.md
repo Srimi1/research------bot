@@ -92,6 +92,14 @@ cd android && ./gradlew assembleDebug       # android/app/build/outputs/apk/debu
 
 The debug APK is available at `android/app/build/outputs/apk/debug/app-debug.apk` and as `research-bot-android-debug` in successful CI runs. Debug and release APKs use different signing certificates. Use a fresh emulator for debug builds. Updating an existing installation requires a release APK with the same signing certificate; 0.4.0 cannot update 0.3.x.
 
+### Build an installation test APK
+
+Run `npm run android:apk:check` to build and lint a signed **Research Bot APK Test**. Output: `android/app/build/outputs/apk/installCheck/app-installCheck.apk`. It contains the production web bundle with debugging disabled and uses package `com.researchbot.android.installcheck`, so it installs alongside the regular app with its own projects and credentials. It uses a development certificate and does not update the regular app. Treat projects created in this test app as temporary; export anything you need to retain.
+
+The **Android APK installation** workflow builds this APK, checks its signature, package/version, SDK levels, release flags and alignment, and tests installation on Android 8 and 16. Android 16 additionally checks project creation, notes and cold-restart persistence. It also reproduces a signing conflict when 0.3.9 remains installed for another user after removal from the primary user. This regression scenario does not establish the cause of a particular phone's failure.
+
+For a regular release, configure the existing signing key and run `npm run android:apk`. The command checks that the private key opens and matches the pinned certificate before rebuilding assets, then builds, lints and verifies the finished APK. Direct Gradle release packaging also requires this check; missing or incorrect signing configuration fails rather than producing an unsigned release. `node scripts/android-signing-smoke.mjs` exercises the guard against a temporary test keystore.
+
 `npm run icon:android` regenerates the launcher icons from `public/app-icon.png`.
 
 ### Verify the packaged app

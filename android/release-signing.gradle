@@ -1,0 +1,49 @@
+import java.security.KeyStore
+import java.security.MessageDigest
+import java.security.PrivateKey
+
+// An unsigned release can build successfully but Android cannot install it.
+// Check the actual key before packaging, without exposing credentials in logs.
+def releaseSigningCheck = tasks.register('verifyReleaseSigning') {
+    group = 'verification'
+    description = 'Require the configured private key to match the pinned Android release certificate.'
+    doLast {
+        def names = ['ANDROID_KEYSTORE_PATH', 'ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_ALIAS', 'ANDROID_KEY_PASSWORD']
+        def missing = names.findAll { !System.getenv(it) }
+        if (!missing.isEmpty()) {
+            throw new GradleException("Release APK signing is not configured: ${missing.join(', ')}. Restore the existing release key; see docs/android.md. Use assembleInstallCheck for a separate test APK.")
+        }
+        def pinFile = rootProject.file('release-signing-certificate.sha256')
+        def expected = pinFile.isFile() ? pinFile.text.trim() : ''
+        if (!(expected ==~ /[a-f0-9]{64}/)) {
+            throw new GradleException('The Android release certificate fingerprint is missing or invalid.')
+        }
+        def keyFile = file(System.getenv('ANDROID_KEYSTORE_PATH'))
+        if (!keyFile.isFile()) {
+            throw new GradleException('ANDROID_KEYSTORE_PATH does not point to a keystore file.')
+        }
+        def actual
+        try {
+            def store = KeyStore.getInstance(keyFile, System.getenv('ANDROID_KEYSTORE_PASSWORD').toCharArray())
+            def alias = System.getenv('ANDROID_KEY_ALIAS')
+            if (!(store.getKey(alias, System.getenv('ANDROID_KEY_PASSWORD').toCharArray()) instanceof PrivateKey)) {
+                throw new IllegalArgumentException('No private key for this alias')
+            }
+            def certificate = store.getCertificate(alias)
+            if (certificate == null) throw new IllegalArgumentException('No certificate for this alias')
+            actual = MessageDigest.getInstance('SHA-256').digest(certificate.encoded).encodeHex().toString()
+        } catch (Exception unavailable) {
+            throw new GradleException('The release private key could not be opened. Check the keystore, alias and both passwords.')
+        }
+        if (actual != expected) {
+            throw new GradleException("The configured key does not match the pinned release certificate (${expected}). Restore the existing key instead of changing the fingerprint.")
+        }
+        logger.lifecycle("Verified release signing certificate: ${actual}")
+    }
+}
+
+tasks.configureEach { task ->
+    if (task.name in ['assembleRelease', 'bundleRelease', 'packageRelease', 'packageReleaseBundle', 'signReleaseBundle', 'validateSigningRelease']) {
+        task.dependsOn(releaseSigningCheck)
+    }
+}

@@ -1,0 +1,100 @@
+name: Android APK installation
+
+on:
+  pull_request:
+    paths:
+      [
+        'android/**',
+        'scripts/android-*.mjs',
+        'scripts/verify-android-apk.mjs',
+        'package*.json',
+        '.github/workflows/apk-installation.yml',
+      ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools platforms;android-36 build-tools;36.0.0
+      - run: npm ci
+      - run: node scripts/android-signing-smoke.mjs
+      - run: npm run android:apk:check
+      - uses: actions/upload-artifact@v4
+        with:
+          name: research-bot-install-check
+          path: android/app/build/outputs/apk/installCheck/app-installCheck.apk
+          if-no-files-found: error
+
+  install:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        api: ['26', '36']
+    env:
+      RESEARCH_INSTALL_TEST_API: ${{ matrix.api }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools build-tools;36.0.0
+      - uses: actions/download-artifact@v4
+        with:
+          name: research-bot-install-check
+          path: apk
+      - name: Install the Android accessibility driver
+        if: matrix.api == '36'
+        run: |
+          python3 -m venv "$RUNNER_TEMP/research-android-qa"
+          "$RUNNER_TEMP/research-android-qa/bin/pip" install uiautomator2==3.7.0
+          echo "RESEARCH_UIAUTOMATOR_PYTHON=$RUNNER_TEMP/research-android-qa/bin/python" >> "$GITHUB_ENV"
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Check fresh installation and remaining-user certificate conflicts
+        uses: ReactiveCircus/android-emulator-runner@4c44018e59b437e86cdfc41da381398f93ed8808
+        with:
+          api-level: ${{ matrix.api }}
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          cores: 4
+          ram-size: 4096M
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          disable-animations: true
+          script: |
+            node scripts/android-emulator-ready.mjs
+            node scripts/android-installation-smoke.mjs apk/app-installCheck.apk
+            if [ "$RESEARCH_INSTALL_TEST_API" = 36 ]; then RESEARCH_ANDROID_PACKAGE=com.researchbot.android.installcheck RESEARCH_ANDROID_RESULTS=android-startup-results/install-check node scripts/android-startup-smoke.mjs apk/app-installCheck.apk; fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: apk-installation-api-${{ matrix.api }}
+          path: android-startup-results/
+          if-no-files-found: ignore

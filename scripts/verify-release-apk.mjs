@@ -6,6 +6,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { verifyAndroidApk } from './verify-android-apk.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const json = path => JSON.parse(readFileSync(join(root, path), 'utf8'));
@@ -35,6 +36,7 @@ assert.equal(
   'APK hash differs from build information',
 );
 assert.equal(readFileSync(join(root, 'downloads/android/SHA256SUMS.txt'), 'utf8').trim(), `${info.apkSha256}  ${name}`);
+verifyAndroidApk(apk, 'release');
 
 const run = (command, args) => execFileSync(command, args, { cwd: root, encoding: 'utf8', timeout: 60_000 });
 run('git', ['merge-base', '--is-ancestor', info.sourceCommit, 'HEAD']);

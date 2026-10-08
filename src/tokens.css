@@ -1,0 +1,113 @@
+/*
+ * Design tokens. Every font, text size, line height, radius, shadow, color and duration in
+ * styles.css and mobile.css comes from here. Change the look in this file, not in the rules.
+ * docs/branding.md lists the scale and the rules for using it.
+ */
+
+/* Inter (UI and reading text) and Fraunces (headings). Latin only, bundled so the desktop and
+ * Android apps work offline and stay inside the content security policy. */
+@font-face {
+  font-family: 'Inter Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url('@fontsource-variable/inter/files/inter-latin-wght-normal.woff2') format('woff2-variations');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC,
+    U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Fraunces Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url('@fontsource-variable/fraunces/files/fraunces-latin-opsz-normal.woff2') format('woff2-variations');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC,
+    U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+:root {
+  /* Type families */
+  --font-sans: 'Inter Variable', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+  --font-display: 'Fraunces Variable', Fraunces, Georgia, 'Times New Roman', serif;
+
+  /* Type scale. Nothing in the app is smaller than --text-2xs. */
+  --text-2xs: 11px; /* badges, counters, eyebrows */
+  --text-xs: 12px; /* meta lines, helper text */
+  --text-sm: 13px; /* secondary text, labels */
+  --text-base: 14px; /* body, buttons, inputs */
+  --text-md: 16px; /* card titles, phone inputs */
+  --text-lg: 18px; /* section titles */
+  --text-xl: 22px; /* screen titles */
+  --text-2xl: 28px; /* page headings */
+  --text-3xl: 34px; /* large headings */
+  --text-4xl: 42px; /* display */
+  --text-5xl: 52px; /* welcome display */
+
+  --leading-tight: 1.2;
+  --leading-snug: 1.35;
+  --leading-normal: 1.6;
+  --leading-relaxed: 1.75;
+  --leading-loose: 1.9;
+
+  --tracking-tight: -0.02em;
+  --tracking-snug: -0.01em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.08em;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+
+  /* Shape */
+  --radius-xs: 3px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 24px;
+  --radius-pill: 999px;
+
+  --shadow-1: 0 3px 10px #183b310d;
+  --shadow-2: 0 8px 24px #183b3114;
+  --shadow-3: 0 20px 64px #183b3124;
+
+  /* Color */
+  --green: #254b3d;
+  --green-light: #e8eee7;
+  --text: #29372f;
+  --muted: #5e665a;
+  --line: #e5e6df;
+  --paper: #fffefb;
+  --sidebar: #f1f2eb;
+  --canvas: #faf9f6;
+
+  /* Motion */
+  --dur-fast: 150ms;
+  --dur-base: 220ms;
+  --dur-slow: 340ms;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+  --stagger: 40ms;
+}
+
+/* Phones: the four smallest steps grow one notch so small text stays readable at arm's length. */
+@media (max-width: 720px) {
+  :root {
+    --text-2xs: 12px;
+    --text-xs: 13px;
+    --text-sm: 14px;
+    --text-base: 15px;
+
+    --green: #183f33;
+    --green-light: #e9f0e3;
+    --text: #243a2f;
+    --muted: #586b5e;
+    --line: #dde5d9;
+    --paper: #fffefa;
+    --sidebar: #f2f5ec;
+    --canvas: #f5f6ef;
+  }
+}

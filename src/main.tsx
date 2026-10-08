@@ -4,6 +4,7 @@ import App from './App';
 import { browserAPI } from './browser-api';
 import { platform } from './platform';
 import { watchKeyboard } from './keyboard';
+import './tokens.css';
 import './styles.css';
 import './mobile.css';
 

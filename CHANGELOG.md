@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- One type system across desktop and phone: Inter for interface and reading text, Fraunces for headings. Both fonts are bundled (Latin only, about 115 KB) so the apps work offline. Arial, Georgia and the phone system font are gone.
+- Every text size, line height, letter spacing, weight, radius, shadow, palette color and duration now comes from `src/tokens.css`. About 270 hard-coded sizes became an 11-step scale, and nothing is smaller than 11px (12px on phones).
+- More motion: lists arrive with an indexed stagger, dialogs scale in, the phone drawer eases open, a soft shimmer runs while an assistant works or a project loads, fields ease into their focus ring, finished plan steps fade to their done state and primary buttons lift on hover. Everything still turns off when the system asks for reduced motion.
+
 ## 0.4.0 (2026-10-08)
 
 - Keep Android ChatGPT sign-in alive with a foreground service during browser consent; retain the exchange-after-foreground fix. The service and attempt are bounded to less than three minutes and cleaned up on success, rejection, cancellation and timeout.

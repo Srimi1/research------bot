@@ -106,7 +106,9 @@ try {
   await check('narrow-plan');
   await bottom.getByRole('button', { name: 'Notes', exact: true }).click();
   await check('narrow-notes');
-  await page.addStyleTag({ content: ':root { --text-boost: 8px; --text-boost-large: 8px; }' });
+  await page.addStyleTag({
+    content: ':root { --text-2xs: 20px; --text-xs: 21px; --text-sm: 22px; --text-base: 23px; --text-md: 24px; }',
+  });
   await check('larger-text');
   await page.setViewportSize({ width: 412, height: 892 });
   await page.emulateMedia({ reducedMotion: 'reduce' });

@@ -1,21 +1,23 @@
 # Download Research Bot for Android
 
-[**Download the signed Research Bot 0.3.9 APK**](https://github.com/Srimi1/research------bot/releases/download/v0.3.9/research-bot-0.3.9-android.apk)
+[**Signed Research Bot 0.4.0 APK in this repository**](research-bot-0.4.0-android.apk)
 
-Supports Android 8 or later and targets Android 16. Open the downloaded APK and choose **Install**. It uses the existing signing certificate from 0.3.1–0.3.8; install over your existing app to keep projects and notes.
+The public 0.4.0 release is being prepared. Publication requires a green source check and Android 16 tests of this exact signed APK. [Published 0.3.9](https://github.com/Srimi1/research------bot/releases/tag/v0.3.9) remains available with its own checksums.
 
-## Sign-in change in 0.3.9
+Supports Android 8 or later and targets Android 16. **0.4.0 uses a new signing key and requires a fresh installation.** It cannot update 0.3.9 in place. Export every project and verify the saved files before removing the old app; uninstalling deletes local projects, notes and settings. Exports are JSON/Markdown archives and automatic project import is not available.
 
-After browser consent, token exchange now waits until Research Bot returns to the foreground and Android allows its network. This addresses the DNS failure reproduced when the app was behind the browser. If Android leaves the browser open, switch back to Research Bot to finish connecting. Start a fresh **Continue with ChatGPT** attempt after installing.
+## Sign-in change in 0.4.0
 
-The foreground exchange passed Android 16 checks without instrumentation after 20-second and 75-second browser waits and with Data Saver enabled. These use deliberately invalid codes and never sign in a real account. Live ChatGPT sign-in on the reporting OnePlus/Legion OS phone remains unconfirmed. See the [investigation](../../docs/audits/2026-10-07-android-background-exchange.md).
+A short foreground service keeps sign-in alive during browser consent. Token exchange waits for Research Bot to return to the foreground and get network access. A native service timeout now aborts the pending sign-in and closes its loopback listener. If Android closes the process during consent, the next start shows `RB-AUTH-INTERRUPTED` and an **Open battery settings** action. Start a fresh **Continue with ChatGPT** attempt after installing.
+
+Live ChatGPT sign-in and inference on the OnePlus 7T Pro / Android 16 / Legion OS phone remain unconfirmed. Native transport checks use public metadata and deliberately invalid credentials, never a real account. See the [investigation](../../docs/audits/2026-10-07-android-background-exchange.md).
 
 ## Verify the download
 
 [SHA256SUMS.txt](SHA256SUMS.txt) contains the APK SHA-256:
 
 ```text
-4ecaac44c15ea2d500b9e2be85e971fa583b6f3ed92c8453c91f3aedff3df2ff
+280356ec59459cf853408f70ec0316f24c979988a2fbbba1e82e7147835ea39c
 ```
 
 From this folder on a computer:
@@ -24,10 +26,10 @@ From this folder on a computer:
 sha256sum -c SHA256SUMS.txt
 ```
 
-Package: `com.researchbot.android`. Version: `0.3.9` / code `309`. Signing certificate SHA-256: `98580ca053712555a2b8a3a8fecfc15c85d83c5d192480e3b6b09ca13a633441`.
+Package: `com.researchbot.android`. Version: `0.4.0` / code `400`. Signing certificate SHA-256: `e07d0f1bb2e400e248c1b2af756d314686d912718127aed1e65d4344ad555a35`.
 
-Built from [202b077](https://github.com/Srimi1/research------bot/commit/202b077ef54620e10211bf268277c3cf1a253afe). All six [source CI jobs](https://github.com/Srimi1/research------bot/actions/runs/37649730288) passed, including 95 unit tests, production Android/OAuth fixtures and native Android 16 checks. Android release build/lint also passed locally. The actual signed APK passed fresh launch/create/save/cold-restart and an upgrade from published 0.3.8 with retained notes in [Android-only release checks](https://github.com/Srimi1/research------bot/actions/runs/37653997201). All three public assets returned HTTP 200 and matched their checksums; the downloaded APK also passed certificate, package/version, SDK, alignment and disabled-debugging verification. [BUILD_INFO.json](BUILD_INFO.json) records public metadata and results. The signing key remains private.
+Built from [cb069c9](https://github.com/Srimi1/research------bot/commit/cb069c9796e8ac98255e64899ed9d45b39430e4e). Local dependency installation, lint, format check, typecheck and all 106 tests passed. The signed Android release build/lint, certificate, package/version, SDK, alignment and disabled-debugging checks passed. Signed-APK startup and persistence validation is pending the release workflow. [BUILD_INFO.json](BUILD_INFO.json) records the public metadata; the private signing key stays outside Git.
 
-If it still fails, run **Account & preferences → Check connection**, then **Copy connection results**. Report the fresh fixed `RB-AUTH-…` error and that report. Callback URLs, authorization codes, tokens and account details must stay private.
+If sign-in still fails, run **Account & preferences → Check connection**, then **Copy connection results**. Report the fresh fixed `RB-AUTH-…` error and that report. Callback URLs, authorization codes, tokens and account details must stay private.
 
 See the [Android guide](../../docs/android.md).

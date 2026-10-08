@@ -62,7 +62,7 @@ npm run build:android                       # web bundle + Capacitor sync
 cd android && ./gradlew assembleDebug       # android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
-The debug APK is available at `android/app/build/outputs/apk/debug/app-debug.apk` and as `research-bot-android-debug` in successful CI runs. Debug and release APKs use different signing certificates. Use a fresh emulator for debug builds and the original signed release APK to update an existing installation.
+The debug APK is available at `android/app/build/outputs/apk/debug/app-debug.apk` and as `research-bot-android-debug` in successful CI runs. Debug and release APKs use different signing certificates. Use a fresh emulator for debug builds. Updating an existing installation requires a release APK with the same signing certificate; 0.4.0 cannot update 0.3.x.
 
 `npm run icon:android` regenerates the launcher icons from `public/app-icon.png`.
 
@@ -79,7 +79,7 @@ RESEARCH_UIAUTOMATOR_PYTHON=.venv-android-qa/bin/python \
 
 Use a fresh emulator without Research Bot data; the test creates synthetic projects. Set `ANDROID_SERIAL` when multiple devices are connected. The driver uses an active Android accessibility connection and UI-tree-derived taps. It creates a project through the form's keyboard navigation and verifies it after a cold reopen, adds notes, then cold-restarts again and verifies persistence. This avoids relying on stale within-page snapshots from the emulator's WebView 133. Evidence is written to `android-startup-results/`.
 
-CI runs the same flow on Android 16. The release workflow additionally tests the exact signed APK before publication, while the **Android APK startup** workflow can test a published APK or the signed APK committed on the selected ref.
+CI runs the same flow on Android 16, after a bounded check that the emulator's first-boot CPU activity has settled. The release workflow additionally tests the exact signed APK before publication, while the **Android APK startup** workflow can test a published APK or the signed APK committed on the selected ref.
 
 ## Release signing (one-time setup)
 
@@ -114,7 +114,7 @@ The app targets SDK 36 and supports this Android version. It bundles the interfa
 
 ## If the app closes at launch
 
-Install the current APK over your existing copy first; do not clear app data or uninstall it while diagnosing startup. Version 0.3.4 fixes SQLite's blocked WebAssembly initialization and corrects the splash-screen handoff. Its actual signed APK is tested on stock Android 16 before release; this does not establish behavior on every custom ROM.
+For an installation already signed with the 0.4.0 key, install a same-key release over your existing copy; keep app data while diagnosing startup. Moving from 0.3.x to 0.4.0 requires the fresh-install precautions above. Version 0.3.4 fixes SQLite's blocked WebAssembly initialization and corrects the splash-screen handoff. Each release's actual signed APK is tested on stock Android 16 before release; this does not establish behavior on every custom ROM.
 
 Check that your ROM has an enabled, current Android System WebView provider. If the app still closes, connect the phone to a computer with Android Platform Tools and USB debugging enabled, then capture the Android crash buffer:
 

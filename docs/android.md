@@ -10,7 +10,7 @@ The Android app is the same Research Bot as the desktop app: the same interface,
 2. Open the downloaded file. Android asks to allow installs from your browser or file manager the first time; allow it, then choose **Install**.
 3. Open **Research Bot**. Your projects are stored only on this phone.
 
-To check this download, compare its SHA-256 with [downloads/android/SHA256SUMS.txt](../downloads/android/SHA256SUMS.txt). This APK uses the same personal certificate as the previously supplied 0.3.1, 0.3.2 and released 0.3.3 APKs, so it can update those installations. Install this version manually; automatic updates require an APK and checksums attached to a newer published GitHub release.
+To check this download, compare its SHA-256 with [downloads/android/SHA256SUMS.txt](../downloads/android/SHA256SUMS.txt). This APK uses the new 0.4.0 certificate and cannot update 0.3.x installations. Later releases must retain the 0.4.0 certificate to update this installation in place. Install this version manually; automatic updates require an APK and checksums attached to a newer published GitHub release.
 
 ## Sign in with ChatGPT
 
@@ -94,13 +94,15 @@ Keep a private backup of the 0.4.0 keystore and its passwords outside GitHub. If
 
 ### Publish an Android release
 
-Run **Publish release** from `main` with the version tag (for example `v0.4.0`), **Platforms: android**, and **Android source: build**. For 0.4.0 leave **Android upgrade from** empty because the signing certificate changed. For later releases, set it to a published version signed with the same key. Before publication the exact signed APK must pass fresh install, persistence and cold restart on Android 16; an optional same-key upgrade must also retain notes. Afterwards commit the published APK and `BUILD_INFO-android.json` as `downloads/android/research-bot-VERSION-android.apk` and `downloads/android/BUILD_INFO.json`, regenerate `downloads/android/SHA256SUMS.txt`, and update the download links. Emulator evidence and the maintainer's phone result are reported separately.
+Run **Publish release** from the ref whose `package.json` matches the version tag (for example `v0.4.1`), with **Platforms: android** and **Android source: build**. Leave **Publish** off to retain the completed release as a draft for review; the default is on. **Platforms: desktop** builds only Windows, Linux and Apple Silicon/Intel Mac installers and does not require Android signing secrets.
+
+For 0.4.0 leave **Android upgrade from** empty because the signing certificate changed. For 0.4.1 use `v0.4.0`: the APK must retain that release's certificate and use version code 401. Before publication the exact signed APK must pass fresh install, persistence and cold restart on Android 16; a same-key upgrade must also retain notes. Afterwards commit the published APK and `BUILD_INFO-android.json` as `downloads/android/research-bot-VERSION-android.apk` and `downloads/android/BUILD_INFO.json`, regenerate `downloads/android/SHA256SUMS.txt`, and update the download links. Emulator evidence and the maintainer's phone result are reported separately.
 
 ### Release an existing signed APK
 
 For a locally built and validated APK, run **Publish release** with **Android source: prebuilt**. Commit `downloads/android/research-bot-VERSION-android.apk`, `SHA256SUMS.txt` and `BUILD_INFO.json` first. The build information records the version, package, SDK levels, byte count, SHA-256, public certificate fingerprint and full build commit.
 
-The workflow verifies the hash, certificate, package/version, SDK levels and 16 KiB alignment. It also requires the recorded build commit to be an ancestor of the release and all Android app/build inputs to be unchanged. If app inputs changed, rebuild and validate the APK before updating its build information. This path uses the existing signature without uploading the private key; it attaches `BUILD_INFO-android.json` as well as the APK and checksums. Choose **Platforms: android** to publish only the APK, or **all** to include desktop installers. The draft is published only after every selected upload and the signed APK runtime check succeeds. Optionally set **Android upgrade from** to a previous published tag, such as `v0.3.7`, to test an in-place signed upgrade with project and note recovery.
+The workflow verifies the hash, certificate, package/version, SDK levels and 16 KiB alignment. It also requires the recorded build commit to be an ancestor of the release and all Android app/build inputs to be unchanged. If app inputs changed, rebuild and validate the APK before updating its build information. This path uses the existing signature without uploading the private key; it attaches `BUILD_INFO-android.json` as well as the APK and checksums. Choose **Platforms: android** to build only the APK, or **all** to include desktop installers. With **Publish** on, the draft is published only after every selected upload and the signed APK runtime check succeeds; with it off, the release stays draft for review. Set **Android upgrade from** to a previous published tag with the same signing certificate, such as `v0.4.0` for 0.4.1, to test an in-place signed upgrade with project and note recovery.
 
 ## Android 16 and the OnePlus 7T Pro
 

@@ -110,7 +110,7 @@ async function treeFor(label) {
   return tree;
 }
 
-async function waitForTree(label, expected) {
+async function waitForTree(label, expected, { scrollToFind = false } = {}) {
   for (let attempt = 0; attempt < 20; attempt++) {
     await pause(1_000);
     const crash = logcat('-b', 'crash');
@@ -119,35 +119,60 @@ async function waitForTree(label, expected) {
     const tree = await treeFor(label);
     assert.ok(!tree.includes('CompileError'), 'The actual APK must initialize SQLite under its shipped CSP');
     if (expected(tree)) return tree;
+    // UiAutomator omits offscreen WebView nodes. Restored notes can be below the fold,
+    // especially with larger text, so reveal them before asserting their saved content.
+    if (scrollToFind && scrollContent(nodes(tree))) await pause(500);
   }
   throw new Error(`The APK did not render the expected ${label} screen`);
+}
+
+function contentViewport(list) {
+  const frame = bounds(list.find(node => node.package === packageName && node.class === 'android.webkit.WebView'));
+  const footer = bounds(
+    list.find(
+      node =>
+        node.package === packageName &&
+        (node.text === 'Project sections' || node['content-desc'] === 'Project sections') &&
+        bounds(node) &&
+        frame &&
+        bounds(node).top > frame.top + (frame.bottom - frame.top) / 2,
+    ),
+  );
+  const headerBottom = Math.max(
+    frame?.top ?? 0,
+    ...list
+      .filter(
+        node =>
+          node.package === packageName &&
+          ['Open navigation', 'Account and preferences'].includes(node.text || node['content-desc']) &&
+          bounds(node),
+      )
+      .map(node => bounds(node).bottom),
+  );
+  return { frame, footer, headerBottom };
+}
+
+function scrollContent(list) {
+  const scroll = list.find(node => node.package === packageName && node.scrollable === 'true' && bounds(node));
+  if (!scroll) return false;
+  const { footer, headerBottom } = contentViewport(list);
+  const region = bounds(scroll);
+  const { left, right } = region;
+  const top = Math.max(region.top, headerBottom);
+  const bottom = Math.min(region.bottom, footer?.top ?? region.bottom);
+  if (bottom <= top) return false;
+  // Derive the swipe from the accessibility tree and keep it clear of fixed navigation.
+  const x = Math.round(left + (right - left) / 3);
+  const start = Math.round(top + (bottom - top) * 0.75);
+  const end = Math.round(top + (bottom - top) * 0.25);
+  adb('shell', 'input', 'swipe', String(x), String(start), String(x), String(end), '350');
+  return true;
 }
 
 async function tapNode(label, predicate) {
   for (let attempt = 0; attempt < 4; attempt++) {
     const list = nodes(await treeFor(label));
-    const frame = bounds(list.find(node => node.package === packageName && node.class === 'android.webkit.WebView'));
-    const footer = bounds(
-      list.find(
-        node =>
-          node.package === packageName &&
-          (node.text === 'Project sections' || node['content-desc'] === 'Project sections') &&
-          bounds(node) &&
-          frame &&
-          bounds(node).top > frame.top + (frame.bottom - frame.top) / 2,
-      ),
-    );
-    const headerBottom = Math.max(
-      frame?.top ?? 0,
-      ...list
-        .filter(
-          node =>
-            node.package === packageName &&
-            ['Open navigation', 'Account and preferences'].includes(node.text || node['content-desc']) &&
-            bounds(node),
-        )
-        .map(node => bounds(node).bottom),
-    );
+    const { frame, footer, headerBottom } = contentViewport(list);
     const target = list.find(node => node.package === packageName && predicate(node) && bounds(node));
     const targetBounds = bounds(target);
     // Accessibility can report a button's bounds behind fixed controls as visible. Scroll it fully
@@ -163,18 +188,7 @@ async function tapNode(label, predicate) {
       return;
     }
     if (attempt === 3) break;
-    // Find coordinates from the accessibility tree; scroll and re-dump before declaring it missing.
-    const scroll = list.find(node => node.package === packageName && node.scrollable === 'true' && bounds(node));
-    assert.ok(scroll, `No visible target or scrollable region on ${label}`);
-    const region = bounds(scroll);
-    const { left, right } = region;
-    const top = Math.max(region.top, headerBottom);
-    const bottom = Math.min(region.bottom, footer?.top ?? region.bottom);
-    // The WebView bounds include fixed header/bottom controls. Swipe within its middle content.
-    const x = Math.round(left + (right - left) / 3);
-    const start = Math.round(top + (bottom - top) * 0.75);
-    const end = Math.round(top + (bottom - top) * 0.25);
-    adb('shell', 'input', 'swipe', String(x), String(start), String(x), String(end), '350');
+    assert.ok(scrollContent(list), `No visible target or scrollable region on ${label}`);
     await pause(500);
   }
   throw new Error(`The ${label} target is not visible after scrolling`);
@@ -231,6 +245,7 @@ try {
       await waitForTree(
         'project-created',
         tree => tree.includes('AndroidStartupTest') && tree.includes('Your research notes'),
+        { scrollToFind: true },
       );
       await tapNode('note-outline', named('Add a note outline'));
       await pause(2_000);
@@ -243,10 +258,13 @@ try {
         await waitForTree(
           'upgrade-restored',
           tree => tree.includes('AndroidStartupTest') && tree.includes('What I know'),
+          { scrollToFind: true },
         );
       }
     } else {
-      await waitForTree(label, tree => tree.includes('AndroidStartupTest') && tree.includes('What I know'));
+      await waitForTree(label, tree => tree.includes('AndroidStartupTest') && tree.includes('What I know'), {
+        scrollToFind: true,
+      });
     }
     const { crash } = capture(label);
     assert.ok(!crash.includes(`Process: ${packageName}`), `Native startup crash:\n${crash}`);

@@ -15,13 +15,19 @@ on:
         required: true
         default: v0.4.0
       platforms:
-        description: Publish all installers, or only the Android APK.
+        description: Build all installers, only the Android APK, or only desktop installers.
         type: choice
         required: true
         default: all
         options:
           - all
           - android
+          - desktop
+      publish:
+        description: Publish after validation; turn off to keep the completed release in draft.
+        type: boolean
+        required: true
+        default: true
       android_source:
         description: Build with signing secrets, or verify the signed APK committed in downloads/android.
         type: choice
@@ -64,7 +70,9 @@ jobs:
             exit 1
           fi
       - name: Check Android signing configuration before building or creating a release
-        if: github.event_name != 'workflow_dispatch' || inputs.android_source != 'prebuilt'
+        if: >-
+          (github.event_name != 'workflow_dispatch' || inputs.platforms != 'desktop') &&
+          (github.event_name != 'workflow_dispatch' || inputs.android_source != 'prebuilt')
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -195,6 +203,7 @@ jobs:
 
   android:
     needs: prepare
+    if: github.event_name != 'workflow_dispatch' || inputs.platforms != 'desktop'
     runs-on: ubuntu-latest
     env:
       RESEARCH_RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
@@ -363,8 +372,9 @@ jobs:
   publish:
     needs: [prepare, build, mac, android]
     if: >-
-      always() && github.event_name == 'workflow_dispatch' &&
-      needs.prepare.result == 'success' && needs.android.result == 'success' &&
+      always() && github.event_name == 'workflow_dispatch' && inputs.publish &&
+      needs.prepare.result == 'success' &&
+      (inputs.platforms == 'desktop' || needs.android.result == 'success') &&
       (inputs.platforms == 'android' || (needs.build.result == 'success' && needs.mac.result == 'success'))
     runs-on: ubuntu-latest
     env:

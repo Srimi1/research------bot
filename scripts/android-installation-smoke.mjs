@@ -64,7 +64,16 @@ try {
   assert.ok(profile, `A separate user is required for this regression check: ${created.text}`);
   assert.ok(created.status === 0 || created.status === 1, created.text);
   assert.match(adb('shell', 'pm', 'list', 'users'), new RegExp(`UserInfo\\{${profile}:`));
-  assert.match(adb('shell', 'pm', 'install-existing', '--user', profile, packageName), /installed for user/);
+  // Android 8's legacy pm command lacks install-existing. Reinstall the same
+  // verified fixture for the secondary user with the supported install flags.
+  const profileInstall = adbResult('install', '--no-streaming', '-r', '--user', profile, resolve(files.previous[0]));
+  assert.equal(profileInstall.status, 0, profileInstall.text);
+  assert.ok(
+    adb('shell', 'pm', 'list', 'packages', '--user', profile, packageName)
+      .split(/\r?\n/)
+      .includes(`package:${packageName}`),
+    'The previous APK must remain installed in the secondary user',
+  );
   assert.match(adb('shell', 'pm', 'uninstall', '--user', '0', packageName), /Success/);
   const conflict = install(files.published[0]);
   assert.notEqual(conflict.status, 0, 'The old certificate in another user must not silently accept a new signer');

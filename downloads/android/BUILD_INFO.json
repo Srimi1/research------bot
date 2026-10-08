@@ -12,7 +12,7 @@
     "regressionTests": "passed (local npm test; 106 tests, zero skipped)",
     "androidReleaseBuildAndLint": "passed",
     "signatureAnd16KiBAlignment": "passed",
-    "android16SignedApkStartupAndPersistence": "pending release workflow",
+    "android16SignedApkStartupAndPersistence": "passed",
     "regressionTestsPassed": 106,
     "localLintFormatAndTypecheck": "passed",
     "releaseWebViewDebuggingDisabled": "passed (release debug flag absent; packaged WebView debugging disabled)"
@@ -21,5 +21,6 @@
     "Live ChatGPT sign-in, eligibility and inference on the physical OnePlus 7T Pro / Android 16 / Legion OS remain unconfirmed",
     "Native transport tests use public metadata and deliberately invalid credentials, not a real account",
     "The new 0.4.0 signing certificate cannot update an installation signed with the 0.3.9 certificate"
-  ]
+  ],
+  "githubReleaseRun": "https://github.com/Srimi1/research------bot/actions/runs/37793673276"
 }

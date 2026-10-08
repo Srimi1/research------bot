@@ -4,9 +4,9 @@ The Android app is the same Research Bot as the desktop app: the same interface,
 
 ## Install
 
-**0.4.0 is in release preparation and uses a new signing key.** It cannot update an existing 0.3.x installation. Export every project and verify the saved files before removing the old app; uninstalling deletes its local projects, notes and settings. Exports are JSON/Markdown archives and automatic project import is not available. The current download below remains 0.3.9 until 0.4.0 is published.
+**0.4.0 is published and uses a new signing key.** It cannot update an existing 0.3.x installation. Export every project and verify the saved files before removing the old app; uninstalling deletes its local projects, notes and settings. Exports are JSON/Markdown archives and automatic project import is not available.
 
-1. Download the [signed Research Bot 0.3.9 APK](https://github.com/Srimi1/research------bot/releases/download/v0.3.9/research-bot-0.3.9-android.apk). It is stored in the repository's [downloads/android folder](../downloads/android/README.md).
+1. Download the [signed Research Bot 0.4.0 APK](https://github.com/Srimi1/research------bot/releases/download/v0.4.0/research-bot-0.4.0-android.apk). It is stored in the repository's [downloads/android folder](../downloads/android/README.md).
 2. Open the downloaded file. Android asks to allow installs from your browser or file manager the first time; allow it, then choose **Install**.
 3. Open **Research Bot**. Your projects are stored only on this phone.
 

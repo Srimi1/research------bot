@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.4.0 (release preparation)
+## 0.4.0 (2026-10-08)
 
 - Keep Android ChatGPT sign-in alive with a foreground service during browser consent; retain the exchange-after-foreground fix. The service and attempt are bounded to less than three minutes and cleaned up on success, rejection, cancellation and timeout.
 - When the sign-in foreground service reaches its own deadline or Android times it out, it now tells the app, which cancels the pending sign-in with `RB-AUTH-TIMEOUT`, closes the local callback listener and stops the service, instead of only stopping the service. An aborted foreground wait cannot overwrite the timeout notice with a generic setup failure.

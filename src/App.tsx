@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import {
   ArrowDown,
   ArrowRight,
@@ -717,11 +717,13 @@ function ManualSource({ onClose, onSave }: { onClose: () => void; onSave: (sourc
 
 function SourceResult({
   source,
+  index,
   saved,
   onSave,
   onOpen,
 }: {
   source: Source;
+  index: number;
   saved: boolean;
   onSave: (source: Source) => Promise<void>;
   onOpen: (url: string) => void;
@@ -730,7 +732,7 @@ function SourceResult({
   const [error, setError] = useState('');
   const [abstract, setAbstract] = useState(false);
   return (
-    <article className="source-result">
+    <article className="source-result" style={{ '--i': index } as CSSProperties}>
       <div className="source-meta">
         <span className="eyebrow">{source.category}</span>
         <span>
@@ -789,11 +791,13 @@ function SourceResult({
 
 function MatrixRow({
   source,
+  index,
   onSave,
   onDelete,
   onOpen,
 }: {
   source: Source;
+  index: number;
   onSave: (source: Source) => Promise<void>;
   onDelete: (id: string) => void;
   onOpen: (url: string) => void;
@@ -806,7 +810,7 @@ function MatrixRow({
     setDraft(source);
   }, [source]);
   return (
-    <tr>
+    <tr style={{ '--i': index } as CSSProperties}>
       <td className="matrix-source" data-label="Source & provenance">
         <span className="tag">{source.category}</span>
         <button className="source-title" onClick={() => onOpen(source.url)}>
@@ -894,7 +898,7 @@ function StepEditor({
     setDraft(step);
   }, [step]);
   return (
-    <article className={`plan-card ${step.done ? 'done' : ''}`}>
+    <article className={`plan-card ${step.done ? 'done' : ''}`} style={{ '--i': index } as CSSProperties}>
       <div className="plan-heading">
         <button
           className="step-check"
@@ -1126,7 +1130,7 @@ function MethodsReview({
       )}
       <h3 className="result-subheading">Methods to consider</h3>
       {result.options.map((option, index) => (
-        <article className="method-option" key={index}>
+        <article className="method-option" key={index} style={{ '--i': index } as CSSProperties}>
           <h4>{option.name}</h4>
           <p>{option.rationale}</p>
           <p className="help">
@@ -1139,8 +1143,8 @@ function MethodsReview({
         <span className="muted">{result.steps.length} steps</span>
       </div>
       <ol className="suggested-steps">
-        {result.steps.map(step => (
-          <li key={step.id}>
+        {result.steps.map((step, index) => (
+          <li key={step.id} style={{ '--i': index } as CSSProperties}>
             <strong>{step.title}</strong>
             <p>{step.purpose}</p>
             <span>Output: {step.output}</span>
@@ -1193,7 +1197,11 @@ function BrainstormReview({
         <span>These are possibilities to investigate. They are not established findings.</span>
       </p>
       {result.ideas.map((idea, index) => (
-        <article className={`idea-card ${dismissed.has(index) ? 'dismissed' : ''}`} key={index}>
+        <article
+          className={`idea-card ${dismissed.has(index) ? 'dismissed' : ''}`}
+          key={index}
+          style={{ '--i': index } as CSSProperties}
+        >
           <span className="eyebrow">Possibility {String(index + 1).padStart(2, '0')}</span>
           <h3>{idea.title}</h3>
           <p>{idea.explanation}</p>
@@ -1615,9 +1623,10 @@ export default function App() {
           Your research<span>{projects.length}</span>
         </div>
         <nav className="project-list" aria-label="Research projects">
-          {projects.map(project => (
+          {projects.map((project, index) => (
             <button
               key={project.id}
+              style={{ '--i': index } as CSSProperties}
               className={`project-link ${detail?.project.id === project.id ? 'active' : ''}`}
               onClick={() => selectProject(project.id)}
               disabled={loading}
@@ -1722,8 +1731,12 @@ export default function App() {
         )}
         {loading && !detail ? (
           <div className="page-loading">
-            <LoaderCircle size={28} className="spin" />
-            <p>Opening your research workspace…</p>
+            <div className="skeleton-stack" role="group" aria-label="Research workspace" aria-busy="true">
+              <span className="skeleton skeleton-title" aria-hidden="true" />
+              <span className="skeleton" aria-hidden="true" />
+              <span className="skeleton skeleton-short" aria-hidden="true" />
+            </div>
+            <p role="status">Opening your research workspace…</p>
           </div>
         ) : !detail ? (
           <div className="welcome">
@@ -1767,9 +1780,10 @@ export default function App() {
               <span>Four ways to move an idea forward</span>
             </div>
             <div className="welcome-agents">
-              {roles.map(item => (
+              {roles.map((item, index) => (
                 <button
                   key={item.id}
+                  style={{ '--i': index } as CSSProperties}
                   data-agent={item.id}
                   aria-label={`Start a project with ${item.title}`}
                   onClick={() => {
@@ -2150,9 +2164,13 @@ export default function App() {
                       )}
                     </div>
                     {currentActive && activeRun && (
-                      <div className="run-progress" aria-live="polite">
-                        <LoaderCircle size={24} className="spin" />
-                        <p>{activeRun.message}</p>
+                      <div className="run-progress">
+                        <div className="skeleton-stack" role="group" aria-label="Research results" aria-busy="true">
+                          <span className="skeleton skeleton-title" aria-hidden="true" />
+                          <span className="skeleton" aria-hidden="true" />
+                          <span className="skeleton skeleton-short" aria-hidden="true" />
+                        </div>
+                        <p role="status">{activeRun.message}</p>
                         <button
                           className="button small secondary"
                           disabled={!activeRun.id || cancelBusy}
@@ -2187,10 +2205,11 @@ export default function App() {
                             {result.sources.length === 0 && (
                               <p className="muted">No matching sources found. Try a broader search term.</p>
                             )}
-                            {result.sources.map(source => (
+                            {result.sources.map((source, index) => (
                               <SourceResult
                                 key={source.id}
                                 source={source}
+                                index={index}
                                 saved={detail.sources.some(
                                   item => item.id === source.id || (!!item.doi && item.doi === source.doi),
                                 )}
@@ -2296,10 +2315,11 @@ export default function App() {
                           </tr>
                         </thead>
                         <tbody>
-                          {detail.sources.map(source => (
+                          {detail.sources.map((source, index) => (
                             <MatrixRow
                               key={source.id}
                               source={source}
+                              index={index}
                               onSave={saveSource}
                               onOpen={open}
                               onDelete={async id => {
@@ -2444,10 +2464,10 @@ export default function App() {
                 </div>
                 {detail.runs.length ? (
                   <div className="history-list">
-                    {detail.runs.map(run => {
+                    {detail.runs.map((run, index) => {
                       const item = roles.find(role => role.id === run.role)!;
                       return (
-                        <article className="history-card" key={run.id}>
+                        <article className="history-card" key={run.id} style={{ '--i': index } as CSSProperties}>
                           <span className="section-icon">
                             <item.icon size={18} />
                           </span>

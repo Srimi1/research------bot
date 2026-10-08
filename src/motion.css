@@ -1,0 +1,292 @@
+/* Calm feedback, shared by desktop and phone. Reduced motion disables this entire system. */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes sheet-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes float {
+  50% {
+    translate: 0 -4px;
+  }
+}
+
+@keyframes orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes soft-pulse {
+  50% {
+    scale: 1.15;
+    opacity: 0.65;
+  }
+}
+
+@keyframes paper-arrive {
+  from {
+    opacity: 0;
+    translate: 0 12px;
+  }
+}
+
+/* Keep the toast's translateX(-50%) centering throughout the entrance. */
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+@keyframes skeleton-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.full-section,
+.assistant-content,
+.welcome,
+.agent-results,
+.notes-panel,
+.assistant-panel,
+.mobile-overview {
+  animation: rise-in var(--dur-slow) var(--ease-out) backwards;
+}
+
+.assistant-panel {
+  animation-delay: var(--dur-stagger);
+}
+
+/* Cap the wait so long lists still become available promptly. */
+.source-result,
+.plan-card,
+.history-card,
+.method-option,
+.idea-card,
+.suggested-steps > li,
+.literature-matrix tbody tr,
+.project-list > button,
+.welcome-agents > button {
+  animation: rise-in var(--dur-slow) var(--ease-out) backwards;
+  animation-delay: calc(min(var(--i, 0), 6) * var(--dur-stagger));
+}
+
+/* Individual translate and scale compose with entrance transforms. */
+button,
+.source-result,
+.plan-card,
+.history-card,
+.method-option,
+.idea-card {
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    opacity var(--dur-base) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out),
+    translate var(--dur-base) var(--ease-out),
+    scale var(--dur-fast) var(--ease-out);
+}
+
+button:active:not(:disabled) {
+  scale: 0.97;
+}
+
+@media (hover: hover) {
+  .source-result:hover,
+  .plan-card:hover,
+  .history-card:hover,
+  .method-option:hover,
+  .idea-card:hover,
+  .project-list > button:hover:not(:disabled),
+  .welcome-agents > button:hover:not(:disabled) {
+    translate: 0 -2px;
+    box-shadow: var(--shadow-2);
+  }
+}
+
+.role-tabs button.active,
+.view-nav > button.active {
+  animation: fade-in var(--dur-base) var(--ease-out) backwards;
+}
+
+.empty-orbit,
+.welcome-icon,
+.section-empty > svg:first-child,
+.art-bubble {
+  animation: float var(--dur-ambient) var(--ease-in-out) infinite;
+}
+
+.art-bubble-idea {
+  animation-delay: calc(var(--dur-ambient) / -3);
+}
+
+.empty-orbit::after {
+  transform-origin: -14px 25px;
+  animation: orbit calc(var(--dur-ambient) * 2) linear infinite;
+}
+
+.welcome-icon img,
+.save-indicator.saved svg,
+.step-check svg,
+.bottom-nav-badge {
+  animation: pop-in var(--dur-slow) var(--ease-spring) backwards;
+}
+
+.art-paper-front {
+  animation: paper-arrive var(--dur-slow) var(--ease-out) backwards;
+}
+
+.auth-prompt .status-dot,
+.welcome-footer .status-dot {
+  animation: soft-pulse var(--dur-ambient) var(--ease-in-out) infinite;
+}
+
+.toast {
+  animation: toast-in var(--dur-base) var(--ease-out) backwards;
+}
+
+.dropdown {
+  transform-origin: top right;
+  animation: pop-in var(--dur-fast) var(--ease-out) backwards;
+}
+
+.sidebar-scrim,
+.modal-backdrop {
+  animation: fade-in var(--dur-base) var(--ease-out) backwards;
+}
+
+.modal {
+  animation: pop-in var(--dur-base) var(--ease-out) backwards;
+}
+
+/* Loading shapes are decorative; adjacent status text describes the actual task. */
+.skeleton-stack {
+  display: grid;
+  gap: var(--space-3);
+  width: min(100%, 28rem);
+  margin-inline: auto;
+}
+
+.skeleton {
+  display: block;
+  height: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--green-light) 0%, var(--paper) 50%, var(--green-light) 100%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer var(--dur-loading) var(--ease-in-out) infinite;
+}
+
+.skeleton-title {
+  width: 66%;
+  height: var(--space-5);
+}
+
+.skeleton-short {
+  width: 78%;
+}
+
+.run-progress .skeleton-stack {
+  margin-bottom: var(--space-4);
+}
+
+.page-loading .skeleton-stack {
+  width: min(80%, 28rem);
+}
+
+.spin {
+  animation-duration: var(--dur-loading);
+}
+
+@media (max-width: 720px) {
+  .bottom-nav-icon {
+    transition:
+      background-color var(--dur-base) var(--ease-out),
+      translate var(--dur-base) var(--ease-spring),
+      scale var(--dur-fast) var(--ease-out);
+  }
+
+  .bottom-nav > button.active .bottom-nav-icon {
+    translate: 0 -1px;
+  }
+
+  .bottom-nav > button:active:not(:disabled) .bottom-nav-icon {
+    scale: 0.97;
+  }
+
+  .bottom-nav-indicator {
+    transition: transform var(--dur-slow) var(--ease-spring);
+  }
+
+  .modal {
+    animation: sheet-up var(--dur-slow) var(--ease-out) backwards;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  /* Retain instant color feedback while suppressing interactive movement too. */
+  button:active:not(:disabled),
+  .bottom-nav > button:active:not(:disabled) .bottom-nav-icon {
+    scale: none;
+  }
+
+  .source-result:hover,
+  .plan-card:hover,
+  .history-card:hover,
+  .method-option:hover,
+  .idea-card:hover,
+  .project-list > button:hover:not(:disabled),
+  .welcome-agents > button:hover:not(:disabled),
+  .bottom-nav > button.active .bottom-nav-icon {
+    translate: none;
+  }
+}

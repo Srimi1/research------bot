@@ -1,0 +1,1767 @@
+{
+  "phase": "after",
+  "viewports": [
+    {
+      "label": "desktop-1280",
+      "screens": [
+        {
+          "name": "desktop-1280-welcome",
+          "reduced": false,
+          "width": 1280,
+          "height": 900,
+          "overflow": 0,
+          "runningAnimations": 3,
+          "indexedLists": {
+            ".welcome-agents > button": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0.04s"
+              },
+              {
+                "index": "2",
+                "delay": "0.08s"
+              },
+              {
+                "index": "3",
+                "delay": "0.12s"
+              }
+            ]
+          },
+          "textElements": 38,
+          "fontFamilyCounts": {
+            "Fraunces Variable": 9,
+            "Inter Variable": 29
+          },
+          "smallTextCount": 0,
+          "animationFailureCount": 0,
+          "fontFailureCount": 0
+        },
+        {
+          "name": "desktop-1280-notes",
+          "reduced": false,
+          "width": 1280,
+          "height": 900,
+          "overflow": 0,
+          "runningAnimations": 3,
+          "indexedLists": {
+            ".project-list > button": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0.04s"
+              },
+              {
+                "index": "2",
+                "delay": "0.08s"
+              }
+            ]
+          },
+          "textElements": 65,
+          "fontFamilyCounts": {
+            "Fraunces Variable": 8,
+            "Inter Variable": 57
+          },
+          "smallTextCount": 0,
+          "animationFailureCount": 0,
+          "fontFailureCount": 0
+        },
+        {
+          "name": "desktop-1280-evidence",
+          "reduced": false,
+          "width": 1280,
+          "height": 900,
+          "overflow": 0,
+          "runningAnimations": 0,
+          "indexedLists": {
+            ".project-list > button": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0.04s"
+              },
+              {
+                "index": "2",
+                "delay": "0.08s"
+              }
+            ],
+            ".source-result": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0.04s"
+              }
+            ]
+          },
+          "textElements": 79,
+          "fontFamilyCounts": {
+            "Fraunces Variable": 9,
+            "Inter Variable": 70
+          },
+          "smallTextCount": 0,
+          "animationFailureCount": 0,
+          "fontFailureCount": 0
+        },
+        {
+          "name": "desktop-1280-loading",
+          "reduced": false,
+          "width": 1280,
+          "height": 900,
+          "overflow": 0,
+          "runningAnimations": 5,
+          "indexedLists": {
+            ".project-list > button": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0.04s"
+              },
+              {
+                "index": "2",
+                "delay": "0.08s"
+              }
+            ]
+          },
+          "textElements": 64,
+          "fontFamilyCounts": {
+            "Fraunces Variable": 7,
+            "Inter Variable": 57
+          },
+          "smallTextCount": 0,
+          "animationFailureCount": 0,
+          "fontFailureCount": 0
+        },
+        {
+          "name": "desktop-1280-sources",
+          "reduced": false,
+          "width": 1280,
+          "height": 900,
+          "overflow": 0,
+          "runningAnimations": 0,
+          "indexedLists": {
+            ".project-list > button": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0.04s"
+              },
+              {
+                "index": "2",
+                "delay": "0.08s"
+              }
+            ],
+            ".literature-matrix tbody tr": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0.04s"
+              }
+            ]
+          },
+          "textElements": 62,
+          "fontFamilyCounts": {
+            "Fraunces Variable": 6,
+            "Inter Variable": 56
+          },
+          "smallTextCount": 0,
+          "animationFailureCount": 0,
+          "fontFailureCount": 0
+        },
+        {
+          "name": "desktop-1280-plan",
+          "reduced": false,
+          "width": 1280,
+          "height": 900,
+          "overflow": 0,
+          "runningAnimations": 0,
+          "indexedLists": {
+            ".project-list > button": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0.04s"
+              },
+              {
+                "index": "2",
+                "delay": "0.08s"
+              }
+            ],
+            ".plan-card": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0.04s"
+              },
+              {
+                "index": "2",
+                "delay": "0.08s"
+              }
+            ]
+          },
+          "textElements": 55,
+          "fontFamilyCounts": {
+            "Fraunces Variable": 7,
+            "Inter Variable": 48
+          },
+          "smallTextCount": 0,
+          "animationFailureCount": 0,
+          "fontFailureCount": 0
+        },
+        {
+          "name": "desktop-1280-settings",
+          "reduced": false,
+          "width": 1280,
+          "height": 900,
+          "overflow": 0,
+          "runningAnimations": 0,
+          "indexedLists": {
+            ".project-list > button": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0.04s"
+              },
+              {
+                "index": "2",
+                "delay": "0.08s"
+              }
+            ],
+            ".plan-card": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0.04s"
+              },
+              {
+                "index": "2",
+                "delay": "0.08s"
+              }
+            ]
+          },
+          "textElements": 72,
+          "fontFamilyCounts": {
+            "Fraunces Variable": 9,
+            "Inter Variable": 63
+          },
+          "smallTextCount": 0,
+          "animationFailureCount": 0,
+          "fontFailureCount": 0
+        },
+        {
+          "name": "desktop-1280-reduced-notes",
+          "reduced": true,
+          "width": 1280,
+          "height": 900,
+          "overflow": 0,
+          "runningAnimations": 0,
+          "indexedLists": {
+            ".project-list > button": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0s"
+              },
+              {
+                "index": "2",
+                "delay": "0s"
+              }
+            ]
+          },
+          "textElements": 66,
+          "fontFamilyCounts": {
+            "Fraunces Variable": 7,
+            "Inter Variable": 59
+          },
+          "smallTextCount": 0,
+          "animationFailureCount": 0,
+          "fontFailureCount": 0
+        },
+        {
+          "name": "desktop-1280-reduced-sources",
+          "reduced": true,
+          "width": 1280,
+          "height": 900,
+          "overflow": 0,
+          "runningAnimations": 0,
+          "indexedLists": {
+            ".project-list > button": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0s"
+              },
+              {
+                "index": "2",
+                "delay": "0s"
+              }
+            ],
+            ".literature-matrix tbody tr": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0s"
+              }
+            ]
+          },
+          "textElements": 62,
+          "fontFamilyCounts": {
+            "Fraunces Variable": 6,
+            "Inter Variable": 56
+          },
+          "smallTextCount": 0,
+          "animationFailureCount": 0,
+          "fontFailureCount": 0
+        },
+        {
+          "name": "desktop-1280-reduced-plan",
+          "reduced": true,
+          "width": 1280,
+          "height": 900,
+          "overflow": 0,
+          "runningAnimations": 0,
+          "indexedLists": {
+            ".project-list > button": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0s"
+              },
+              {
+                "index": "2",
+                "delay": "0s"
+              }
+            ],
+            ".plan-card": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0s"
+              },
+              {
+                "index": "2",
+                "delay": "0s"
+              }
+            ]
+          },
+          "textElements": 55,
+          "fontFamilyCounts": {
+            "Fraunces Variable": 7,
+            "Inter Variable": 48
+          },
+          "smallTextCount": 0,
+          "animationFailureCount": 0,
+          "fontFailureCount": 0
+        },
+        {
+          "name": "desktop-1280-reduced-settings",
+          "reduced": true,
+          "width": 1280,
+          "height": 900,
+          "overflow": 0,
+          "runningAnimations": 0,
+          "indexedLists": {
+            ".project-list > button": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0s"
+              },
+              {
+                "index": "2",
+                "delay": "0s"
+              }
+            ],
+            ".plan-card": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0s"
+              },
+              {
+                "index": "2",
+                "delay": "0s"
+              }
+            ]
+          },
+          "textElements": 72,
+          "fontFamilyCounts": {
+            "Fraunces Variable": 9,
+            "Inter Variable": 63
+          },
+          "smallTextCount": 0,
+          "animationFailureCount": 0,
+          "fontFailureCount": 0
+        }
+      ],
+      "actualFonts": [
+        {
+          "selector": ".project-header h1",
+          "fonts": [
+            {
+              "familyName": "Fraunces",
+              "postScriptName": "Fraunces-Regular",
+              "isCustomFont": true,
+              "glyphCount": 16
+            }
+          ]
+        },
+        {
+          "selector": ".role-tabs button:nth-child(2)",
+          "fonts": [
+            {
+              "familyName": "Inter",
+              "postScriptName": "Inter-Regular",
+              "isCustomFont": true,
+              "glyphCount": 8
+            }
+          ]
+        },
+        {
+          "selector": ".source-result p",
+          "fonts": [
+            {
+              "familyName": "Inter",
+              "postScriptName": "Inter-Regular",
+              "isCustomFont": true,
+              "glyphCount": 23
+            }
+          ]
+        }
+      ],
+      "disabledSourceButtonOpacity": "0.48",
+      "interaction": {
+        "card": {
+          "translate": "0px -2px",
+          "shadow": "rgba(24, 59, 49, 0.08) 0px 8px 22px 0px",
+          "transform": "none"
+        },
+        "press": {
+          "scale": "0.97",
+          "transform": "none"
+        }
+      },
+      "loading": {
+        "skeletonLines": 3,
+        "status": "Searching scholarly source metadata…"
+      },
+      "dismissedIdeaOpacity": "0.6",
+      "disabledProjectButtonOpacity": "0.48",
+      "welcomeCardTextBounds": [
+        {
+          "title": "Methods coach",
+          "overflow": 0
+        },
+        {
+          "title": "Evidence finder",
+          "overflow": 0
+        },
+        {
+          "title": "Brainstorming",
+          "overflow": 0
+        },
+        {
+          "title": "Grammar review",
+          "overflow": 0
+        }
+      ]
+    },
+    {
+      "label": "phone-412",
+      "screens": [
+        {
+          "name": "phone-412-welcome",
+          "reduced": false,
+          "width": 412,
+          "height": 892,
+          "overflow": 0,
+          "runningAnimations": 3,
+          "indexedLists": {
+            ".welcome-agents > button": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0.04s"
+              },
+              {
+                "index": "2",
+                "delay": "0.08s"
+              },
+              {
+                "index": "3",
+                "delay": "0.12s"
+              }
+            ]
+          },
+          "textElements": 34,
+          "fontFamilyCounts": {
+            "Fraunces Variable": 9,
+            "Inter Variable": 25
+          },
+          "smallTextCount": 0,
+          "animationFailureCount": 0,
+          "fontFailureCount": 0
+        },
+        {
+          "name": "phone-412-notes",
+          "reduced": false,
+          "width": 412,
+          "height": 892,
+          "overflow": 0,
+          "runningAnimations": 0,
+          "indexedLists": {
+            ".project-list > button": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0.04s"
+              },
+              {
+                "index": "2",
+                "delay": "0.08s"
+              }
+            ]
+          },
+          "textElements": 51,
+          "fontFamilyCounts": {
+            "Fraunces Variable": 6,
+            "Inter Variable": 45
+          },
+          "smallTextCount": 0,
+          "animationFailureCount": 0,
+          "fontFailureCount": 0
+        },
+        {
+          "name": "phone-412-evidence",
+          "reduced": false,
+          "width": 412,
+          "height": 892,
+          "overflow": 0,
+          "runningAnimations": 0,
+          "indexedLists": {
+            ".project-list > button": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0.04s"
+              },
+              {
+                "index": "2",
+                "delay": "0.08s"
+              }
+            ],
+            ".source-result": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0.04s"
+              }
+            ]
+          },
+          "textElements": 63,
+          "fontFamilyCounts": {
+            "Fraunces Variable": 7,
+            "Inter Variable": 56
+          },
+          "smallTextCount": 0,
+          "animationFailureCount": 0,
+          "fontFailureCount": 0
+        },
+        {
+          "name": "phone-412-loading",
+          "reduced": false,
+          "width": 412,
+          "height": 892,
+          "overflow": 0,
+          "runningAnimations": 5,
+          "indexedLists": {
+            ".project-list > button": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0.04s"
+              },
+              {
+                "index": "2",
+                "delay": "0.08s"
+              }
+            ]
+          },
+          "textElements": 48,
+          "fontFamilyCounts": {
+            "Fraunces Variable": 5,
+            "Inter Variable": 43
+          },
+          "smallTextCount": 0,
+          "animationFailureCount": 0,
+          "fontFailureCount": 0
+        },
+        {
+          "name": "phone-412-sources",
+          "reduced": false,
+          "width": 412,
+          "height": 892,
+          "overflow": 0,
+          "runningAnimations": 0,
+          "indexedLists": {
+            ".project-list > button": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0.04s"
+              },
+              {
+                "index": "2",
+                "delay": "0.08s"
+              }
+            ],
+            ".literature-matrix tbody tr": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0.04s"
+              }
+            ]
+          },
+          "textElements": 52,
+          "fontFamilyCounts": {
+            "Fraunces Variable": 6,
+            "Inter Variable": 46
+          },
+          "smallTextCount": 0,
+          "animationFailureCount": 0,
+          "fontFailureCount": 0
+        },
+        {
+          "name": "phone-412-plan",
+          "reduced": false,
+          "width": 412,
+          "height": 892,
+          "overflow": 0,
+          "runningAnimations": 0,
+          "indexedLists": {
+            ".project-list > button": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0.04s"
+              },
+              {
+                "index": "2",
+                "delay": "0.08s"
+              }
+            ],
+            ".plan-card": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0.04s"
+              },
+              {
+                "index": "2",
+                "delay": "0.08s"
+              }
+            ]
+          },
+          "textElements": 47,
+          "fontFamilyCounts": {
+            "Fraunces Variable": 7,
+            "Inter Variable": 40
+          },
+          "smallTextCount": 0,
+          "animationFailureCount": 0,
+          "fontFailureCount": 0
+        },
+        {
+          "name": "phone-412-settings",
+          "reduced": false,
+          "width": 412,
+          "height": 892,
+          "overflow": 0,
+          "runningAnimations": 0,
+          "indexedLists": {
+            ".project-list > button": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0.04s"
+              },
+              {
+                "index": "2",
+                "delay": "0.08s"
+              }
+            ],
+            ".plan-card": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0.04s"
+              },
+              {
+                "index": "2",
+                "delay": "0.08s"
+              }
+            ]
+          },
+          "textElements": 64,
+          "fontFamilyCounts": {
+            "Fraunces Variable": 9,
+            "Inter Variable": 55
+          },
+          "smallTextCount": 0,
+          "animationFailureCount": 0,
+          "fontFailureCount": 0
+        },
+        {
+          "name": "phone-412-reduced-notes",
+          "reduced": true,
+          "width": 412,
+          "height": 892,
+          "overflow": 0,
+          "runningAnimations": 0,
+          "indexedLists": {
+            ".project-list > button": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0s"
+              },
+              {
+                "index": "2",
+                "delay": "0s"
+              }
+            ]
+          },
+          "textElements": 51,
+          "fontFamilyCounts": {
+            "Fraunces Variable": 6,
+            "Inter Variable": 45
+          },
+          "smallTextCount": 0,
+          "animationFailureCount": 0,
+          "fontFailureCount": 0
+        },
+        {
+          "name": "phone-412-reduced-sources",
+          "reduced": true,
+          "width": 412,
+          "height": 892,
+          "overflow": 0,
+          "runningAnimations": 0,
+          "indexedLists": {
+            ".project-list > button": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0s"
+              },
+              {
+                "index": "2",
+                "delay": "0s"
+              }
+            ],
+            ".literature-matrix tbody tr": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0s"
+              }
+            ]
+          },
+          "textElements": 52,
+          "fontFamilyCounts": {
+            "Fraunces Variable": 6,
+            "Inter Variable": 46
+          },
+          "smallTextCount": 0,
+          "animationFailureCount": 0,
+          "fontFailureCount": 0
+        },
+        {
+          "name": "phone-412-reduced-plan",
+          "reduced": true,
+          "width": 412,
+          "height": 892,
+          "overflow": 0,
+          "runningAnimations": 0,
+          "indexedLists": {
+            ".project-list > button": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0s"
+              },
+              {
+                "index": "2",
+                "delay": "0s"
+              }
+            ],
+            ".plan-card": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0s"
+              },
+              {
+                "index": "2",
+                "delay": "0s"
+              }
+            ]
+          },
+          "textElements": 47,
+          "fontFamilyCounts": {
+            "Fraunces Variable": 7,
+            "Inter Variable": 40
+          },
+          "smallTextCount": 0,
+          "animationFailureCount": 0,
+          "fontFailureCount": 0
+        },
+        {
+          "name": "phone-412-reduced-settings",
+          "reduced": true,
+          "width": 412,
+          "height": 892,
+          "overflow": 0,
+          "runningAnimations": 0,
+          "indexedLists": {
+            ".project-list > button": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0s"
+              },
+              {
+                "index": "2",
+                "delay": "0s"
+              }
+            ],
+            ".plan-card": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0s"
+              },
+              {
+                "index": "2",
+                "delay": "0s"
+              }
+            ]
+          },
+          "textElements": 64,
+          "fontFamilyCounts": {
+            "Fraunces Variable": 9,
+            "Inter Variable": 55
+          },
+          "smallTextCount": 0,
+          "animationFailureCount": 0,
+          "fontFailureCount": 0
+        }
+      ],
+      "actualFonts": [
+        {
+          "selector": ".project-header h1",
+          "fonts": [
+            {
+              "familyName": "Fraunces",
+              "postScriptName": "Fraunces-Regular",
+              "isCustomFont": true,
+              "glyphCount": 16
+            }
+          ]
+        },
+        {
+          "selector": ".role-tabs button:nth-child(2)",
+          "fonts": [
+            {
+              "familyName": "Inter",
+              "postScriptName": "Inter-Regular",
+              "isCustomFont": true,
+              "glyphCount": 8
+            }
+          ]
+        },
+        {
+          "selector": ".source-result p",
+          "fonts": [
+            {
+              "familyName": "Inter",
+              "postScriptName": "Inter-Regular",
+              "isCustomFont": true,
+              "glyphCount": 23
+            }
+          ]
+        }
+      ],
+      "disabledSourceButtonOpacity": "1",
+      "loading": {
+        "skeletonLines": 3,
+        "status": "Searching scholarly source metadata…"
+      },
+      "dismissedIdeaOpacity": "0.6",
+      "disabledProjectButtonOpacity": "0.48",
+      "welcomeCardTextBounds": [
+        {
+          "title": "Methods coach",
+          "overflow": 0
+        },
+        {
+          "title": "Evidence finder",
+          "overflow": 0
+        },
+        {
+          "title": "Brainstorming",
+          "overflow": 0
+        },
+        {
+          "title": "Grammar review",
+          "overflow": 0
+        }
+      ]
+    },
+    {
+      "label": "narrow-320",
+      "screens": [
+        {
+          "name": "narrow-320-welcome",
+          "reduced": false,
+          "width": 320,
+          "height": 760,
+          "overflow": 0,
+          "runningAnimations": 3,
+          "indexedLists": {
+            ".welcome-agents > button": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0.04s"
+              },
+              {
+                "index": "2",
+                "delay": "0.08s"
+              },
+              {
+                "index": "3",
+                "delay": "0.12s"
+              }
+            ]
+          },
+          "textElements": 34,
+          "fontFamilyCounts": {
+            "Fraunces Variable": 9,
+            "Inter Variable": 25
+          },
+          "smallTextCount": 0,
+          "animationFailureCount": 0,
+          "fontFailureCount": 0
+        },
+        {
+          "name": "narrow-320-notes",
+          "reduced": false,
+          "width": 320,
+          "height": 760,
+          "overflow": 0,
+          "runningAnimations": 0,
+          "indexedLists": {
+            ".project-list > button": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0.04s"
+              },
+              {
+                "index": "2",
+                "delay": "0.08s"
+              }
+            ]
+          },
+          "textElements": 51,
+          "fontFamilyCounts": {
+            "Fraunces Variable": 6,
+            "Inter Variable": 45
+          },
+          "smallTextCount": 0,
+          "animationFailureCount": 0,
+          "fontFailureCount": 0
+        },
+        {
+          "name": "narrow-320-evidence",
+          "reduced": false,
+          "width": 320,
+          "height": 760,
+          "overflow": 0,
+          "runningAnimations": 0,
+          "indexedLists": {
+            ".project-list > button": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0.04s"
+              },
+              {
+                "index": "2",
+                "delay": "0.08s"
+              }
+            ],
+            ".source-result": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0.04s"
+              }
+            ]
+          },
+          "textElements": 63,
+          "fontFamilyCounts": {
+            "Fraunces Variable": 7,
+            "Inter Variable": 56
+          },
+          "smallTextCount": 0,
+          "animationFailureCount": 0,
+          "fontFailureCount": 0
+        },
+        {
+          "name": "narrow-320-loading",
+          "reduced": false,
+          "width": 320,
+          "height": 760,
+          "overflow": 0,
+          "runningAnimations": 5,
+          "indexedLists": {
+            ".project-list > button": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0.04s"
+              },
+              {
+                "index": "2",
+                "delay": "0.08s"
+              }
+            ]
+          },
+          "textElements": 48,
+          "fontFamilyCounts": {
+            "Fraunces Variable": 5,
+            "Inter Variable": 43
+          },
+          "smallTextCount": 0,
+          "animationFailureCount": 0,
+          "fontFailureCount": 0
+        },
+        {
+          "name": "narrow-320-sources",
+          "reduced": false,
+          "width": 320,
+          "height": 760,
+          "overflow": 0,
+          "runningAnimations": 0,
+          "indexedLists": {
+            ".project-list > button": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0.04s"
+              },
+              {
+                "index": "2",
+                "delay": "0.08s"
+              }
+            ],
+            ".literature-matrix tbody tr": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0.04s"
+              }
+            ]
+          },
+          "textElements": 52,
+          "fontFamilyCounts": {
+            "Fraunces Variable": 6,
+            "Inter Variable": 46
+          },
+          "smallTextCount": 0,
+          "animationFailureCount": 0,
+          "fontFailureCount": 0
+        },
+        {
+          "name": "narrow-320-plan",
+          "reduced": false,
+          "width": 320,
+          "height": 760,
+          "overflow": 0,
+          "runningAnimations": 0,
+          "indexedLists": {
+            ".project-list > button": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0.04s"
+              },
+              {
+                "index": "2",
+                "delay": "0.08s"
+              }
+            ],
+            ".plan-card": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0.04s"
+              },
+              {
+                "index": "2",
+                "delay": "0.08s"
+              }
+            ]
+          },
+          "textElements": 47,
+          "fontFamilyCounts": {
+            "Fraunces Variable": 7,
+            "Inter Variable": 40
+          },
+          "smallTextCount": 0,
+          "animationFailureCount": 0,
+          "fontFailureCount": 0
+        },
+        {
+          "name": "narrow-320-settings",
+          "reduced": false,
+          "width": 320,
+          "height": 760,
+          "overflow": 0,
+          "runningAnimations": 0,
+          "indexedLists": {
+            ".project-list > button": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0.04s"
+              },
+              {
+                "index": "2",
+                "delay": "0.08s"
+              }
+            ],
+            ".plan-card": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0.04s"
+              },
+              {
+                "index": "2",
+                "delay": "0.08s"
+              }
+            ]
+          },
+          "textElements": 64,
+          "fontFamilyCounts": {
+            "Fraunces Variable": 9,
+            "Inter Variable": 55
+          },
+          "smallTextCount": 0,
+          "animationFailureCount": 0,
+          "fontFailureCount": 0
+        },
+        {
+          "name": "narrow-320-reduced-notes",
+          "reduced": true,
+          "width": 320,
+          "height": 760,
+          "overflow": 0,
+          "runningAnimations": 0,
+          "indexedLists": {
+            ".project-list > button": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0s"
+              },
+              {
+                "index": "2",
+                "delay": "0s"
+              }
+            ]
+          },
+          "textElements": 51,
+          "fontFamilyCounts": {
+            "Fraunces Variable": 6,
+            "Inter Variable": 45
+          },
+          "smallTextCount": 0,
+          "animationFailureCount": 0,
+          "fontFailureCount": 0
+        },
+        {
+          "name": "narrow-320-reduced-sources",
+          "reduced": true,
+          "width": 320,
+          "height": 760,
+          "overflow": 0,
+          "runningAnimations": 0,
+          "indexedLists": {
+            ".project-list > button": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0s"
+              },
+              {
+                "index": "2",
+                "delay": "0s"
+              }
+            ],
+            ".literature-matrix tbody tr": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0s"
+              }
+            ]
+          },
+          "textElements": 52,
+          "fontFamilyCounts": {
+            "Fraunces Variable": 6,
+            "Inter Variable": 46
+          },
+          "smallTextCount": 0,
+          "animationFailureCount": 0,
+          "fontFailureCount": 0
+        },
+        {
+          "name": "narrow-320-reduced-plan",
+          "reduced": true,
+          "width": 320,
+          "height": 760,
+          "overflow": 0,
+          "runningAnimations": 0,
+          "indexedLists": {
+            ".project-list > button": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0s"
+              },
+              {
+                "index": "2",
+                "delay": "0s"
+              }
+            ],
+            ".plan-card": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0s"
+              },
+              {
+                "index": "2",
+                "delay": "0s"
+              }
+            ]
+          },
+          "textElements": 47,
+          "fontFamilyCounts": {
+            "Fraunces Variable": 7,
+            "Inter Variable": 40
+          },
+          "smallTextCount": 0,
+          "animationFailureCount": 0,
+          "fontFailureCount": 0
+        },
+        {
+          "name": "narrow-320-reduced-settings",
+          "reduced": true,
+          "width": 320,
+          "height": 760,
+          "overflow": 0,
+          "runningAnimations": 0,
+          "indexedLists": {
+            ".project-list > button": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0s"
+              },
+              {
+                "index": "2",
+                "delay": "0s"
+              }
+            ],
+            ".plan-card": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0s"
+              },
+              {
+                "index": "2",
+                "delay": "0s"
+              }
+            ]
+          },
+          "textElements": 64,
+          "fontFamilyCounts": {
+            "Fraunces Variable": 9,
+            "Inter Variable": 55
+          },
+          "smallTextCount": 0,
+          "animationFailureCount": 0,
+          "fontFailureCount": 0
+        },
+        {
+          "name": "narrow-320-boosted-notes",
+          "reduced": true,
+          "width": 320,
+          "height": 760,
+          "overflow": 0,
+          "runningAnimations": 0,
+          "indexedLists": {
+            ".project-list > button": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0s"
+              },
+              {
+                "index": "2",
+                "delay": "0s"
+              }
+            ]
+          },
+          "textElements": 51,
+          "fontFamilyCounts": {
+            "Fraunces Variable": 6,
+            "Inter Variable": 45
+          },
+          "smallTextCount": 0,
+          "animationFailureCount": 0,
+          "fontFailureCount": 0
+        },
+        {
+          "name": "narrow-320-boosted-sources",
+          "reduced": true,
+          "width": 320,
+          "height": 760,
+          "overflow": 0,
+          "runningAnimations": 0,
+          "indexedLists": {
+            ".project-list > button": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0s"
+              },
+              {
+                "index": "2",
+                "delay": "0s"
+              }
+            ],
+            ".literature-matrix tbody tr": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0s"
+              }
+            ]
+          },
+          "textElements": 52,
+          "fontFamilyCounts": {
+            "Fraunces Variable": 6,
+            "Inter Variable": 46
+          },
+          "smallTextCount": 0,
+          "animationFailureCount": 0,
+          "fontFailureCount": 0
+        },
+        {
+          "name": "narrow-320-boosted-plan",
+          "reduced": true,
+          "width": 324,
+          "height": 770,
+          "overflow": 0,
+          "runningAnimations": 0,
+          "indexedLists": {
+            ".project-list > button": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0s"
+              },
+              {
+                "index": "2",
+                "delay": "0s"
+              }
+            ],
+            ".plan-card": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0s"
+              },
+              {
+                "index": "2",
+                "delay": "0s"
+              }
+            ]
+          },
+          "textElements": 47,
+          "fontFamilyCounts": {
+            "Fraunces Variable": 7,
+            "Inter Variable": 40
+          },
+          "smallTextCount": 0,
+          "animationFailureCount": 0,
+          "fontFailureCount": 0
+        },
+        {
+          "name": "narrow-320-boosted-drawer",
+          "reduced": true,
+          "width": 324,
+          "height": 770,
+          "overflow": 0,
+          "runningAnimations": 0,
+          "indexedLists": {
+            ".project-list > button": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0s"
+              },
+              {
+                "index": "2",
+                "delay": "0s"
+              }
+            ],
+            ".plan-card": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0s"
+              },
+              {
+                "index": "2",
+                "delay": "0s"
+              }
+            ]
+          },
+          "textElements": 47,
+          "fontFamilyCounts": {
+            "Fraunces Variable": 7,
+            "Inter Variable": 40
+          },
+          "smallTextCount": 0,
+          "animationFailureCount": 0,
+          "fontFailureCount": 0
+        },
+        {
+          "name": "narrow-320-boosted-settings",
+          "reduced": true,
+          "width": 324,
+          "height": 770,
+          "overflow": 0,
+          "runningAnimations": 0,
+          "indexedLists": {
+            ".project-list > button": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0s"
+              },
+              {
+                "index": "2",
+                "delay": "0s"
+              }
+            ],
+            ".plan-card": [
+              {
+                "index": "0",
+                "delay": "0s"
+              },
+              {
+                "index": "1",
+                "delay": "0s"
+              },
+              {
+                "index": "2",
+                "delay": "0s"
+              }
+            ]
+          },
+          "textElements": 64,
+          "fontFamilyCounts": {
+            "Fraunces Variable": 9,
+            "Inter Variable": 55
+          },
+          "smallTextCount": 0,
+          "animationFailureCount": 0,
+          "fontFailureCount": 0
+        }
+      ],
+      "actualFonts": [
+        {
+          "selector": ".project-header h1",
+          "fonts": [
+            {
+              "familyName": "Fraunces",
+              "postScriptName": "Fraunces-Regular",
+              "isCustomFont": true,
+              "glyphCount": 15
+            }
+          ]
+        },
+        {
+          "selector": ".role-tabs button:nth-child(2)",
+          "fonts": [
+            {
+              "familyName": "Inter",
+              "postScriptName": "Inter-Regular",
+              "isCustomFont": true,
+              "glyphCount": 8
+            }
+          ]
+        },
+        {
+          "selector": ".source-result p",
+          "fonts": [
+            {
+              "familyName": "Inter",
+              "postScriptName": "Inter-Regular",
+              "isCustomFont": true,
+              "glyphCount": 23
+            }
+          ]
+        }
+      ],
+      "disabledSourceButtonOpacity": "1",
+      "loading": {
+        "skeletonLines": 3,
+        "status": "Searching scholarly source metadata…"
+      },
+      "dismissedIdeaOpacity": "0.6",
+      "disabledProjectButtonOpacity": "0.48",
+      "welcomeCardTextBounds": [
+        {
+          "title": "Methods coach",
+          "overflow": 0
+        },
+        {
+          "title": "Evidence finder",
+          "overflow": 0
+        },
+        {
+          "title": "Brainstorming",
+          "overflow": 0
+        },
+        {
+          "title": "Grammar review",
+          "overflow": 0
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "loadedFontResources": [
+    "/node_modules/@fontsource-variable/fraunces/files/fraunces-latin-standard-normal.woff2",
+    "/node_modules/@fontsource-variable/inter/files/inter-latin-standard-normal.woff2",
+    "/node_modules/@fontsource-variable/fraunces/files/fraunces-latin-standard-italic.woff2"
+  ],
+  "loadedFaces": [
+    {
+      "family": "Inter Variable",
+      "status": "loaded",
+      "weight": "100 900"
+    },
+    {
+      "family": "Fraunces Variable",
+      "status": "loaded",
+      "weight": "100 900"
+    }
+  ]
+}

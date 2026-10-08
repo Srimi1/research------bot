@@ -1,0 +1,759 @@
+{
+  "phase": "before",
+  "viewports": [
+    {
+      "label": "desktop-1280",
+      "screens": [
+        {
+          "name": "desktop-1280-welcome",
+          "reduced": false,
+          "width": 1280,
+          "height": 900,
+          "overflow": 0,
+          "runningAnimations": 10,
+          "indexedLists": {
+            ".welcome-agents > button": [
+              {
+                "index": "",
+                "delay": "0s"
+              },
+              {
+                "index": "",
+                "delay": "0.04s"
+              },
+              {
+                "index": "",
+                "delay": "0.08s"
+              },
+              {
+                "index": "",
+                "delay": "0.12s"
+              }
+            ]
+          },
+          "textElements": 38,
+          "fontFamilyCounts": {
+            "Georgia": 5,
+            "Arial": 33
+          },
+          "smallTextCount": 20,
+          "animationFailureCount": 0,
+          "fontFailureCount": 38
+        },
+        {
+          "name": "desktop-1280-notes",
+          "reduced": false,
+          "width": 1280,
+          "height": 900,
+          "overflow": 0,
+          "runningAnimations": 10,
+          "indexedLists": {
+            ".project-list > button": [
+              {
+                "index": "",
+                "delay": "0s"
+              },
+              {
+                "index": "",
+                "delay": "0.04s"
+              },
+              {
+                "index": "",
+                "delay": "0.08s"
+              }
+            ]
+          },
+          "textElements": 65,
+          "fontFamilyCounts": {
+            "Georgia": 6,
+            "Arial": 59
+          },
+          "smallTextCount": 39,
+          "animationFailureCount": 0,
+          "fontFailureCount": 65
+        },
+        {
+          "name": "desktop-1280-evidence",
+          "reduced": false,
+          "width": 1280,
+          "height": 900,
+          "overflow": 0,
+          "runningAnimations": 10,
+          "indexedLists": {
+            ".project-list > button": [
+              {
+                "index": "",
+                "delay": "0s"
+              },
+              {
+                "index": "",
+                "delay": "0.04s"
+              },
+              {
+                "index": "",
+                "delay": "0.08s"
+              }
+            ],
+            ".source-result": [
+              {
+                "index": "",
+                "delay": "0.12s"
+              },
+              {
+                "index": "",
+                "delay": "0.16s"
+              }
+            ]
+          },
+          "textElements": 79,
+          "fontFamilyCounts": {
+            "Georgia": 7,
+            "Arial": 72
+          },
+          "smallTextCount": 52,
+          "animationFailureCount": 0,
+          "fontFailureCount": 79
+        },
+        {
+          "name": "desktop-1280-sources",
+          "reduced": false,
+          "width": 1280,
+          "height": 900,
+          "overflow": 0,
+          "runningAnimations": 6,
+          "indexedLists": {
+            ".project-list > button": [
+              {
+                "index": "",
+                "delay": "0s"
+              },
+              {
+                "index": "",
+                "delay": "0.04s"
+              },
+              {
+                "index": "",
+                "delay": "0.08s"
+              }
+            ],
+            ".literature-matrix tbody tr": [
+              {
+                "index": "",
+                "delay": "0s"
+              },
+              {
+                "index": "",
+                "delay": "0.04s"
+              }
+            ]
+          },
+          "textElements": 62,
+          "fontFamilyCounts": {
+            "Georgia": 6,
+            "Arial": 56
+          },
+          "smallTextCount": 40,
+          "animationFailureCount": 0,
+          "fontFailureCount": 62
+        },
+        {
+          "name": "desktop-1280-plan",
+          "reduced": false,
+          "width": 1280,
+          "height": 900,
+          "overflow": 0,
+          "runningAnimations": 8,
+          "indexedLists": {
+            ".project-list > button": [
+              {
+                "index": "",
+                "delay": "0s"
+              },
+              {
+                "index": "",
+                "delay": "0.04s"
+              },
+              {
+                "index": "",
+                "delay": "0.08s"
+              }
+            ],
+            ".plan-card": [
+              {
+                "index": "",
+                "delay": "0s"
+              },
+              {
+                "index": "",
+                "delay": "0.04s"
+              },
+              {
+                "index": "",
+                "delay": "0.08s"
+              }
+            ]
+          },
+          "textElements": 55,
+          "fontFamilyCounts": {
+            "Georgia": 7,
+            "Arial": 48
+          },
+          "smallTextCount": 29,
+          "animationFailureCount": 0,
+          "fontFailureCount": 55
+        },
+        {
+          "name": "desktop-1280-settings",
+          "reduced": false,
+          "width": 1280,
+          "height": 900,
+          "overflow": 0,
+          "runningAnimations": 10,
+          "indexedLists": {
+            ".project-list > button": [
+              {
+                "index": "",
+                "delay": "0s"
+              },
+              {
+                "index": "",
+                "delay": "0.04s"
+              },
+              {
+                "index": "",
+                "delay": "0.08s"
+              }
+            ],
+            ".plan-card": [
+              {
+                "index": "",
+                "delay": "0s"
+              },
+              {
+                "index": "",
+                "delay": "0.04s"
+              },
+              {
+                "index": "",
+                "delay": "0.08s"
+              }
+            ]
+          },
+          "textElements": 72,
+          "fontFamilyCounts": {
+            "Georgia": 8,
+            "Arial": 64
+          },
+          "smallTextCount": 33,
+          "animationFailureCount": 0,
+          "fontFailureCount": 72
+        }
+      ]
+    },
+    {
+      "label": "phone-412",
+      "screens": [
+        {
+          "name": "phone-412-welcome",
+          "reduced": false,
+          "width": 412,
+          "height": 892,
+          "overflow": 0,
+          "runningAnimations": 10,
+          "indexedLists": {
+            ".welcome-agents > button": [
+              {
+                "index": "",
+                "delay": "0s"
+              },
+              {
+                "index": "",
+                "delay": "0.04s"
+              },
+              {
+                "index": "",
+                "delay": "0.08s"
+              },
+              {
+                "index": "",
+                "delay": "0.12s"
+              }
+            ]
+          },
+          "textElements": 34,
+          "fontFamilyCounts": {
+            "Georgia": 5,
+            "-apple-system": 29
+          },
+          "smallTextCount": 5,
+          "animationFailureCount": 0,
+          "fontFailureCount": 34
+        },
+        {
+          "name": "phone-412-notes",
+          "reduced": false,
+          "width": 412,
+          "height": 892,
+          "overflow": 0,
+          "runningAnimations": 8,
+          "indexedLists": {
+            ".project-list > button": [
+              {
+                "index": "",
+                "delay": "0s"
+              },
+              {
+                "index": "",
+                "delay": "0.04s"
+              },
+              {
+                "index": "",
+                "delay": "0.08s"
+              }
+            ]
+          },
+          "textElements": 51,
+          "fontFamilyCounts": {
+            "Georgia": 4,
+            "-apple-system": 46,
+            "Arial": 1
+          },
+          "smallTextCount": 8,
+          "animationFailureCount": 0,
+          "fontFailureCount": 51
+        },
+        {
+          "name": "phone-412-evidence",
+          "reduced": false,
+          "width": 412,
+          "height": 892,
+          "overflow": 0,
+          "runningAnimations": 10,
+          "indexedLists": {
+            ".project-list > button": [
+              {
+                "index": "",
+                "delay": "0s"
+              },
+              {
+                "index": "",
+                "delay": "0.04s"
+              },
+              {
+                "index": "",
+                "delay": "0.08s"
+              }
+            ],
+            ".source-result": [
+              {
+                "index": "",
+                "delay": "0.12s"
+              },
+              {
+                "index": "",
+                "delay": "0.16s"
+              }
+            ]
+          },
+          "textElements": 63,
+          "fontFamilyCounts": {
+            "Georgia": 6,
+            "-apple-system": 56,
+            "Arial": 1
+          },
+          "smallTextCount": 5,
+          "animationFailureCount": 0,
+          "fontFailureCount": 63
+        },
+        {
+          "name": "phone-412-sources",
+          "reduced": false,
+          "width": 412,
+          "height": 892,
+          "overflow": 0,
+          "runningAnimations": 8,
+          "indexedLists": {
+            ".project-list > button": [
+              {
+                "index": "",
+                "delay": "0s"
+              },
+              {
+                "index": "",
+                "delay": "0.04s"
+              },
+              {
+                "index": "",
+                "delay": "0.08s"
+              }
+            ],
+            ".literature-matrix tbody tr": [
+              {
+                "index": "",
+                "delay": "0s"
+              },
+              {
+                "index": "",
+                "delay": "0.04s"
+              }
+            ]
+          },
+          "textElements": 52,
+          "fontFamilyCounts": {
+            "Georgia": 6,
+            "-apple-system": 46
+          },
+          "smallTextCount": 4,
+          "animationFailureCount": 0,
+          "fontFailureCount": 52
+        },
+        {
+          "name": "phone-412-plan",
+          "reduced": false,
+          "width": 412,
+          "height": 892,
+          "overflow": 0,
+          "runningAnimations": 10,
+          "indexedLists": {
+            ".project-list > button": [
+              {
+                "index": "",
+                "delay": "0s"
+              },
+              {
+                "index": "",
+                "delay": "0.04s"
+              },
+              {
+                "index": "",
+                "delay": "0.08s"
+              }
+            ],
+            ".plan-card": [
+              {
+                "index": "",
+                "delay": "0s"
+              },
+              {
+                "index": "",
+                "delay": "0.04s"
+              },
+              {
+                "index": "",
+                "delay": "0.08s"
+              }
+            ]
+          },
+          "textElements": 47,
+          "fontFamilyCounts": {
+            "Georgia": 7,
+            "-apple-system": 40
+          },
+          "smallTextCount": 4,
+          "animationFailureCount": 0,
+          "fontFailureCount": 47
+        },
+        {
+          "name": "phone-412-settings",
+          "reduced": false,
+          "width": 412,
+          "height": 892,
+          "overflow": 0,
+          "runningAnimations": 12,
+          "indexedLists": {
+            ".project-list > button": [
+              {
+                "index": "",
+                "delay": "0s"
+              },
+              {
+                "index": "",
+                "delay": "0.04s"
+              },
+              {
+                "index": "",
+                "delay": "0.08s"
+              }
+            ],
+            ".plan-card": [
+              {
+                "index": "",
+                "delay": "0s"
+              },
+              {
+                "index": "",
+                "delay": "0.04s"
+              },
+              {
+                "index": "",
+                "delay": "0.08s"
+              }
+            ]
+          },
+          "textElements": 64,
+          "fontFamilyCounts": {
+            "Georgia": 8,
+            "-apple-system": 56
+          },
+          "smallTextCount": 4,
+          "animationFailureCount": 0,
+          "fontFailureCount": 64
+        }
+      ]
+    },
+    {
+      "label": "narrow-320",
+      "screens": [
+        {
+          "name": "narrow-320-welcome",
+          "reduced": false,
+          "width": 320,
+          "height": 760,
+          "overflow": 0,
+          "runningAnimations": 10,
+          "indexedLists": {
+            ".welcome-agents > button": [
+              {
+                "index": "",
+                "delay": "0s"
+              },
+              {
+                "index": "",
+                "delay": "0.04s"
+              },
+              {
+                "index": "",
+                "delay": "0.08s"
+              },
+              {
+                "index": "",
+                "delay": "0.12s"
+              }
+            ]
+          },
+          "textElements": 34,
+          "fontFamilyCounts": {
+            "Georgia": 5,
+            "-apple-system": 29
+          },
+          "smallTextCount": 5,
+          "animationFailureCount": 0,
+          "fontFailureCount": 34
+        },
+        {
+          "name": "narrow-320-notes",
+          "reduced": false,
+          "width": 320,
+          "height": 760,
+          "overflow": 0,
+          "runningAnimations": 8,
+          "indexedLists": {
+            ".project-list > button": [
+              {
+                "index": "",
+                "delay": "0s"
+              },
+              {
+                "index": "",
+                "delay": "0.04s"
+              },
+              {
+                "index": "",
+                "delay": "0.08s"
+              }
+            ]
+          },
+          "textElements": 51,
+          "fontFamilyCounts": {
+            "Georgia": 4,
+            "-apple-system": 46,
+            "Arial": 1
+          },
+          "smallTextCount": 8,
+          "animationFailureCount": 0,
+          "fontFailureCount": 51
+        },
+        {
+          "name": "narrow-320-evidence",
+          "reduced": false,
+          "width": 320,
+          "height": 760,
+          "overflow": 0,
+          "runningAnimations": 10,
+          "indexedLists": {
+            ".project-list > button": [
+              {
+                "index": "",
+                "delay": "0s"
+              },
+              {
+                "index": "",
+                "delay": "0.04s"
+              },
+              {
+                "index": "",
+                "delay": "0.08s"
+              }
+            ],
+            ".source-result": [
+              {
+                "index": "",
+                "delay": "0.12s"
+              },
+              {
+                "index": "",
+                "delay": "0.16s"
+              }
+            ]
+          },
+          "textElements": 63,
+          "fontFamilyCounts": {
+            "Georgia": 6,
+            "-apple-system": 56,
+            "Arial": 1
+          },
+          "smallTextCount": 7,
+          "animationFailureCount": 0,
+          "fontFailureCount": 63
+        },
+        {
+          "name": "narrow-320-sources",
+          "reduced": false,
+          "width": 320,
+          "height": 760,
+          "overflow": 0,
+          "runningAnimations": 8,
+          "indexedLists": {
+            ".project-list > button": [
+              {
+                "index": "",
+                "delay": "0s"
+              },
+              {
+                "index": "",
+                "delay": "0.04s"
+              },
+              {
+                "index": "",
+                "delay": "0.08s"
+              }
+            ],
+            ".literature-matrix tbody tr": [
+              {
+                "index": "",
+                "delay": "0s"
+              },
+              {
+                "index": "",
+                "delay": "0.04s"
+              }
+            ]
+          },
+          "textElements": 52,
+          "fontFamilyCounts": {
+            "Georgia": 6,
+            "-apple-system": 46
+          },
+          "smallTextCount": 4,
+          "animationFailureCount": 0,
+          "fontFailureCount": 52
+        },
+        {
+          "name": "narrow-320-plan",
+          "reduced": false,
+          "width": 320,
+          "height": 760,
+          "overflow": 0,
+          "runningAnimations": 10,
+          "indexedLists": {
+            ".project-list > button": [
+              {
+                "index": "",
+                "delay": "0s"
+              },
+              {
+                "index": "",
+                "delay": "0.04s"
+              },
+              {
+                "index": "",
+                "delay": "0.08s"
+              }
+            ],
+            ".plan-card": [
+              {
+                "index": "",
+                "delay": "0s"
+              },
+              {
+                "index": "",
+                "delay": "0.04s"
+              },
+              {
+                "index": "",
+                "delay": "0.08s"
+              }
+            ]
+          },
+          "textElements": 47,
+          "fontFamilyCounts": {
+            "Georgia": 7,
+            "-apple-system": 40
+          },
+          "smallTextCount": 4,
+          "animationFailureCount": 0,
+          "fontFailureCount": 47
+        },
+        {
+          "name": "narrow-320-settings",
+          "reduced": false,
+          "width": 320,
+          "height": 760,
+          "overflow": 0,
+          "runningAnimations": 12,
+          "indexedLists": {
+            ".project-list > button": [
+              {
+                "index": "",
+                "delay": "0s"
+              },
+              {
+                "index": "",
+                "delay": "0.04s"
+              },
+              {
+                "index": "",
+                "delay": "0.08s"
+              }
+            ],
+            ".plan-card": [
+              {
+                "index": "",
+                "delay": "0s"
+              },
+              {
+                "index": "",
+                "delay": "0.04s"
+              },
+              {
+                "index": "",
+                "delay": "0.08s"
+              }
+            ]
+          },
+          "textElements": 64,
+          "fontFamilyCounts": {
+            "Georgia": 8,
+            "-apple-system": 56
+          },
+          "smallTextCount": 4,
+          "animationFailureCount": 0,
+          "fontFailureCount": 64
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "loadedFontResources": [],
+  "loadedFaces": []
+}

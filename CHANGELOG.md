@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Refresh desktop, Android and browser typography with locally bundled Inter for body/UI text and Fraunces for headings, including optical sizing and SIL Open Font License notices. Only the Latin font assets ship; the fonts work offline under the existing CSP.
+- Introduce shared typography, color, spacing, radius, shadow and motion tokens while retaining the layouts and forest-green/ivory palette. Set a minimum 11px desktop type size and apply phone text boosts once through the shared scale.
+- Add calm screen and staggered list entrances, button press and desktop card hover feedback, dialog/sheet motion, loading skeletons and token-based toast/navigation timing. Disable all animations and transitions, plus press/hover movement, when reduced motion is requested.
+- Document the design system in `docs/branding.md` and add desktop, phone and narrow-phone screenshot comparisons using synthetic content.
+
 ## 0.4.0 (2026-10-08)
 
 - Keep Android ChatGPT sign-in alive with a foreground service during browser consent; retain the exchange-after-foreground fix. The service and attempt are bounded to less than three minutes and cleaned up on success, rejection, cancellation and timeout.

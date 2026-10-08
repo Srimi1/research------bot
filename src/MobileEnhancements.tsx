@@ -22,7 +22,7 @@ export function WelcomeArtwork() {
         <span className="art-paper-label">
           <Lightbulb size={15} /> A little curiosity
         </span>
-        <strong>What if?</strong>
+        <strong className="t-display">What if?</strong>
         <div className="art-paper-lines">
           <span />
           <span />
@@ -133,7 +133,7 @@ export function ProjectOverview({
         </span>
         <div>
           <span className="eyebrow">A good next move</span>
-          <h2>{next.title}</h2>
+          <h2 className="t-heading">{next.title}</h2>
           <p>{next.description}</p>
           <button onClick={next.onClick}>
             {next.action}

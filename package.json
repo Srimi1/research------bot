@@ -29,6 +29,7 @@
     "dist": "npm run build && electron-builder",
     "build:android": "tsc --noEmit && vite build && cap sync android",
     "android:apk": "node scripts/android-apk.mjs release",
+    "android:apk:fresh": "node scripts/android-apk.mjs fresh-release",
     "android:apk:check": "node scripts/android-apk.mjs install-check",
     "icon:android": "node scripts/render-android-icons.mjs"
   },

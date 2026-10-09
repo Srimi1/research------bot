@@ -7,6 +7,8 @@ def packageJson = new JsonSlurper().parse(file('../../package.json'))
 def appVersion = packageJson.version as String
 def versionParts = appVersion.tokenize('.-')
 def appVersionCode = versionParts[0].toInteger() * 10000 + versionParts[1].toInteger() * 100 + versionParts[2].toInteger()
+// An explicitly selected fresh installation has its own signing lineage and cannot replace legacy data.
+def freshInstall = System.getenv('RESEARCH_ANDROID_FRESH_INSTALL') == 'true'
 
 // Release signing comes from the environment (CI secrets); see docs/android.md.
 def keystorePath = System.getenv('ANDROID_KEYSTORE_PATH')
@@ -16,11 +18,15 @@ android {
     namespace = "com.researchbot.android"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.researchbot.android"
+        applicationId(freshInstall ? "com.researchbot.android.fresh" : "com.researchbot.android")
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode appVersionCode
         versionName appVersion
+        manifestPlaceholders = [
+            researchAppLabel: freshInstall ? "Research Bot ${appVersion}" : '@string/app_name',
+            researchActivityLabel: freshInstall ? "Research Bot ${appVersion}" : '@string/title_activity_main'
+        ]
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

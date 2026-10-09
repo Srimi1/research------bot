@@ -6,12 +6,15 @@ import { resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 
 const apk = process.argv[2];
-const upgradeFrom = process.argv[3];
+const verifyExisting = process.argv[3] === '--verify-existing';
+const upgradeFrom = verifyExisting ? undefined : process.argv[3];
 assert.ok(apk, 'Pass the signed or debug APK to install');
 const packageName = process.env.RESEARCH_ANDROID_PACKAGE || 'com.researchbot.android';
 assert.ok(
-  ['com.researchbot.android', 'com.researchbot.android.installcheck'].includes(packageName),
-  'Choose the release or install-check package',
+  ['com.researchbot.android', 'com.researchbot.android.fresh', 'com.researchbot.android.installcheck'].includes(
+    packageName,
+  ),
+  'Choose the legacy release, fresh release or install-check package',
 );
 const output = resolve(process.env.RESEARCH_ANDROID_RESULTS || 'android-startup-results');
 mkdirSync(output, { recursive: true });
@@ -203,7 +206,7 @@ async function coldStart() {
 
 try {
   console.log(adb('shell', 'getprop', 'ro.build.version.release').trim());
-  console.log(adb('install', '--no-streaming', '-r', resolve(upgradeFrom || apk)).trim());
+  if (!verifyExisting) console.log(adb('install', '--no-streaming', '-r', resolve(upgradeFrom || apk)).trim());
   adb('shell', 'input', 'keyevent', '224');
   adb('shell', 'wm', 'dismiss-keyguard');
   adb('shell', 'settings', 'put', 'system', 'screen_off_timeout', '1800000');
@@ -211,7 +214,7 @@ try {
   for (let launch = 1; launch <= 2; launch++) {
     const label = `launch-${launch}`;
     await coldStart();
-    if (launch === 1) {
+    if (launch === 1 && !verifyExisting) {
       await waitForTree(label, tree => tree.includes('Create your first project'));
       await tapNode('start-project', named('Create your first project'));
       await pause(1_000);

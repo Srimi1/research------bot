@@ -473,6 +473,7 @@ try {
   // The real Android database batches private-file writes; wait for the lifecycle flush.
   await page.waitForTimeout(1500);
   await page.reload();
+  await page.waitForFunction(() => typeof window.research?.getProject === 'function');
   const restoredReview = await page.evaluate(async id => window.research.getProject(id), literatureProject.projectId);
   assert.equal(restoredReview.runs[0].id, literatureProject.runId);
   assert.equal(restoredReview.runs[0].result.kind, 'literature');

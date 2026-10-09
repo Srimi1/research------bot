@@ -5,7 +5,15 @@ import electron from 'electron';
 
 const result = spawnSync(
   electron,
-  ['node_modules/tsx/dist/cli.mjs', '--test', 'tests/store.test.ts', 'tests/runner.test.ts', 'tests/network.test.ts'],
+  [
+    'node_modules/tsx/dist/cli.mjs',
+    '--test',
+    'tests/store.test.ts',
+    'tests/runner.test.ts',
+    'tests/literature.test.ts',
+    'tests/api.test.ts',
+    'tests/network.test.ts',
+  ],
   {
     stdio: 'inherit',
     env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },

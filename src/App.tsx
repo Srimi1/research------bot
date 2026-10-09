@@ -48,6 +48,8 @@ import { onBack } from './back';
 import { buildAgentInput } from './shared/agent-input';
 import { MAX_NOTES, MAX_QUESTION } from './shared/limits';
 import { ProjectOverview, WelcomeArtwork } from './MobileEnhancements';
+import { LiteratureReview, LiteratureSources } from './LiteratureReview';
+import { hasLiteratureEvidence, literatureSourcesUnchanged, MAX_REVIEW_SOURCES } from './shared/literature';
 import { randomId } from '../core/platform';
 import { version as appVersion } from '../package.json';
 
@@ -69,6 +71,14 @@ const roles: { id: Role; title: string; label: string; description: string; icon
       description: 'Find candidate articles, open the originals, and decide what belongs in your research.',
       icon: Search,
       action: 'Find sources',
+    },
+    {
+      id: 'literature',
+      title: 'Literature review',
+      label: 'Connect your sources',
+      description: 'Draft a thematic review from selected saved papers, with citations and excerpts to check.',
+      icon: BookOpen,
+      action: 'Draft literature review',
     },
     {
       id: 'brainstorm',
@@ -1265,6 +1275,12 @@ export default function App() {
   const [notice, setNotice] = useState('');
   const [saveState, setSaveState] = useState<'saved' | 'saving' | 'unsaved'>('saved');
   const [taskInput, setTaskInput] = useState('');
+  const [reviewSelection, setReviewSelection] = useState<Record<string, string[]>>({});
+  const selectedReviewSources = (current: ProjectDetail) =>
+    (reviewSelection[current.project.id] || []).filter(id =>
+      current.sources.some(source => source.id === id && hasLiteratureEvidence(source)),
+    );
+  const reviewSourceIds = detail ? selectedReviewSources(detail) : [];
   const [activeRun, setActiveRun] = useState<{ id?: string; projectId: string; role: Role; message: string } | null>(
     null,
   );
@@ -1486,6 +1502,11 @@ export default function App() {
     const current = detailRef.current;
     if (!current || activeRef.current) return;
     const selectedRole = role;
+    const sourceIds = selectedRole === 'literature' ? selectedReviewSources(current) : undefined;
+    if (sourceIds && (!sourceIds.length || sourceIds.length > MAX_REVIEW_SOURCES)) {
+      setError(`Choose between 1 and ${MAX_REVIEW_SOURCES} saved papers for the literature review.`);
+      return;
+    }
     let input;
     try {
       input = buildAgentInput(selectedRole, {
@@ -1513,7 +1534,12 @@ export default function App() {
     setSelectedRun(null);
     if (input.notice) setNotice(input.notice);
     try {
-      const result = await api().run({ projectId: current.project.id, role: selectedRole, text });
+      const result = await api().run({
+        projectId: current.project.id,
+        role: selectedRole,
+        text,
+        ...(sourceIds ? { sourceIds } : {}),
+      });
       if (detailRef.current?.project.id === current.project.id) {
         updateDetail(detail => ({ ...detail, runs: [result, ...detail.runs.filter(run => run.id !== result.id)] }));
         if (result.status === 'completed') setSelectedRun(result.id);
@@ -1764,7 +1790,7 @@ export default function App() {
             )}
             <div className="welcome-team-heading">
               <span className="eyebrow">Meet your research team</span>
-              <span>Four ways to move an idea forward</span>
+              <span>Five ways to move an idea forward</span>
             </div>
             <div className="welcome-agents">
               {roles.map(item => (
@@ -1789,7 +1815,9 @@ export default function App() {
                         ? 'Find articles. Follow the evidence.'
                         : item.id === 'brainstorm'
                           ? 'Fresh angles for your next idea.'
-                          : 'Polish your words, in your voice.'}
+                          : item.id === 'literature'
+                            ? 'Connect papers. Review cited themes.'
+                            : 'Polish your words, in your voice.'}
                   </p>
                 </button>
               ))}
@@ -2029,7 +2057,9 @@ export default function App() {
                               ? 'Evidence'
                               : item.id === 'grammar'
                                 ? 'Grammar'
-                                : 'Ideas'}
+                                : item.id === 'literature'
+                                  ? 'Review'
+                                  : 'Ideas'}
                         </span>
                       </button>
                     ))}
@@ -2044,7 +2074,11 @@ export default function App() {
                       {role !== 'grammar' ? (
                         <>
                           <label className="field-label" htmlFor="task-input">
-                            {role === 'evidence' ? 'What are you looking for?' : 'What would you like help with?'}{' '}
+                            {role === 'evidence'
+                              ? 'What are you looking for?'
+                              : role === 'literature'
+                                ? 'What should the review focus on?'
+                                : 'What would you like help with?'}{' '}
                             <span className="muted">· optional</span>
                           </label>
                           <textarea
@@ -2057,13 +2091,17 @@ export default function App() {
                                 ? 'e.g. Food waste interventions at universities'
                                 : role === 'methods'
                                   ? 'e.g. Help me narrow my question and choose a method.'
-                                  : 'e.g. What alternative explanations could I investigate?'
+                                  : role === 'literature'
+                                    ? 'e.g. Compare the themes, methods and limitations across these papers.'
+                                    : 'e.g. What alternative explanations could I investigate?'
                             }
                           />
                           <p className="help">
                             {role === 'evidence'
                               ? 'Searches scholarly metadata. Reports and forums can be added to your library.'
-                              : 'Uses this instruction, or your research question and notes when left blank.'}
+                              : role === 'literature'
+                                ? 'Uses your focus and research question. Project notes and unselected sources are excluded.'
+                                : 'Uses this instruction, or your research question and notes when left blank.'}
                           </p>
                           <div className="prompt-starters" aria-label="Suggested prompts">
                             {(role === 'evidence'
@@ -2088,16 +2126,27 @@ export default function App() {
                                       text: 'Suggest a practical research approach and explain its limitations.',
                                     },
                                   ]
-                                : [
-                                    {
-                                      label: 'Explore new angles',
-                                      text: 'What fresh angles could I explore in this research?',
-                                    },
-                                    {
-                                      label: 'Challenge assumptions',
-                                      text: 'Which assumptions should I question, and what evidence would help me test them?',
-                                    },
-                                  ]
+                                : role === 'literature'
+                                  ? [
+                                      {
+                                        label: 'Compare themes',
+                                        text: 'Compare the themes, agreements and differences supported by the selected sources.',
+                                      },
+                                      {
+                                        label: 'Compare methods',
+                                        text: 'Compare the methods and limitations described in the selected sources. Keep missing details explicit.',
+                                      },
+                                    ]
+                                  : [
+                                      {
+                                        label: 'Explore new angles',
+                                        text: 'What fresh angles could I explore in this research?',
+                                      },
+                                      {
+                                        label: 'Challenge assumptions',
+                                        text: 'Which assumptions should I question, and what evidence would help me test them?',
+                                      },
+                                    ]
                             ).map(prompt => (
                               <button
                                 key={prompt.label}
@@ -2119,6 +2168,15 @@ export default function App() {
                           Reviews the current text in your notes. Corrections require your acceptance.
                         </p>
                       )}
+                      {role === 'literature' && (
+                        <LiteratureSources
+                          sources={detail.sources}
+                          selected={reviewSourceIds}
+                          disabled={!!activeRun}
+                          onChange={ids => setReviewSelection(previous => ({ ...previous, [detail.project.id]: ids }))}
+                          onLibrary={() => showView('library')}
+                        />
+                      )}
                       {!canRun && (
                         <div className="auth-prompt">
                           <span className="status-dot" />
@@ -2138,7 +2196,12 @@ export default function App() {
                       )}
                       <button
                         className="button primary full-width"
-                        disabled={!canRun || !!activeRun || (role === 'grammar' && !detail.project.notes.trim())}
+                        disabled={
+                          !canRun ||
+                          !!activeRun ||
+                          (role === 'grammar' && !detail.project.notes.trim()) ||
+                          (role === 'literature' && !reviewSourceIds.length)
+                        }
                         onClick={startRun}
                       >
                         {currentActive ? <LoaderCircle className="spin" size={16} /> : <currentRole.icon size={16} />}
@@ -2225,6 +2288,48 @@ export default function App() {
                             }}
                           />
                         )}
+                        {result.kind === 'literature' && (
+                          <LiteratureReview
+                            key={resultRun.id}
+                            result={result}
+                            sources={detail.sources}
+                            currentNotes={detail.project.notes}
+                            onOpen={open}
+                            onAccept={async text => {
+                              const current = detailRef.current;
+                              if (!current || current.project.id !== resultRun.projectId)
+                                throw new Error('Open the project that owns this review before adding it.');
+                              if (!literatureSourcesUnchanged(result.references, current.sources))
+                                throw new Error('Sources changed after this draft. Run a new review first.');
+                              const previous = current.project.notes;
+                              if (previous.includes(text)) return;
+                              const notes = `${previous}${previous ? '\n\n' : ''}${text}`;
+                              if (notes.length > MAX_NOTES)
+                                throw new Error('Your notes are too long to add this review. Copy the draft instead.');
+                              changeProject({ notes });
+                              try {
+                                await persist();
+                              } catch (error) {
+                                if (
+                                  detailRef.current?.project.id === current.project.id &&
+                                  detailRef.current.project.notes === notes
+                                ) {
+                                  updateDetail(detail => ({
+                                    ...detail,
+                                    project: { ...detail.project, notes: previous },
+                                  }));
+                                  setSaveState(
+                                    saved.current.get(current.project.id) === signature(current.project)
+                                      ? 'saved'
+                                      : 'unsaved',
+                                  );
+                                }
+                                setError(errorText(error));
+                                throw error;
+                              }
+                            }}
+                          />
+                        )}
                         {result.kind === 'brainstorm' && (
                           <BrainstormReview
                             key={resultRun.id}
@@ -2270,10 +2375,14 @@ export default function App() {
                     <h2>Your source library</h2>
                     <p>Record what you learn in your literature matrix. Keep unsupported findings blank.</p>
                   </div>
-                  <button className="button primary" onClick={() => setAddingSource(true)}>
-                    <Plus size={16} />
-                    Add a source
-                  </button>
+                  <div className="literature-library-actions">
+                    <button className="button secondary" onClick={() => askAgent('literature')}>
+                      <BookOpen size={16} /> Literature review
+                    </button>
+                    <button className="button primary" onClick={() => setAddingSource(true)}>
+                      <Plus size={16} /> Add a source
+                    </button>
+                  </div>
                 </div>
                 {detail.sources.length ? (
                   <>

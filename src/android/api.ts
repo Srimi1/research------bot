@@ -25,12 +25,14 @@ import shared from '../../agents/shared.md?raw';
 import grammar from '../../agents/grammar-editor.md?raw';
 import methods from '../../agents/methods-coach.md?raw';
 import brainstorm from '../../agents/brainstorming-partner.md?raw';
+import literature from '../../agents/literature-review.md?raw';
 
 const instructions: Record<string, string> = {
   'shared.md': shared,
   'grammar-editor.md': grammar,
   'methods-coach.md': methods,
   'brainstorming-partner.md': brainstorm,
+  'literature-review.md': literature,
 };
 
 const MIME = { json: 'application/json', markdown: 'text/markdown' } as const;

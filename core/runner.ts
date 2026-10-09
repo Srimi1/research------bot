@@ -1,9 +1,11 @@
 import { z } from 'zod';
-import type { AgentResult, GrammarResult, Run, RunEvent, RunRequest } from '../src/shared/types';
+import type { AgentResult, GrammarResult, LiteratureReference, Run, RunEvent, RunRequest } from '../src/shared/types';
 import type { Store } from './store';
 import type { AuthService } from './auth';
 import type { EvidenceSearch } from './evidence';
 import { randomId as randomUUID } from './platform';
+import { literatureReferences, MAX_REVIEW_CONTEXT } from '../src/shared/literature';
+import { LITERATURE_FORMAT, LiteratureFormatError, parseLiterature } from './literature';
 
 /** The agent instruction files in agents/, by file name (for example `shared.md`). */
 export type AgentInstructions = (file: string) => string;
@@ -84,7 +86,12 @@ export function validateGrammar(original: string, data: unknown): GrammarResult 
   return { kind: 'grammar', original, proposed, edits, clarification: parsed.clarification };
 }
 
-export function parseResult(role: RunRequest['role'], input: string, raw: string): AgentResult {
+export function parseResult(
+  role: RunRequest['role'],
+  input: string,
+  raw: string,
+  references: LiteratureReference[] = [],
+): AgentResult {
   const cleaned = raw
     .trim()
     .replace(/^```(?:json)?\s*/, '')
@@ -106,9 +113,11 @@ export function parseResult(role: RunRequest['role'], input: string, raw: string
       };
     }
     if (role === 'brainstorm') return { ...brainstormSchema.parse(data), kind: 'brainstorm' };
+    if (role === 'literature') return parseLiterature(data, references);
   } catch (error) {
     if (error instanceof z.ZodError)
       throw new FormatError('The assistant response did not match the required format. Your work is unchanged.');
+    if (error instanceof LiteratureFormatError) throw new FormatError(error.message);
     throw error;
   }
   throw new Error('Evidence discovery must use retrieved source metadata.');
@@ -121,6 +130,7 @@ const formats = {
     'Return ONLY JSON: {"question":"proposed research question","assumptions":["explicit assumptions"],"explanation":"method guidance","options":[{"name":"method","rationale":"why it fits","limitations":"tradeoffs"}],"steps":[{"title":"step","purpose":"why","output":"deliverable","dependsOn":"earlier step title or none","check":"completion check"}]}. Keep the plan feasible and explain uncertainties.',
   brainstorm:
     'Return ONLY JSON: {"ideas":[{"title":"candidate direction","explanation":"untested idea","assumptions":"assumptions","evidenceNeeded":"evidence required","nextStep":"small next step"}]}. Give 3-5 ideas, with alternative explanations. Label ideas as untested.',
+  literature: LITERATURE_FORMAT,
 };
 export class Runner {
   private active = new Map<string, AbortController>();
@@ -145,7 +155,10 @@ export class Runner {
   }
   async run(request: RunRequest): Promise<Run> {
     if (this.active.size >= 2) throw new Error('Two research tasks are already running. Wait or cancel one.');
-    this.store.getProject(request.projectId);
+    const initialDetail = this.store.getProject(request.projectId);
+    // Resolve selected IDs against this project before contacting the model or using request budget.
+    const references =
+      request.role === 'literature' ? literatureReferences(initialDetail.sources, request.sourceIds || []) : [];
     const settings = this.store.getSettings();
     if (request.role !== 'evidence') {
       if (!(await this.auth.account()).signedIn)
@@ -185,6 +198,7 @@ export class Runner {
           grammar: 'grammar-editor.md',
           methods: 'methods-coach.md',
           brainstorm: 'brainstorming-partner.md',
+          literature: 'literature-review.md',
         };
         const instructions =
           this.instructions('shared.md') + '\n' + this.instructions(names[request.role]) + '\n' + formats[request.role];
@@ -198,7 +212,12 @@ export class Runner {
                   question: detail.project.question,
                 },
                 researcherInput: request.text,
+                ...(request.role === 'literature' ? { sources: references } : {}),
               });
+        if (request.role === 'literature' && context.length > MAX_REVIEW_CONTEXT)
+          throw new Error(
+            'The selected source material is too long for one review. Choose fewer sources or a shorter focus.',
+          );
         // A wrongly shaped answer gets one more attempt, still counted against the session budget.
         for (let attempt = 1; ; attempt++) {
           if (this.requests >= settings.maxRequests)
@@ -213,7 +232,7 @@ export class Runner {
               output: (run.usage?.output ?? 0) + response.usage.output,
             };
           try {
-            run.result = parseResult(request.role, request.text, response.text);
+            run.result = parseResult(request.role, request.text, response.text, references);
             break;
           } catch (error) {
             if (

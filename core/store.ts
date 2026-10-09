@@ -328,7 +328,7 @@ export class Store {
     text(run.input, 'Run input', 1_000_000);
     text(run.createdAt, 'Run timestamp', 100, true);
     if (
-      !['methods', 'evidence', 'grammar', 'brainstorm'].includes(run.role) ||
+      !['methods', 'evidence', 'grammar', 'brainstorm', 'literature'].includes(run.role) ||
       !['running', 'completed', 'cancelled', 'failed'].includes(run.status)
     )
       throw new Error('Invalid agent run.');

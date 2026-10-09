@@ -176,7 +176,33 @@ try {
       } else if (options.url === `${issuer}/.well-known/jwks.json`) data = { keys: [jwk] };
       else if (options.url === 'https://api.openai.com/v1/models')
         data = { models: [{ slug: 'fixture-model', visibility: 'list' }] };
-      else if (options.url === 'https://api.github.com/repos/Srimi1/research------bot/releases/latest')
+      else if (options.url === 'https://api.openai.com/v1/responses') {
+        const request = JSON.parse(options.body);
+        const supplied = JSON.parse(request.input[0].content);
+        assert.equal(request.store, false);
+        assert.equal(request.stream, true);
+        assert.match(request.instructions, /literature review/i);
+        assert.equal(supplied.sources.length, 1);
+        assert.doesNotMatch(request.input[0].content, /PRIVATE PROJECT|UNSELECTED EVIDENCE/);
+        const review = {
+          title: 'Packaged literature review',
+          sections: [
+            {
+              heading: 'Pilot evidence',
+              paragraphs: [
+                {
+                  text: 'The saved abstract describes an association in one dining hall.',
+                  citations: [{ sourceId: 'S1', field: 'abstract', quote: 'associated with less plate waste' }],
+                },
+              ],
+            },
+          ],
+          limitations: ['One pilot does not establish causality.'],
+        };
+        data =
+          `data: ${JSON.stringify({ type: 'response.output_text.delta', delta: JSON.stringify(review) })}\n\n` +
+          `data: ${JSON.stringify({ type: 'response.completed', response: { usage: { input_tokens: 120, output_tokens: 80 } } })}\n\n`;
+      } else if (options.url === 'https://api.github.com/repos/Srimi1/research------bot/releases/latest')
         data = { tag_name: `v${buildVersion}`, draft: false, prerelease: false, assets: [] };
       else throw new Error(`Unexpected fixture endpoint: ${new URL(options.url).pathname}`);
       bodies.set(options.id, Buffer.from(typeof data === 'string' ? data : JSON.stringify(data)));
@@ -403,7 +429,56 @@ try {
     Buffer.from(files.get('account.enc'), 'base64').toString('utf8'),
     /synthetic-access|synthetic-refresh/,
   );
+  const literatureProject = await page.evaluate(async () => {
+    const api = window.research;
+    const { project } = await api.createProject({ title: 'Packaged review fixture', topic: 'Portion sizes' });
+    await api.saveProject({ ...project, notes: 'PRIVATE PROJECT NOTES' });
+    await api.saveSettings({ ...(await api.getSettings()), model: 'fixture-model' });
+    const source = {
+      id: '23c8ae56-e136-4357-9f29-278f941031ee',
+      title: 'Dining hall pilot',
+      authors: ['Fixture Author'],
+      year: '2025',
+      url: 'https://example.org/selected-paper',
+      doi: '',
+      category: 'article',
+      inspected: 'abstract',
+      retrievedAt: new Date().toISOString(),
+      query: '',
+      abstract: 'Smaller portions were associated with less plate waste in one dining hall.',
+      method: '',
+      findings: '',
+      limitations: '',
+      notes: '',
+    };
+    await api.saveSource(project.id, source);
+    await api.saveSource(project.id, {
+      ...source,
+      id: 'a2b5c607-3f37-4559-8112-63c6d018fd88',
+      url: 'https://example.org/unselected-paper',
+      abstract: 'UNSELECTED EVIDENCE MUST STAY LOCAL',
+    });
+    const run = await api.run({
+      projectId: project.id,
+      role: 'literature',
+      text: 'Compare themes',
+      sourceIds: [source.id],
+    });
+    if (run.status !== 'completed') throw new Error(run.error || 'The packaged review failed');
+    if ((await api.getProject(project.id)).project.notes !== 'PRIVATE PROJECT NOTES')
+      throw new Error('A review altered notes without acceptance');
+    return { projectId: project.id, runId: run.id };
+  });
+  await page.evaluate(() => window.__emitNative('pause', {}));
+  // The real Android database batches private-file writes; wait for the lifecycle flush.
+  await page.waitForTimeout(1500);
   await page.reload();
+  await page.waitForFunction(() => typeof window.research?.getProject === 'function');
+  const restoredReview = await page.evaluate(async id => window.research.getProject(id), literatureProject.projectId);
+  assert.equal(restoredReview.runs[0].id, literatureProject.runId);
+  assert.equal(restoredReview.runs[0].result.kind, 'literature');
+  assert.equal(restoredReview.runs[0].result.references[0].title, 'Dining hall pilot');
+  assert.equal(restoredReview.project.notes, 'PRIVATE PROJECT NOTES');
   await page.getByRole('button', { name: 'Account and preferences', exact: true }).click();
   await page
     .getByRole('dialog', { name: 'Account & preferences' })
@@ -412,7 +487,7 @@ try {
   assert.equal((await page.evaluate(() => window.research.account())).signedIn, true);
   assert.deepEqual(errors, []);
   console.log(
-    `Packaged Android OAuth passed${legacyUuid ? ' without AbortSignal.any, AbortSignal.timeout or crypto.randomUUID' : legacyTimeout ? ' without AbortSignal.timeout' : legacyAbort ? ' without AbortSignal.any' : ''}${missingInfo ? ' with optional native information unavailable' : ''}: safe visible failures, token exchange only after returning to the app, safe native DNS code, WebView version, restart recovery, retained issued registration, PKCE, RSA verification, encrypted persistence and successful reconnect under production CSP. Native and OpenAI services were synthetic.`,
+    `Packaged Android OAuth and cited literature review passed${legacyUuid ? ' without AbortSignal.any, AbortSignal.timeout or crypto.randomUUID' : legacyTimeout ? ' without AbortSignal.timeout' : legacyAbort ? ' without AbortSignal.any' : ''}${missingInfo ? ' with optional native information unavailable' : ''}: safe visible failures, token exchange only after returning to the app, safe native DNS code, WebView version, restart recovery, retained issued registration, PKCE, RSA verification, encrypted persistence, successful reconnect and streamed review with selected evidence and saved citations under production CSP. Native and OpenAI services were synthetic.`,
   );
 } catch (error) {
   console.error('Packaged auth fixture failure:', {

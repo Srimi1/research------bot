@@ -3,6 +3,7 @@ import type { ResearchAPI } from '../src/shared/types';
 import { markdownExport } from '../src/shared/export';
 import { MAX_AGENT_INPUT, MAX_NOTES, MAX_QUESTION } from '../src/shared/limits';
 import { safeExternal } from '../src/shared/external-url';
+import { MAX_REVIEW_SOURCES } from '../src/shared/literature';
 import type { AuthService } from './auth';
 import type { Runner } from './runner';
 import type { Store } from './store';
@@ -130,13 +131,28 @@ export function createHandlers({ store, auth, runner, saveFile, openUrl }: ApiHo
         z
           .object({
             projectId: id,
-            role: z.enum(['methods', 'evidence', 'grammar', 'brainstorm']),
+            role: z.enum(['methods', 'evidence', 'grammar', 'brainstorm', 'literature']),
             text: z
               .string()
               .min(1)
               .max(MAX_AGENT_INPUT)
               .refine(value => Boolean(value.trim()), 'Enter a research question or passage.'),
             refresh: z.boolean().optional(),
+            sourceIds: z.array(id).min(1).max(MAX_REVIEW_SOURCES).optional(),
+          })
+          .superRefine((request, context) => {
+            if (request.role === 'literature' && !request.sourceIds?.length)
+              context.addIssue({
+                code: 'custom',
+                path: ['sourceIds'],
+                message: 'Choose saved sources for your literature review.',
+              });
+            if (request.role !== 'literature' && request.sourceIds !== undefined)
+              context.addIssue({
+                code: 'custom',
+                path: ['sourceIds'],
+                message: 'Source selection is available for literature review only.',
+              });
           })
           .parse(input),
       ),

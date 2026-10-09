@@ -241,6 +241,10 @@
   --agent-tint: #eee6f4;
   --agent-ink: #62477e;
 }
+[data-agent='literature'] {
+  --agent-tint: #e3efea;
+  --agent-ink: #285747;
+}
 .notes-starter {
   padding: 14px;
   margin-bottom: 20px;
@@ -735,6 +739,8 @@
   .role-tabs button {
     display: flex;
     flex-direction: column;
+    flex-basis: 60px;
+    min-width: 60px;
     gap: 7px;
     padding: 12px 3px;
     border-radius: 13px;

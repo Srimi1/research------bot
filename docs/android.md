@@ -1,6 +1,6 @@
 # Android app
 
-The Android app is the same Research Bot as the desktop app: the same interface, the same four agents, the same SQLite project store, the same ChatGPT sign-in, the same Crossref search and export. It needs Android 8.0 or later and was built for Android 16 (target SDK 36).
+The Android app is the same Research Bot as the desktop app: the same interface, the same five agents, the same SQLite project store, the same ChatGPT sign-in, the same Crossref search and export. It needs Android 8.0 or later and was built for Android 16 (target SDK 36). The literature review assistant is new in the upcoming 0.4.2; see the [review guide](literature-review.md).
 
 ## Install
 

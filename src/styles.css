@@ -731,6 +731,7 @@ h1 {
 }
 .role-tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   padding: 14px 16px;
   border-bottom: 1px solid #eaede4;
@@ -744,8 +745,8 @@ h1 {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  flex: 1;
-  min-width: 0;
+  flex: 1 1 72px;
+  min-width: 72px;
   font-size: calc(9px + var(--text-boost));
   color: #5e6754;
   padding: 10px 4px;
@@ -759,6 +760,112 @@ h1 {
 .role-tabs svg {
   width: 15px;
   height: 15px;
+}
+.literature-picker {
+  margin: 20px 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  min-width: 0;
+}
+.literature-picker legend {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 0 5px;
+}
+.literature-source {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+}
+.literature-source input {
+  width: 20px;
+  height: 20px;
+  margin: 2px 0;
+  flex: none;
+  accent-color: var(--green);
+}
+.literature-source span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.literature-source strong {
+  font-size: calc(12px + var(--text-boost));
+  font-weight: 600;
+}
+.literature-source small {
+  display: block;
+  margin-top: 5px;
+  font-size: calc(11px + var(--text-boost));
+  line-height: 1.6;
+  color: var(--muted);
+}
+.literature-picker > .text-button {
+  margin-top: 14px;
+}
+.literature-review {
+  overflow-wrap: anywhere;
+  font-size: calc(13px + var(--text-boost));
+  line-height: 1.75;
+}
+.literature-review section {
+  margin: 24px 0;
+}
+.literature-review h4 {
+  font-size: calc(15px + var(--text-boost));
+  margin-bottom: 10px;
+}
+.literature-paragraph {
+  margin-bottom: 18px;
+}
+.literature-citation {
+  color: var(--green);
+  padding: 3px;
+  display: inline-block;
+}
+.literature-evidence summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: calc(12px + var(--text-boost));
+  padding: 8px 0;
+}
+.literature-evidence blockquote {
+  margin: 10px 0;
+  padding: 10px 14px;
+  border-left: 3px solid var(--green);
+  background: var(--green-light);
+}
+.literature-evidence cite {
+  color: var(--muted);
+  font-size: calc(11px + var(--text-boost));
+}
+.literature-references {
+  padding-left: 24px;
+}
+.literature-references li {
+  padding: 10px 0;
+  scroll-margin-top: 30px;
+}
+.literature-references .text-button {
+  font-size: inherit;
+  text-align: left;
+  line-height: 1.65;
+}
+.literature-references small {
+  color: var(--muted);
+}
+.literature-actions,
+.literature-library-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.literature-actions .button {
+  white-space: normal;
+  text-align: left;
 }
 .assistant-content {
   padding: 22px 22px 24px;

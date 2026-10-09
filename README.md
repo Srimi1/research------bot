@@ -31,14 +31,17 @@ These are browser-rendered phone previews with synthetic data; the welcome scree
 - **Phone-friendly controls:** bottom navigation, clearer dialogs, keyboard-aware layout and small animations that respect reduced motion.
 - **Review before accepting:** grammar edits, ideas and proposed plans stay separate from your original notes until you choose to apply them.
 
-| Assistant             | What it does                                                     | Research boundary                                                   |
-| --------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------- |
-| Methods coach         | Explains methods, refines a question and proposes a plan         | You decide the scope and accept the steps                           |
-| Evidence finder       | Searches Crossref scholarly metadata and organizes saved sources | Metadata is not full-text verification; findings are never invented |
-| Grammar editor        | Suggests corrections to spelling, punctuation and grammar        | Review meaning and voice before accepting an edit                   |
-| Brainstorming partner | Explores ideas, assumptions and alternative explanations         | Ideas remain suggestions, not established findings                  |
+| Assistant             | What it does                                                                                  | Research boundary                                                                  |
+| --------------------- | --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Methods coach         | Explains methods, refines a question and proposes a plan                                      | You decide the scope and accept the steps                                          |
+| Evidence finder       | Searches Crossref scholarly metadata and organizes saved sources                              | Metadata is not full-text verification; findings are never invented                |
+| Literature review     | Drafts a thematic review from selected saved abstracts and reading notes, with cited excerpts | Check each claim; this is a draft, not a systematic review or full-text assessment |
+| Grammar editor        | Suggests corrections to spelling, punctuation and grammar                                     | Review meaning and voice before accepting an edit                                  |
+| Brainstorming partner | Explores ideas, assumptions and alternative explanations                                      | Ideas remain suggestions, not established findings                                 |
 
 Crossref discovery works without signing in. AI assistants require eligible ChatGPT plan access. The app does not request copied cookies or session tokens, and does not silently switch to separately billed API usage.
+
+The upcoming **0.4.2** adds literature review to Android and desktop. Select saved papers in **Assistants → Review**, inspect the supporting excerpts, then choose **Add reviewed draft to notes**. See the [literature review guide](docs/literature-review.md). The current published Android download remains 0.4.0 until the existing release signing key is restored and the new APK passes release checks.
 
 ## Install or build
 

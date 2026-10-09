@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createHandlers, safeExternal, type ApiHost } from '../core/api';
 import { Store } from '../electron/store';
+import { randomUUID } from 'node:crypto';
+import type { RunRequest } from '../src/shared/types';
 
 test('external links block local address forms while preserving public sources', () => {
   for (const url of [
@@ -44,4 +46,28 @@ test('the shared API saves long notes supported by the store and refuses oversiz
   assert.equal(saved.notes.length, 100_001);
   await assert.rejects(handlers.saveProject({ ...saved, notes: 'x'.repeat(1_000_001) }));
   assert.equal(store.getProject(project.id).project.notes, saved.notes);
+});
+
+test('the shared API requires explicit saved source IDs for literature reviews', async () => {
+  const requests: RunRequest[] = [];
+  const handlers = createHandlers({
+    runner: {
+      run: async (request: RunRequest) => {
+        requests.push(request);
+      },
+    },
+  } as unknown as ApiHost);
+  const request = {
+    projectId: randomUUID(),
+    role: 'literature' as const,
+    text: 'Compare themes',
+    sourceIds: [randomUUID()],
+  };
+  for (const sourceIds of [undefined, [], ['not-a-uuid'], Array.from({ length: 13 }, () => randomUUID())]) {
+    assert.throws(() => handlers.run({ ...request, sourceIds }));
+  }
+  assert.throws(() => handlers.run({ ...request, role: 'methods' }));
+  assert.equal(requests.length, 0);
+  await handlers.run(request);
+  assert.deepEqual(requests, [request]);
 });

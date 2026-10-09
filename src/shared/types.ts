@@ -1,4 +1,4 @@
-export type Role = 'methods' | 'evidence' | 'grammar' | 'brainstorm';
+export type Role = 'methods' | 'evidence' | 'grammar' | 'brainstorm' | 'literature';
 export interface Project {
   id: string;
   title: string;
@@ -69,7 +69,34 @@ export interface EvidenceResult {
   cached: boolean;
   limitations: string;
 }
-export type AgentResult = GrammarResult | MethodsResult | BrainstormResult | EvidenceResult;
+export type LiteratureField = 'abstract' | 'method' | 'findings' | 'limitations' | 'notes';
+export interface LiteratureReference {
+  id: string;
+  sourceId: string;
+  title: string;
+  authors: string[];
+  authorCount: number;
+  year: string;
+  url: string;
+  doi: string;
+  material: 'abstract' | 'reading-notes' | 'abstract-and-notes';
+  excerpts: Record<LiteratureField, string>;
+  truncatedFields: LiteratureField[];
+}
+export interface LiteratureResult {
+  kind: 'literature';
+  title: string;
+  sections: {
+    heading: string;
+    paragraphs: {
+      text: string;
+      citations: { sourceId: string; field: LiteratureField; quote: string }[];
+    }[];
+  }[];
+  limitations: string[];
+  references: LiteratureReference[];
+}
+export type AgentResult = GrammarResult | MethodsResult | BrainstormResult | EvidenceResult | LiteratureResult;
 export interface Run {
   id: string;
   projectId: string;
@@ -113,6 +140,8 @@ export interface RunRequest {
   role: Role;
   text: string;
   refresh?: boolean;
+  /** Explicitly selected saved sources; used only for a literature review. */
+  sourceIds?: string[];
 }
 export interface RunEvent {
   runId: string;

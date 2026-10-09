@@ -6,9 +6,10 @@
 - SQLite project storage with version checks, note history with undo and redo (the newest 50 revisions per project, within a 10 million character budget), independent projects, cascading deletion, source deduplication, run history, and a 24-hour source-search cache.
 - Official system-browser OAuth sign-in with PKCE, state, nonce, JWT issuer/audience/signature validation, stable host identity, encrypted credentials, serialized refresh, revocation, and cancellation. No API-key fallback.
 - Account-specific model discovery and Responses streaming with explicit inputs, `store: false`, and success only after a completion event.
-- Four selectable roles sharing task progress, cancellation, structured outputs, and an AI request limit per application session.
+- Five selectable roles sharing task progress, cancellation, structured outputs, and an AI request limit per application session.
 - Methods explanations and proposed steps, brainstorming ideas, and grammar edits presented for human review.
 - Crossref metadata searches with DOI links and retrieval provenance. Saved sources have editable literature-matrix fields; extracted findings are never invented from metadata.
+- Literature review from explicitly selected saved abstracts and reading notes, with numbered references, validated supporting excerpts, evidence snapshots in task history, and explicit acceptance into notes. See [literature review](literature-review.md).
 - Markdown/JSON export and browser-only preview with separate browser storage.
 - An Android app that runs the same backend (`core/`) in a WebView with native HTTPS streaming, a loopback sign-in callback, Android Keystore credentials, on-device SQLite and verified in-app updates. See [Android app](android.md).
 

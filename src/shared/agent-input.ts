@@ -42,6 +42,16 @@ export function buildAgentInput(role: Role, draft: AgentDraft): AgentInput {
   const instruction = draft.taskInput.trim();
   const notes = draft.notes;
 
+  if (role === 'literature') {
+    const focus =
+      [instruction, question ? `Research question: ${question}` : ''].filter(Boolean).join('\n\n') ||
+      'Compare themes, methods, agreement and limitations in the selected papers.';
+    if (focus.length > MAX_AGENT_INPUT)
+      throw new Error(`Your review focus is too long. Keep it under ${count(MAX_AGENT_INPUT)} characters.`);
+    // Project notes are not evidence for the review. Only explicitly selected source material is shared.
+    return { text: focus };
+  }
+
   if (role === 'grammar') {
     if (!notes.trim()) throw new Error('Write a few sentences in your notes before reviewing grammar.');
     // A grammar review rewrites the notes from the reviewed text, so it must never see a partial copy.

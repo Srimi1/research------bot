@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.2 (unreleased)
+
+- Add a literature review assistant on Android and desktop. Select 1–12 saved sources with abstracts or reading notes, set a focus, and review thematic paragraphs with numbered citations and supporting excerpts. Metadata-only papers cannot generate a review.
+- Validate cited source IDs and quoted evidence against the selected material. Save a bounded evidence snapshot with each draft so task history remains readable after source edits or deletion. References show when the author list or source material is excerpted.
+- Preserve original notes until explicit acceptance. Add a reviewed draft with references and evidence limitations; existing undo/redo and Markdown/JSON export retain the review. Changed or deleted sources require a new draft before acceptance.
+- Reject unsigned or incorrectly signed Android release builds before packaging; verify the private-key entry, passwords and pinned 0.4.0 certificate. Add an independent release-key check without publishing.
+- Verify installation on Android 8 and 16 using a separate application identity; retain the 0.4.0 release key for normal updates. The reporting phone’s original installer failure remains unidentified without its detailed Package Manager result.
+
 ## 0.4.0 (2026-10-08)
 
 - Keep Android ChatGPT sign-in alive with a foreground service during browser consent; retain the exchange-after-foreground fix. The service and attempt are bounded to less than three minutes and cleaned up on success, rejection, cancellation and timeout.

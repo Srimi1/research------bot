@@ -16,13 +16,17 @@ on:
         description: Check the existing release key only, without building or publishing an APK.
         type: boolean
         default: false
+      complete_pending_releases:
+        description: Attach the verified 0.4.2 test APK to its draft and publish the validated 0.4.1 desktop release.
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 jobs:
   signing:
-    if: github.event_name == 'workflow_dispatch' && inputs.verify_release_key
+    if: github.event_name == 'workflow_dispatch' && inputs.verify_release_key && !inputs.complete_pending_releases
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -63,7 +67,7 @@ jobs:
         run: rm -f "$RUNNER_TEMP/research-release-check.jks"
 
   build:
-    if: github.event_name != 'workflow_dispatch' || !inputs.verify_release_key
+    if: github.event_name != 'workflow_dispatch' || (!inputs.verify_release_key && !inputs.complete_pending_releases)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -145,3 +149,60 @@ jobs:
           name: apk-installation-api-${{ matrix.api }}
           path: android-startup-results/
           if-no-files-found: ignore
+
+  complete_pending_releases:
+    if: github.event_name == 'workflow_dispatch' && inputs.complete_pending_releases
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      actions: read
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: build-tools;36.0.0
+      - name: Download the exact APK that passed both installation jobs
+        uses: actions/download-artifact@v4
+        with:
+          name: research-bot-install-check
+          run-id: 37905089245
+          github-token: ${{ github.token }}
+          path: verified-apk
+      - name: Verify the original APK bytes and build information
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { readFileSync } from 'node:fs';
+          import { verifyAndroidApk } from './scripts/verify-android-apk.mjs';
+          const expected = JSON.parse(readFileSync('docs/releases/v0.4.2-install-check.json', 'utf8'));
+          const actual = verifyAndroidApk('verified-apk/app-installCheck.apk', 'install-check');
+          for (const key of ['kind', 'version', 'versionCode', 'package', 'minSdk', 'targetSdk', 'debuggable', 'certificateSha256', 'apkSha256', 'apkBytes'])
+            assert.equal(actual[key], expected[key], `The tested APK differs: ${key}`);
+          assert.equal(expected.source.githubActionsArtifactId, 11604044023);
+          NODE
+      - name: Populate the 0.4.2 draft and publish the completed 0.4.1 desktop release
+        run: |
+          set -eu
+          test "$GITHUB_REPOSITORY" = Srimi1/research------bot
+          draft="$(gh release view v0.4.2 --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft)"
+          test "$draft" = true
+          mkdir upload
+          cp verified-apk/app-installCheck.apk upload/research-bot-0.4.2-android-install-check.apk
+          cp docs/releases/v0.4.2-install-check.json upload/BUILD_INFO-android-install-check.json
+          cp docs/audits/2026-10-09-releases-and-apks.md upload/RELEASE_AUDIT-2026-10-09.md
+          (cd upload && sha256sum BUILD_INFO-android-install-check.json research-bot-0.4.2-android-install-check.apk > SHA256SUMS-android-install-check.txt)
+          gh release upload v0.4.2 upload/* --repo "$GITHUB_REPOSITORY" --clobber
+          gh release edit v0.4.2 --repo "$GITHUB_REPOSITORY" --draft=true --notes-file docs/releases/v0.4.2.md
+          gh release upload v0.4.1 upload/RELEASE_AUDIT-2026-10-09.md --repo "$GITHUB_REPOSITORY" --clobber
+          gh release edit v0.4.1 --repo "$GITHUB_REPOSITORY" --target 3fd315152dab9f09d3849e51ac043e0df3b9a235 \
+            --draft=false --prerelease=false --latest --notes-file docs/releases/v0.4.1.md

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Research Bot APK Test</string>
+    <string name="title_activity_main">Research Bot APK Test</string>
+    <string name="package_name">com.researchbot.android.installcheck</string>
+    <string name="custom_url_scheme">com.researchbot.android.installcheck</string>
+</resources>

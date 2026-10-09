@@ -8,8 +8,12 @@ import { createInterface } from 'node:readline';
 const apk = process.argv[2];
 const upgradeFrom = process.argv[3];
 assert.ok(apk, 'Pass the signed or debug APK to install');
-const packageName = 'com.researchbot.android';
-const output = resolve('android-startup-results');
+const packageName = process.env.RESEARCH_ANDROID_PACKAGE || 'com.researchbot.android';
+assert.ok(
+  ['com.researchbot.android', 'com.researchbot.android.installcheck'].includes(packageName),
+  'Choose the release or install-check package',
+);
+const output = resolve(process.env.RESEARCH_ANDROID_RESULTS || 'android-startup-results');
 mkdirSync(output, { recursive: true });
 const serialArgs = process.env.ANDROID_SERIAL ? ['-s', process.env.ANDROID_SERIAL] : [];
 const adb = (...args) =>
@@ -194,7 +198,7 @@ async function coldStart() {
     tree => /package="[^"]*launcher[^"]*"/.test(tree) && !tree.includes(`package="${packageName}"`),
   );
   adb('logcat', '-c');
-  console.log(adb('shell', 'am', 'start', '-W', '-n', `${packageName}/.MainActivity`).trim());
+  console.log(adb('shell', 'am', 'start', '-W', '-n', `${packageName}/com.researchbot.android.MainActivity`).trim());
 }
 
 try {

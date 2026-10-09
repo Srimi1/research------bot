@@ -46,6 +46,14 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
             if (releaseSigned) signingConfig signingConfigs.release
         }
+        installCheck {
+            initWith release
+            // A separate package lets a phone test the app without replacing installed research data.
+            applicationIdSuffix '.installcheck'
+            signingConfig signingConfigs.debug
+            debuggable false
+            matchingFallbacks = ['release']
+        }
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_21
@@ -86,3 +94,4 @@ dependencies {
 }
 
 apply from: 'capacitor.build.gradle'
+apply from: rootProject.file('release-signing.gradle')

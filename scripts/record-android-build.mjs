@@ -4,9 +4,11 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { verifyAndroidApk } from './verify-android-apk.mjs';
 
 const [apk, output] = process.argv.slice(2);
 assert.ok(apk && output, 'Pass the signed APK and output BUILD_INFO JSON paths');
+verifyAndroidApk(apk, 'release');
 const tools = join(process.env.ANDROID_HOME, 'build-tools/36.0.0');
 const run = (command, args) => execFileSync(command, args, { encoding: 'utf8', timeout: 60_000 });
 const version = JSON.parse(readFileSync('package.json', 'utf8')).version;

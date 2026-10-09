@@ -156,6 +156,27 @@ test('review focus never includes project notes and Markdown keeps references an
   assert.match(markdown, /Supplied abstract/);
 });
 
+test('researcher annotations can support a review without implying that the assistant read the full paper', () => {
+  const source = paper({
+    abstract: '',
+    inspected: 'full-text',
+    authors: Array.from({ length: 7 }, (_, index) => `Fixture author ${index + 1}`),
+    notes: 'On page 4, the researcher describes measurements from one campus over five days.',
+  });
+  const refs = literatureReferences([source], [source.id]);
+  assert.equal(refs[0].material, 'reading-notes');
+  assert.equal(refs[0].authors.length, 5);
+  assert.equal(refs[0].authorCount, 7);
+  const data = draft();
+  data.sections[0].paragraphs[0].citations = [
+    { sourceId: 'S1', field: 'notes', quote: 'measurements from one campus over five days' },
+  ];
+  const result = parseResult('literature', '', JSON.stringify(data), refs) as LiteratureResult;
+  assert.match(literatureMarkdown(result), /et al\./);
+  assert.match(literatureMarkdown(result), /Material used: Your reading notes/);
+  assert.doesNotMatch(literatureMarkdown(result), /Material used:.*full-text/);
+});
+
 test('runner uses selected evidence only, retries malformed citations within budget, and preserves draft snapshots across restart', async t => {
   const directory = mkdtempSync(join(tmpdir(), 'research-literature-'));
   const path = join(directory, 'research.sqlite');

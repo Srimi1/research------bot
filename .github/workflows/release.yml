@@ -15,13 +15,18 @@ on:
         required: true
         default: v0.4.0
       platforms:
-        description: Publish all installers, or only the Android APK.
+        description: Build all installers, only desktop installers, or only the Android APK.
         type: choice
         required: true
         default: all
         options:
           - all
+          - desktop
           - android
+      publish:
+        description: Publish after all selected checks and uploads pass; disable to keep a populated draft.
+        type: boolean
+        default: true
       android_source:
         description: Build with signing secrets, or verify the signed APK committed in downloads/android.
         type: choice
@@ -64,7 +69,7 @@ jobs:
             exit 1
           fi
       - name: Check Android signing configuration before building or creating a release
-        if: github.event_name != 'workflow_dispatch' || inputs.android_source != 'prebuilt'
+        if: github.event_name != 'workflow_dispatch' || (inputs.platforms != 'desktop' && inputs.android_source != 'prebuilt')
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -195,6 +200,7 @@ jobs:
 
   android:
     needs: prepare
+    if: github.event_name != 'workflow_dispatch' || inputs.platforms != 'desktop'
     runs-on: ubuntu-latest
     env:
       RESEARCH_RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
@@ -225,21 +231,9 @@ jobs:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
-            echo "::error::The ANDROID_KEYSTORE_BASE64 secret is not set. Follow docs/android.md to add the signing key."
-            exit 1
-          fi
-          # Pasted secrets often carry line breaks, spaces or Windows line endings; base64 has none.
-          encoded="$(printf '%s' "$ANDROID_KEYSTORE_BASE64" | tr -d '[:space:]')"
-          if ! printf '%s' "$encoded" | grep -Eq '^[A-Za-z0-9+/]+={0,2}$'; then
-            echo "::error::ANDROID_KEYSTORE_BASE64 is not base64 text. Paste the output of 'base64 -i <keystore>' (macOS) or 'base64 -w0 <keystore>' (Linux), not the file path or a password."
-            exit 1
-          fi
-          if ! printf '%s' "$encoded" | base64 --decode > "$RUNNER_TEMP/release.jks"; then
-            echo "::error::ANDROID_KEYSTORE_BASE64 could not be decoded. Copy the complete base64 output of the keystore file."
-            exit 1
-          fi
+          node scripts/restore-android-signing.mjs "$RUNNER_TEMP/release.jks"
           # Fail before building when the password or alias is wrong, or the key differs from the committed release certificate.
           if ! listing="$(keytool -list -v -keystore "$RUNNER_TEMP/release.jks" -storepass:env ANDROID_KEYSTORE_PASSWORD -alias "$ANDROID_KEY_ALIAS" 2>&1)"; then
             echo "::error::The keystore could not be opened with ANDROID_KEYSTORE_PASSWORD and ANDROID_KEY_ALIAS. Check both secrets."
@@ -256,7 +250,6 @@ jobs:
             echo "::error::This key's certificate ($actual) differs from the committed release certificate ($expected). Check the signing backup and repository fingerprint."
             exit 1
           fi
-          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
       - run: npm ci
         if: env.ANDROID_SOURCE == 'build'
       - run: npm test
@@ -363,8 +356,9 @@ jobs:
   publish:
     needs: [prepare, build, mac, android]
     if: >-
-      always() && github.event_name == 'workflow_dispatch' &&
-      needs.prepare.result == 'success' && needs.android.result == 'success' &&
+      always() && github.event_name == 'workflow_dispatch' && inputs.publish &&
+      needs.prepare.result == 'success' &&
+      (inputs.platforms == 'desktop' || needs.android.result == 'success') &&
       (inputs.platforms == 'android' || (needs.build.result == 'success' && needs.mac.result == 'success'))
     runs-on: ubuntu-latest
     env:

@@ -6,6 +6,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { decodeKeystoreSecret } from './restore-android-signing.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const fixture = mkdtempSync(join(tmpdir(), 'research-signing-test-'));
@@ -59,6 +60,30 @@ try {
     'RESEARCH_TEST_STORE_PASSWORD',
   ]);
   const pin = createHash('sha256').update(readFileSync(certificate)).digest('hex');
+  const storeBytes = readFileSync(store);
+  const encoded = storeBytes.toString('base64');
+  for (const candidate of [
+    encoded,
+    `\uFEFF${encoded.match(/.{1,64}/g).join('\r\n')}\n`,
+    `"${encoded}"`,
+    `'${encoded}'`,
+    `data:application/octet-stream;base64,${encoded}`,
+    storeBytes.toString('base64url'),
+    encoded.match(/.{1,64}/g).join('\\r\\n'),
+  ])
+    assert.deepEqual(decodeKeystoreSecret(candidate), storeBytes);
+  for (const candidate of [
+    '',
+    '/tmp/release.jks',
+    'base64 -w0 release.jks',
+    'a===',
+    'A',
+    Buffer.from('not a key').toString('base64'),
+  ])
+    assert.throws(() => decodeKeystoreSecret(candidate), /ANDROID_KEYSTORE_BASE64/);
+  console.log(
+    'Passed: copy/paste wrappers preserve the exact keystore; malformed or non-keystore secrets are rejected.',
+  );
   const pinPath = join(fixture, 'release-signing-certificate.sha256');
   writeFileSync(pinPath, `${pin}\n`);
   writeFileSync(join(fixture, 'settings.gradle'), "rootProject.name = 'release-signing-fixture'\n");

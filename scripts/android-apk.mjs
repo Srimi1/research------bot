@@ -20,10 +20,10 @@ const gradle = (...tasks) => {
     stdio: 'inherit',
   });
 };
-// Fail before rebuilding web assets if an installable release cannot be signed.
-if (signedRelease) gradle(':app:verifyReleaseSigning');
 assert.ok(process.env.npm_execpath, 'Run this build through npm run android:apk or npm run android:apk:check');
+// Capacitor generates the plugin Gradle files needed even by the signing task.
 execFileSync(process.execPath, [process.env.npm_execpath, 'run', 'build:android'], { cwd: root, stdio: 'inherit' });
+if (signedRelease) gradle(':app:verifyReleaseSigning');
 const variant = signedRelease ? 'Release' : 'InstallCheck';
 gradle(`:app:assemble${variant}`, `:app:lint${variant}`);
 const directory = signedRelease ? 'release' : 'installCheck';

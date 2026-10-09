@@ -69,6 +69,11 @@ try {
     `'${encoded}'`,
     `data:application/octet-stream;base64,${encoded}`,
     storeBytes.toString('base64url'),
+    `ANDROID_KEYSTORE_BASE64=${encoded}`,
+    `export ANDROID_KEYSTORE_BASE64='${encoded}'`,
+    `\`\`\`base64\n${encoded}\n\`\`\``,
+    JSON.stringify({ ANDROID_KEYSTORE_BASE64: encoded }),
+    JSON.stringify({ keystoreBase64: encoded }),
     encoded.match(/.{1,64}/g).join('\\r\\n'),
   ])
     assert.deepEqual(decodeKeystoreSecret(candidate), storeBytes);

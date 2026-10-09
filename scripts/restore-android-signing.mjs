@@ -8,6 +8,20 @@ export function decodeKeystoreSecret(value) {
   if (typeof value !== 'string' || !value.trim()) throw new Error('ANDROID_KEYSTORE_BASE64 is missing.');
   if (value.length > 2_000_000) throw new Error('ANDROID_KEYSTORE_BASE64 exceeds the keystore size limit.');
   let encoded = value.trim();
+  // Backups may include an assignment, a Markdown fence or a JSON field.
+  encoded = encoded.replace(/^\s*(?:export\s+)?ANDROID_KEYSTORE_BASE64\s*=\s*/, '');
+  const fenced = /^```(?:base64|text|sh|bash)?\s*\n([\s\S]*?)\n```$/.exec(encoded);
+  if (fenced) encoded = fenced[1].trim().replace(/^(?:export\s+)?ANDROID_KEYSTORE_BASE64\s*=\s*/, '');
+  if (encoded.startsWith('{') || encoded.startsWith('"')) {
+    try {
+      const backup = JSON.parse(encoded);
+      if (typeof backup === 'string') encoded = backup;
+      else if (typeof backup?.ANDROID_KEYSTORE_BASE64 === 'string') encoded = backup.ANDROID_KEYSTORE_BASE64;
+      else if (typeof backup?.keystoreBase64 === 'string') encoded = backup.keystoreBase64;
+    } catch {
+      // Quoted base64 is handled below; malformed input is still rejected.
+    }
+  }
   if (/^(["']).*\1$/s.test(encoded)) encoded = encoded.slice(1, -1);
   encoded = encoded
     .replace(/^data:[a-z0-9.+/-]+;base64,/i, '')
@@ -16,7 +30,13 @@ export function decodeKeystoreSecret(value) {
   // Accept standard base64 and its URL-safe spelling, without guessing missing bytes.
   if (!/^[A-Za-z0-9+/_-]+={0,2}$/.test(encoded))
     throw new Error(
-      'ANDROID_KEYSTORE_BASE64 contains no recoverable base64 keystore. Restore the existing key backup.',
+      /^-----BEGIN (?:ENCRYPTED |RSA |EC )?PRIVATE KEY-----/.test(encoded)
+        ? 'ANDROID_KEYSTORE_BASE64 is a PEM private key, not a keystore backup.'
+        : /^https?:\/\//.test(encoded)
+          ? 'ANDROID_KEYSTORE_BASE64 is a backup URL, not keystore bytes.'
+          : /[\\/]|\.jks\b|\.p12\b|\.keystore\b/i.test(encoded)
+            ? 'ANDROID_KEYSTORE_BASE64 is a path or command, not keystore bytes.'
+            : 'ANDROID_KEYSTORE_BASE64 contains no recoverable base64 keystore. Restore the existing key backup.',
     );
   encoded = encoded.replaceAll('-', '+').replaceAll('_', '/');
   const bytes = Buffer.from(encoded, 'base64');

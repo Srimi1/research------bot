@@ -1,26 +1,23 @@
 {
-  "version": "0.4.0",
-  "versionCode": 400,
-  "package": "com.researchbot.android",
+  "kind": "fresh-release",
+  "version": "0.4.2",
+  "versionCode": 402,
+  "package": "com.researchbot.android.fresh",
   "minSdk": 26,
   "targetSdk": 36,
-  "sourceCommit": "cb069c9796e8ac98255e64899ed9d45b39430e4e",
-  "certificateSha256": "e07d0f1bb2e400e248c1b2af756d314686d912718127aed1e65d4344ad555a35",
-  "apkSha256": "280356ec59459cf853408f70ec0316f24c979988a2fbbba1e82e7147835ea39c",
-  "apkBytes": 4774667,
+  "sourceCommit": "46aa02e5aee895bdc7e331fd4a8cc5e634f7ebbb",
+  "certificateSha256": "897e7d7148089060b15c400829333580ca9a023d19195038747a1066ba843274",
+  "apkSha256": "fb4392f3ef8dfdb70bc42303ce1f6d188e69bc4d97e664bb15d1cb123383379b",
+  "apkBytes": 4779423,
   "validation": {
-    "regressionTests": "passed (local npm test; 106 tests, zero skipped)",
+    "regressionTests": "passed (113 unit/regression tests; local npm test)",
     "androidReleaseBuildAndLint": "passed",
     "signatureAnd16KiBAlignment": "passed",
-    "android16SignedApkStartupAndPersistence": "passed",
-    "regressionTestsPassed": 106,
-    "localLintFormatAndTypecheck": "passed",
-    "releaseWebViewDebuggingDisabled": "passed (release debug flag absent; packaged WebView debugging disabled)"
+    "android16SignedApkStartupAndPersistence": "pending release workflow",
+    "productionWebBundle": "passed (all JS, CSS and WASM assets match the local production build; WebView debugging and mixed content disabled)"
   },
   "limits": [
-    "Live ChatGPT sign-in, eligibility and inference on the physical OnePlus 7T Pro / Android 16 / Legion OS remain unconfirmed",
-    "Native transport tests use public metadata and deliberately invalid credentials, not a real account",
-    "The new 0.4.0 signing certificate cannot update an installation signed with the 0.3.9 certificate"
-  ],
-  "githubReleaseRun": "https://github.com/Srimi1/research------bot/actions/runs/37793673276"
+    "Fresh production installation with separate app data; cannot update the legacy com.researchbot.android package.",
+    "Live ChatGPT sign-in and inference on the physical OnePlus 7T Pro / Legion OS require maintainer confirmation"
+  ]
 }

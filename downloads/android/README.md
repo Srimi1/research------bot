@@ -22,7 +22,7 @@ sha256sum -c SHA256SUMS.txt
 
 Version: `0.4.2` / code `402`. Production certificate SHA-256: `897e7d7148089060b15c400829333580ca9a023d19195038747a1066ba843274`. Built from [46aa02e](https://github.com/Srimi1/research------bot/commit/46aa02e5aee895bdc7e331fd4a8cc5e634f7ebbb).
 
-The release build and Android lint passed. The actual APK passed signature, package, version, SDK, alignment, disabled-debugging and source-provenance checks; every bundled JS, CSS and WASM asset matches the production web build. [BUILD_INFO.json](BUILD_INFO.json) records the Android 16 runtime test and workflow evidence after upload. The private production signing key is backed up outside Git.
+The release build and Android lint passed. The actual APK passed signature, package, version, SDK, alignment, disabled-debugging and source-provenance checks; every bundled JS, CSS and WASM asset matches the production web build. The exact signed APK passed Android 16 project/note creation and cold-restart recovery; the existing 0.4.0 app retained its saved project and notes after installing and testing it. [BUILD_INFO.json](BUILD_INFO.json) records the passed [installation and upload workflow](https://github.com/Srimi1/research------bot/actions/runs/37957568655). The uploaded production files were downloaded again and matched all release checksums. The private production signing key is backed up outside Git.
 
 ## Published legacy release
 

@@ -13,11 +13,13 @@
     "regressionTests": "passed (113 unit/regression tests; local npm test)",
     "androidReleaseBuildAndLint": "passed",
     "signatureAnd16KiBAlignment": "passed",
-    "android16SignedApkStartupAndPersistence": "pending release workflow",
-    "productionWebBundle": "passed (all JS, CSS and WASM assets match the local production build; WebView debugging and mixed content disabled)"
+    "android16SignedApkStartupAndPersistence": "passed",
+    "productionWebBundle": "passed (all JS, CSS and WASM assets match the local production build; WebView debugging and mixed content disabled)",
+    "android16FreshAndLegacyCoexistence": "passed"
   },
   "limits": [
     "Fresh production installation with separate app data; cannot update the legacy com.researchbot.android package.",
     "Live ChatGPT sign-in and inference on the physical OnePlus 7T Pro / Legion OS require maintainer confirmation"
-  ]
+  ],
+  "githubReleaseRun": "https://github.com/Srimi1/research------bot/actions/runs/37957568655"
 }

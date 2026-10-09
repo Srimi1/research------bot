@@ -78,3 +78,7 @@ Validation performed locally:
 - The signing restoration and real-keystore packaging safeguards passed their fixture tests.
 
 This is a direct, scoped source/dependency/artifact audit. The installed security skill's shared scan references and report-generation scripts were unavailable, so no host-backed Codex Security scan or exhaustive vulnerability report is claimed. Live ChatGPT authorization/inference and installation on the physical OnePlus 7T Pro / Legion OS remain unverified. The test APK's stock-emulator results do not establish those behaviors.
+
+## Fresh production APK runtime verification
+
+The exact signed 0.4.2 APK passed Android 16 installation, SQLite startup, project/note creation and cold-restart recovery. The regular 0.4.0 app and its saved project/notes remained available after installing and testing the fresh production app. Workflow: https://github.com/Srimi1/research------bot/actions/runs/37957568655.

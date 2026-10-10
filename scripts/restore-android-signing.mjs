@@ -8,10 +8,12 @@ export function decodeKeystoreSecret(value) {
   if (typeof value !== 'string' || !value.trim()) throw new Error('ANDROID_KEYSTORE_BASE64 is missing.');
   if (value.length > 2_000_000) throw new Error('ANDROID_KEYSTORE_BASE64 exceeds the keystore size limit.');
   let encoded = value.trim();
-  // Backups may include an assignment, a Markdown fence or a JSON field.
-  encoded = encoded.replace(/^\s*(?:export\s+)?ANDROID_KEYSTORE_BASE64\s*=\s*/, '');
-  const fenced = /^```(?:base64|text|sh|bash)?\s*\n([\s\S]*?)\n```$/.exec(encoded);
-  if (fenced) encoded = fenced[1].trim().replace(/^(?:export\s+)?ANDROID_KEYSTORE_BASE64\s*=\s*/, '');
+  // Accept literal shell/YAML wrappers, without executing any command or reading a supplied path.
+  const assignment = /^(?:(?:export|set|setx)\s+|\$env:)?ANDROID_KEYSTORE_BASE64\s*(?:=|:)\s*/;
+  encoded = encoded.replace(assignment, '');
+  const fenced = /^```(?:base64|text|sh|bash|json|yaml|yml|powershell)?\s*\n([\s\S]*?)\n```$/.exec(encoded);
+  if (fenced) encoded = fenced[1].trim().replace(assignment, '');
+  encoded = encoded.replace(/^b(["'])([\s\S]*)\1$/, '$2');
   if (encoded.startsWith('{') || encoded.startsWith('"')) {
     try {
       const backup = JSON.parse(encoded);
@@ -34,7 +36,7 @@ export function decodeKeystoreSecret(value) {
         ? 'ANDROID_KEYSTORE_BASE64 is a PEM private key, not a keystore backup.'
         : /^https?:\/\//.test(encoded)
           ? 'ANDROID_KEYSTORE_BASE64 is a backup URL, not keystore bytes.'
-          : /[\\/]|\.jks\b|\.p12\b|\.keystore\b/i.test(encoded)
+          : /^(?:[A-Za-z]:[\\/]|\/|\.\.?[\\/])|(?:\.jks|\.p12|\.keystore)(?:["']|$)/i.test(encoded)
             ? 'ANDROID_KEYSTORE_BASE64 is a path or command, not keystore bytes.'
             : 'ANDROID_KEYSTORE_BASE64 contains no recoverable base64 keystore. Restore the existing key backup.',
     );

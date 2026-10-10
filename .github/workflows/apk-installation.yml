@@ -267,5 +267,5 @@ jobs:
       - name: Publish the verified production release
         run: |
           gh release edit v0.4.2 --repo "$GITHUB_REPOSITORY" --draft=false --prerelease=false \
-            --latest=false --notes-file docs/releases/v0.4.2.md
+            --latest=true --notes-file docs/releases/v0.4.2.md
           gh release view v0.4.2 --repo "$GITHUB_REPOSITORY" --json isDraft,isPrerelease,url

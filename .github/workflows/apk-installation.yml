@@ -20,13 +20,17 @@ on:
         description: Attach the verified 0.4.2 test APK to its draft and publish the validated 0.4.1 desktop release.
         type: boolean
         default: false
+      publish_verified_release:
+        description: Publish the already uploaded production 0.4.2 APK after verifying its checksums and passed runtime evidence.
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 jobs:
   signing:
-    if: github.event_name == 'workflow_dispatch' && inputs.verify_release_key && !inputs.complete_pending_releases
+    if: github.event_name == 'workflow_dispatch' && inputs.verify_release_key && !inputs.complete_pending_releases && !inputs.publish_verified_release
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -67,7 +71,7 @@ jobs:
         run: rm -f "$RUNNER_TEMP/research-release-check.jks"
 
   build:
-    if: github.event_name != 'workflow_dispatch' || (!inputs.verify_release_key && !inputs.complete_pending_releases)
+    if: github.event_name != 'workflow_dispatch' || (!inputs.verify_release_key && !inputs.complete_pending_releases && !inputs.publish_verified_release)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -151,7 +155,7 @@ jobs:
           if-no-files-found: ignore
 
   complete_pending_releases:
-    if: github.event_name == 'workflow_dispatch' && inputs.complete_pending_releases
+    if: github.event_name == 'workflow_dispatch' && inputs.complete_pending_releases && !inputs.publish_verified_release
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -206,3 +210,62 @@ jobs:
           gh release upload v0.4.1 upload/RELEASE_AUDIT-2026-10-09.md --repo "$GITHUB_REPOSITORY" --clobber
           gh release edit v0.4.1 --repo "$GITHUB_REPOSITORY" --target 3fd315152dab9f09d3849e51ac043e0df3b9a235 \
             --draft=false --prerelease=false --latest --notes-file docs/releases/v0.4.1.md
+
+  publish_verified_release:
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_verified_release
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Verify the uploaded production files and their passed runtime evidence
+        run: |
+          set -eu
+          test "$GITHUB_REPOSITORY" = Srimi1/research------bot
+          gh release download v0.4.2 --repo "$GITHUB_REPOSITORY" --dir verified-release \
+            --pattern research-bot-0.4.2-android.apk --pattern BUILD_INFO-android.json \
+            --pattern SHA256SUMS-android.txt --pattern RELEASE_AUDIT-2026-10-09.md
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { execFileSync } from 'node:child_process';
+          import { createHash } from 'node:crypto';
+          import { readFileSync } from 'node:fs';
+          const expected = JSON.parse(readFileSync('downloads/android/BUILD_INFO.json', 'utf8'));
+          const info = JSON.parse(readFileSync('verified-release/BUILD_INFO-android.json', 'utf8'));
+          assert.deepEqual(info, expected, 'Uploaded metadata must match the verified production build.');
+          assert.equal(info.version, '0.4.2');
+          assert.equal(info.kind, 'fresh-release');
+          assert.equal(info.validation.android16SignedApkStartupAndPersistence, 'passed');
+          assert.equal(info.validation.android16FreshAndLegacyCoexistence, 'passed');
+          const apk = readFileSync('verified-release/research-bot-0.4.2-android.apk');
+          assert.equal(apk.length, info.apkBytes);
+          assert.equal(createHash('sha256').update(apk).digest('hex'), info.apkSha256);
+          const entries = readFileSync('verified-release/SHA256SUMS-android.txt', 'utf8').trim().split('\n');
+          const names = ['BUILD_INFO-android.json', 'research-bot-0.4.2-android.apk', 'RELEASE_AUDIT-2026-10-09.md'];
+          assert.equal(entries.length, names.length);
+          for (const name of names) {
+            const actual = createHash('sha256').update(readFileSync(`verified-release/${name}`)).digest('hex');
+            assert.ok(entries.includes(`${actual}  ${name}`), `Uploaded checksum mismatch: ${name}`);
+          }
+          assert.equal(info.githubReleaseRun, 'https://github.com/Srimi1/research------bot/actions/runs/37957568655');
+          const api = path => JSON.parse(execFileSync('gh', ['api', path], { encoding: 'utf8' }));
+          const run = api('repos/Srimi1/research------bot/actions/runs/37957568655');
+          assert.equal(run.status, 'completed');
+          assert.equal(run.conclusion, 'success');
+          const release = api('repos/Srimi1/research------bot/releases/407721733');
+          assert.equal(release.tag_name, 'v0.4.2');
+          assert.equal(release.target_commitish, run.head_sha, 'Publish the exact previously tested checkout.');
+          console.log(`Verified uploaded production APK and passed Android runtime run: ${info.apkSha256}`);
+          NODE
+      - name: Publish the verified production release
+        run: |
+          gh release edit v0.4.2 --repo "$GITHUB_REPOSITORY" --draft=false --prerelease=false \
+            --latest=false --notes-file docs/releases/v0.4.2.md
+          gh release view v0.4.2 --repo "$GITHUB_REPOSITORY" --json isDraft,isPrerelease,url

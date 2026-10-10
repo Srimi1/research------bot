@@ -41,7 +41,7 @@ These are browser-rendered phone previews with synthetic data; the welcome scree
 
 Crossref discovery works without signing in. AI assistants require eligible ChatGPT plan access. The app does not request copied cookies or session tokens, and does not silently switch to separately billed API usage.
 
-**0.4.2** adds literature review to Android and desktop. Select saved papers in **Assistants → Review**, inspect the supporting excerpts, then choose **Add reviewed draft to notes**. See the [literature review guide](docs/literature-review.md). Its signed Android production APK is a fresh installation named **Research Bot 0.4.2**, with its own package and storage alongside the existing app. The GitHub release stays draft. See the [fresh-install guide](docs/android-fresh-install.md).
+**0.4.2** adds literature review to Android and desktop. Select saved papers in **Assistants → Review**, inspect the supporting excerpts, then choose **Add reviewed draft to notes**. See the [literature review guide](docs/literature-review.md). Its signed Android production APK is a fresh installation named **Research Bot 0.4.2**, with its own package and storage alongside the existing app. The GitHub release is published. See the [fresh-install guide](docs/android-fresh-install.md).
 
 ## Install or build
 

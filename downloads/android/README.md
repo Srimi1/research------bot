@@ -2,7 +2,7 @@
 
 [**Download the signed Research Bot 0.4.2 production APK**](research-bot-0.4.2-android.apk)
 
-This production APK is attached to the 0.4.2 GitHub release draft and committed in this folder. It appears as **Research Bot 0.4.2**, uses package `com.researchbot.android.fresh`, supports Android 8 or later and targets Android 16.
+This production APK is attached to the published 0.4.2 GitHub release and committed in this folder. It appears as **Research Bot 0.4.2**, uses package `com.researchbot.android.fresh`, supports Android 8 or later and targets Android 16.
 
 It installs alongside the existing Research Bot app and uses separate local storage. Existing projects and credentials stay in the existing app; keep that app installed. The fresh app does not update the legacy package or import old projects automatically. See the [fresh-install guide](../../docs/android-fresh-install.md).
 

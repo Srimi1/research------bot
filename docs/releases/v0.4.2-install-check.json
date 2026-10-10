@@ -1,0 +1,36 @@
+{
+  "kind": "install-check",
+  "version": "0.4.2",
+  "versionCode": 402,
+  "package": "com.researchbot.android.installcheck",
+  "minSdk": 26,
+  "targetSdk": 36,
+  "debuggable": false,
+  "certificateSha256": "ff52b820330c21e350506deb64016b8d9b697f29065542bbfa4e714e7e960576",
+  "apkSha256": "96bd20425524b7a800fa222853e72733d03330d4fdb63a396fb1561911be8ee1",
+  "apkBytes": 4775331,
+  "source": {
+    "headCommit": "b73651c1ccf09a5e0c6cb35835bcded10bb3f781",
+    "equivalentMainCommit": "4b7b48dcf6d0d21e2847e839b5a21ac4bfb5a7c5",
+    "githubActionsRun": "https://github.com/Srimi1/research------bot/actions/runs/37905089245",
+    "githubActionsArtifactId": 11604044023,
+    "applicationInputsMatchMain": true,
+    "productionWebAssetsMatchLocalBuild": true
+  },
+  "validation": {
+    "android8FreshInstallAndCoexistence": "passed",
+    "android16FreshInstallAndCoexistence": "passed",
+    "android16TestApkStartupAndPersistence": "passed (original workflow)",
+    "signaturePackageVersionSdkAnd16KiBAlignment": "passed (downloaded APK reverified)",
+    "webViewDebuggingDisabled": "passed",
+    "unitTests": "passed (113 local tests, no skips)",
+    "lintAndFormat": "passed",
+    "typescriptViteElectronBuild": "passed",
+    "npmAuditKnownVulnerabilities": 0
+  },
+  "limits": [
+    "Separate test package; cannot update com.researchbot.android.",
+    "Development certificate; regular 0.4.1/0.4.2 release signing is blocked by an invalid keystore secret.",
+    "Physical OnePlus 7T Pro / Legion OS and live ChatGPT sign-in/inference were not validated."
+  ]
+}

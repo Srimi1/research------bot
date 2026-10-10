@@ -12,6 +12,9 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 const json = path => JSON.parse(readFileSync(join(root, path), 'utf8'));
 const { version } = json('package.json');
 const info = json('downloads/android/BUILD_INFO.json');
+const kind = info.kind || 'release';
+assert.equal(kind, 'release', 'Prebuilt publication requires an update using the original application identity');
+const pinFile = 'release-signing-certificate.sha256';
 assert.match(version, /^\d+\.\d+\.\d+$/);
 assert.equal(info.version, version, 'APK build version must match package.json');
 assert.match(info.sourceCommit, /^[a-f0-9]{40}$/);
@@ -19,7 +22,7 @@ assert.match(info.apkSha256, /^[a-f0-9]{64}$/);
 assert.match(info.certificateSha256, /^[a-f0-9]{64}$/);
 assert.equal(
   info.certificateSha256,
-  readFileSync(join(root, 'android/release-signing-certificate.sha256'), 'utf8').trim(),
+  readFileSync(join(root, 'android', pinFile), 'utf8').trim(),
   'Prebuilt APK must use the committed release signing certificate',
 );
 assert.equal(info.package, 'com.researchbot.android');
@@ -36,7 +39,7 @@ assert.equal(
   'APK hash differs from build information',
 );
 assert.equal(readFileSync(join(root, 'downloads/android/SHA256SUMS.txt'), 'utf8').trim(), `${info.apkSha256}  ${name}`);
-verifyAndroidApk(apk, 'release');
+verifyAndroidApk(apk, kind);
 
 const run = (command, args) => execFileSync(command, args, { cwd: root, encoding: 'utf8', timeout: 60_000 });
 run('git', ['merge-base', '--is-ancestor', info.sourceCommit, 'HEAD']);

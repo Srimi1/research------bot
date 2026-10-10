@@ -647,11 +647,14 @@ public class ResearchNativePlugin extends Plugin {
     @PluginMethod
     public void appInfo(PluginCall call) {
         try {
-            PackageInfo info = packageInfo(getContext().getPackageName(), false);
+            PackageInfo info = packageInfo(getContext().getPackageName(), true);
             JSObject result = new JSObject();
             result.put("version", info.versionName);
             result.put("versionCode", versionCode(info));
             result.put("sdk", Build.VERSION.SDK_INT);
+            result.put("packageName", info.packageName);
+            Set<String> signers = certificates(info);
+            if (signers.size() == 1) result.put("certificateSha256", signers.iterator().next());
             try {
                 PackageInfo webview = WebView.getCurrentWebViewPackage();
                 result.put("webviewVersion", webview == null ? "unavailable" : webview.versionName);

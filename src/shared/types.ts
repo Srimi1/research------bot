@@ -135,6 +135,7 @@ export interface ConnectionDiagnostics {
   features: { signalAny: boolean; signalTimeout: boolean; randomUuid: boolean };
   checks: { service: string; result: string }[];
 }
+export type UpdateCheckResult = { status: 'current' } | { status: 'ready'; version: string };
 export interface RunRequest {
   projectId: string;
   role: Role;
@@ -178,6 +179,10 @@ export interface ResearchAPI {
   checkSignInConnection?(signal: AbortSignal): Promise<ConnectionDiagnostics>;
   /** Android only: opens Research Bot's system settings, where battery usage can be unrestricted. */
   openAppSettings?(): Promise<void>;
+  /** Android only: check and download a newer build with the same package and signing certificate. */
+  checkForUpdates?(): Promise<UpdateCheckResult>;
+  /** Android only: open the installer for the verified update, preserving this app's data. */
+  installUpdate?(): Promise<void>;
   /** Native desktop menu commands; absent on Android and browser previews. */
   onDesktopAction?(callback: (action: DesktopAction) => void): () => void;
 }

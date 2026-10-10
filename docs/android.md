@@ -1,6 +1,6 @@
 # Android app
 
-The Android app is the same Research Bot as the desktop app: the same interface, the same five agents, the same SQLite project store, the same ChatGPT sign-in, the same Crossref search and export. It needs Android 8.0 or later and was built for Android 16 (target SDK 36). The literature review assistant is new in the upcoming 0.4.2; see the [review guide](literature-review.md).
+The Android app is the same Research Bot as the desktop app: the same interface, the same five agents, the same SQLite project store, the same ChatGPT sign-in, the same Crossref search and export. It needs Android 8.0 or later and was built for Android 16 (target SDK 36). The literature review assistant is included in the current source; a compatible APK update is pending; see the [review guide](literature-review.md).
 
 ## Install
 
@@ -98,7 +98,7 @@ Run `npm run android:apk:check` to build and lint a signed **Research Bot APK Te
 
 The **Android APK installation** workflow builds this APK, checks its signature, package/version, SDK levels, release flags and alignment, and tests installation on Android 8 and 16. Android 16 additionally checks project creation, notes and cold-restart persistence. It also reproduces a signing conflict when 0.3.9 remains installed for another user after removal from the primary user. This regression scenario does not establish the cause of a particular phone's failure.
 
-For a regular release, configure the existing signing key and run `npm run android:apk`. The command checks that the private key opens and matches the pinned certificate before rebuilding assets, then builds, lints and verifies the finished APK. Direct Gradle release packaging also requires this check; missing or incorrect signing configuration fails rather than producing an unsigned release. `node scripts/android-signing-smoke.mjs` exercises the guard against a temporary test keystore.
+For a regular release, configure the existing signing key and run `npm run android:apk`. The command syncs the web assets and Capacitor plugin files, checks that the private key opens and matches the pinned certificate, then builds, lints and verifies the finished APK. Direct Gradle release packaging also requires this check; missing or incorrect signing configuration fails rather than producing an unsigned release. `node scripts/android-signing-smoke.mjs` exercises the guard against a temporary test keystore.
 
 `npm run icon:android` regenerates the launcher icons from `public/app-icon.png`.
 
@@ -130,13 +130,15 @@ Keep a private backup of the 0.4.0 keystore and its passwords outside GitHub. If
 
 ### Publish an Android release
 
-Run **Publish release** from `main` with the version tag (for example `v0.4.0`), **Platforms: android**, and **Android source: build**. For 0.4.0 leave **Android upgrade from** empty because the signing certificate changed. For later releases, set it to a published version signed with the same key. Before publication the exact signed APK must pass fresh install, persistence and cold restart on Android 16; an optional same-key upgrade must also retain notes. Afterwards commit the published APK and `BUILD_INFO-android.json` as `downloads/android/research-bot-VERSION-android.apk` and `downloads/android/BUILD_INFO.json`, regenerate `downloads/android/SHA256SUMS.txt`, and update the download links. Emulator evidence and the maintainer's phone result are reported separately.
+Run **Publish release** from the corrected source with a matching version tag, **Platforms: android**, **Android source: build**, and a previous published same-key Android version. **Android upgrade from** defaults to `v0.4.0`; an in-place upgrade with saved project/note recovery is mandatory before Android upload and publication. The workflow preserves the original package and certificate and rejects the separate production profile. No compatible 0.4.3 APK can currently be produced because the original keystore backup is unavailable.
+
+After a real release passes those checks, commit the actual published APK, build information and checksums to `downloads/android` and update its download links. Emulator evidence and physical-phone results remain separate.
 
 ### Release an existing signed APK
 
 For a locally built and validated APK, run **Publish release** with **Android source: prebuilt**. Commit `downloads/android/research-bot-VERSION-android.apk`, `SHA256SUMS.txt` and `BUILD_INFO.json` first. The build information records the version, package, SDK levels, byte count, SHA-256, public certificate fingerprint and full build commit.
 
-The workflow verifies the hash, certificate, package/version, SDK levels and 16 KiB alignment. It also requires the recorded build commit to be an ancestor of the release and all Android app/build inputs to be unchanged. If app inputs changed, rebuild and validate the APK before updating its build information. This path uses the existing signature without uploading the private key; it attaches `BUILD_INFO-android.json` as well as the APK and checksums. Choose **Platforms: android** to publish only the APK, or **all** to include desktop installers. The draft is published only after every selected upload and the signed APK runtime check succeeds. Optionally set **Android upgrade from** to a previous published tag, such as `v0.3.7`, to test an in-place signed upgrade with project and note recovery.
+The workflow verifies the hash, certificate, package/version, SDK levels and 16 KiB alignment. It also requires the recorded build commit to be an ancestor of the release and all Android app/build inputs to be unchanged. If app inputs changed, rebuild and validate the APK before updating its build information. This path uses the existing signature without uploading the private key; it attaches `BUILD_INFO-android.json` as well as the APK and checksums. Choose **Platforms: android** to publish only the APK, or **all** to include desktop installers. The draft is published only after every selected upload and the signed APK runtime check succeeds. **Android upgrade from** must identify a previous published release with the same signing key; the workflow defaults to `v0.4.0` and always requires the actual in-place upgrade with project and note recovery.
 
 ## Android 16 and the OnePlus 7T Pro
 
@@ -183,3 +185,9 @@ In **Account & preferences**, tap **Check connection** after a failed attempt. T
 **Copy connection results** copies only fixed service labels, HTTP statuses/allowlisted failure codes, app/WebView versions and support flags. Share that report and the new `RB-AUTH-…` error to help distinguish a bridge failure from an HTTPS failure. Raw provider replies, callback URLs, account details and tokens are excluded.
 
 Saved failures are labeled **Previous sign-in attempt** and hidden while a new attempt runs. Version information remains visible even if an optional native information query fails or times out. WebView compatibility fallbacks cover signal composition, timeouts and secure UUID creation. See the [follow-up audit](audits/2026-10-07-android-auth-follow-up.md).
+
+## Manual update controls in corrected source
+
+**Account & preferences → Check for updates** works with automatic updates disabled. It only offers published Android APKs whose metadata matches the installed package and certificate and supports the phone's Android version. It verifies matching checksums, then the native bridge verifies the actual APK package, increasing version and certificate. **Install update** opens Android's installer after an explicit action. The downloaded APK remains ready if installer permission must be granted first.
+
+These controls are source changes for 0.4.3. They are not present in the withdrawn 0.4.2 APK or the published 0.4.0 APK, and no signed replacement is available until the original key is recovered. See the [correction audit](audits/2026-10-10-android-update-correction.md).

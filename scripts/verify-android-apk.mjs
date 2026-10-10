@@ -9,7 +9,10 @@ import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('../', import.meta.url));
 
 export function verifyAndroidApk(apk, kind = 'release') {
-  assert.ok(['release', 'debug', 'install-check'].includes(kind), 'Choose release, debug or install-check');
+  assert.ok(
+    ['release', 'fresh-release', 'debug', 'install-check'].includes(kind),
+    'Choose release, fresh-release, debug or install-check',
+  );
   assert.ok(process.env.ANDROID_HOME, 'Set ANDROID_HOME to the Android SDK location');
   const tools = join(process.env.ANDROID_HOME, 'build-tools/36.0.0');
   const run = (tool, args) => {
@@ -42,9 +45,11 @@ export function verifyAndroidApk(apk, kind = 'release') {
     match => match[1],
   );
   assert.equal(fingerprints.length, 1, 'The APK must have exactly one verified signer');
-  const releasePin = readFileSync(join(root, 'android/release-signing-certificate.sha256'), 'utf8').trim();
+  const pinFile =
+    kind === 'fresh-release' ? 'fresh-release-signing-certificate.sha256' : 'release-signing-certificate.sha256';
+  const releasePin = readFileSync(join(root, 'android', pinFile), 'utf8').trim();
   assert.match(releasePin, /^[a-f0-9]{64}$/);
-  if (kind === 'release')
+  if (kind === 'release' || kind === 'fresh-release')
     assert.equal(fingerprints[0], releasePin, 'The APK must retain the existing release certificate');
   else assert.notEqual(fingerprints[0], releasePin, 'Test APKs must not use the private release key');
   const badging = run('aapt2', ['dump', 'badging', apk]);
@@ -52,7 +57,12 @@ export function verifyAndroidApk(apk, kind = 'release') {
   const { version } = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
   const [major, minor, patch] = version.split('.').map(Number);
   const versionCode = major * 10000 + minor * 100 + patch;
-  const packageName = kind === 'install-check' ? 'com.researchbot.android.installcheck' : 'com.researchbot.android';
+  const packageName =
+    kind === 'fresh-release'
+      ? 'com.researchbot.android.fresh'
+      : kind === 'install-check'
+        ? 'com.researchbot.android.installcheck'
+        : 'com.researchbot.android';
   assert.deepEqual(
     packageInfo?.slice(1),
     [packageName, String(versionCode), version],
@@ -65,6 +75,11 @@ export function verifyAndroidApk(apk, kind = 'release') {
   const manifest = run('aapt2', ['dump', 'xmltree', apk, '--file', 'AndroidManifest.xml']);
   assert.ok(!/:testOnly\([^)]*\)=true/.test(manifest), 'The APK must install without ADB test-only flags');
   if (kind === 'install-check') assert.match(badging, /^application-label:'Research Bot APK Test'$/m);
+  if (kind === 'fresh-release')
+    assert.ok(
+      badging.includes(`application-label:'Research Bot ${version}'`),
+      'The fresh production app must be labeled with its release version',
+    );
   run('zipalign', ['-c', '-P', '16', '4', apk]);
   const bytes = readFileSync(apk);
   const info = {

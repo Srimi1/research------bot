@@ -8,6 +8,9 @@ def releaseSigningCheck = tasks.register('verifyReleaseSigning') {
     group = 'verification'
     description = 'Require the configured private key to match the pinned Android release certificate.'
     doLast {
+        if (System.getenv('RESEARCH_ANDROID_FRESH_INSTALL') == 'true') {
+            throw new GradleException('Separate production packages are not supported. An update must retain the original package and signing key.')
+        }
         def names = ['ANDROID_KEYSTORE_PATH', 'ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_ALIAS', 'ANDROID_KEY_PASSWORD']
         def missing = names.findAll { !System.getenv(it) }
         if (!missing.isEmpty()) {

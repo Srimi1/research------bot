@@ -308,8 +308,13 @@ try {
     mode = failureMode;
     // The first attempt already started when the dialog opened; its events were recorded from the start.
     if (failureMode !== 'response') events = [];
-    if (failureMode !== 'response')
+    if (failureMode !== 'response') {
+      // A retry can scroll the preferences sheet to its button; the resulting error must return into view.
+      await page.getByRole('dialog').evaluate(dialog => {
+        dialog.scrollTop = dialog.scrollHeight;
+      });
       await page.getByRole('button', { name: 'Continue with ChatGPT', exact: true }).click();
+    }
     const alert = page.getByRole('alert');
     await alert
       .filter({ hasText: `RB-AUTH-${code}` })

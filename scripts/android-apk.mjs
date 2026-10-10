@@ -7,6 +7,7 @@ import { verifyAndroidApk } from './verify-android-apk.mjs';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const kind = process.argv[2] || 'release';
 assert.ok(['release', 'install-check'].includes(kind), 'Choose release or install-check');
+const signedRelease = kind === 'release';
 const gradle = (...tasks) => {
   const command = process.platform === 'win32' ? 'cmd.exe' : 'bash';
   const wrapper = process.platform === 'win32' ? ['/d', '/c', 'gradlew.bat'] : ['./gradlew'];
@@ -15,12 +16,12 @@ const gradle = (...tasks) => {
     stdio: 'inherit',
   });
 };
-// Fail before rebuilding web assets if an installable release cannot be signed.
-if (kind === 'release') gradle(':app:verifyReleaseSigning');
 assert.ok(process.env.npm_execpath, 'Run this build through npm run android:apk or npm run android:apk:check');
+// Capacitor generates the plugin Gradle files needed even by the signing task.
 execFileSync(process.execPath, [process.env.npm_execpath, 'run', 'build:android'], { cwd: root, stdio: 'inherit' });
-const variant = kind === 'release' ? 'Release' : 'InstallCheck';
+if (signedRelease) gradle(':app:verifyReleaseSigning');
+const variant = signedRelease ? 'Release' : 'InstallCheck';
 gradle(`:app:assemble${variant}`, `:app:lint${variant}`);
-const directory = kind === 'release' ? 'release' : 'installCheck';
-const filename = kind === 'release' ? 'app-release.apk' : 'app-installCheck.apk';
+const directory = signedRelease ? 'release' : 'installCheck';
+const filename = signedRelease ? 'app-release.apk' : 'app-installCheck.apk';
 verifyAndroidApk(join(root, `android/app/build/outputs/apk/${directory}/${filename}`), kind);

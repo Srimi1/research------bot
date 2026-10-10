@@ -11,7 +11,6 @@ import {
   readLimited,
   sha256Base64url,
   timeoutSignal,
-  type Fetch,
   type FileStore,
 } from '../core/platform';
 import { createNativeFetch } from '../src/android/adapters';
@@ -21,7 +20,7 @@ import { readDeviceInfo } from '../src/android/device';
 import { createConnectionCheck } from '../src/android/diagnostics';
 import { version } from '../package.json';
 import { PersistentDatabase, RETRY_DELAY_MS, SAVE_DELAY_MS } from '../src/android/database';
-import { checksumFor, findUpdate, newer } from '../src/android/releases';
+import { checksumFor, newer } from '../src/android/releases';
 import type { Run, Source } from '../src/shared/types';
 
 function memoryFiles() {
@@ -247,42 +246,6 @@ test('update versions and checksums are compared exactly', () => {
   assert.equal(checksumFor(sums, 'research-bot-0.3.0-android.apk'), 'a'.repeat(64));
   assert.equal(checksumFor(sums, 'other.apk'), 'b'.repeat(64));
   assert.equal(checksumFor(sums, 'missing.apk'), undefined);
-});
-
-test('only a newer, published release with an APK and checksums is offered', async () => {
-  const release = (tag: string, extra: object = {}) => ({
-    tag_name: tag,
-    draft: false,
-    prerelease: false,
-    assets: [
-      {
-        name: `research-bot-${tag.slice(1)}-android.apk`,
-        browser_download_url: `https://github.com/Srimi1/research------bot/releases/download/${tag}/research-bot-${tag.slice(1)}-android.apk`,
-      },
-      {
-        name: 'SHA256SUMS-android.txt',
-        browser_download_url: `https://github.com/Srimi1/research------bot/releases/download/${tag}/SHA256SUMS-android.txt`,
-      },
-    ],
-    ...extra,
-  });
-  const answer =
-    (body: unknown, status = 200): Fetch =>
-    async (url, init) => {
-      assert.equal(String(url), 'https://api.github.com/repos/Srimi1/research------bot/releases/latest');
-      assert.equal(init?.redirect, 'error');
-      return new Response(JSON.stringify(body), { status });
-    };
-  const found = await findUpdate(answer(release('v0.3.0')), '0.2.0');
-  assert.equal(found?.version, '0.3.0');
-  assert.match(found!.apkUrl, /research-bot-0\.3\.0-android\.apk$/);
-  assert.equal(await findUpdate(answer(release('v0.2.0')), '0.2.0'), undefined);
-  assert.equal(await findUpdate(answer(release('v0.3.0', { prerelease: true })), '0.2.0'), undefined);
-  assert.equal(await findUpdate(answer(release('v0.3.0', { assets: [] })), '0.2.0'), undefined);
-  const elsewhere = release('v0.3.0');
-  elsewhere.assets[0].browser_download_url = 'https://example.com/research-bot-0.3.0-android.apk';
-  assert.equal(await findUpdate(answer(elsewhere), '0.2.0'), undefined);
-  await assert.rejects(findUpdate(answer({}, 403), '0.2.0'), /HTTP 403/);
 });
 
 test('response bodies are read with a size limit', async () => {

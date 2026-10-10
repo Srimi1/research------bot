@@ -11,7 +11,9 @@ A personal research workspace for Android, Windows, Linux and macOS. Keep your q
 [![Android 8+](https://img.shields.io/badge/Android-8%2B-254b3d.svg)](docs/android.md)
 [![Node.js 24](https://img.shields.io/badge/Node.js-24-254b3d.svg)](CONTRIBUTING.md)
 
-**Android download:** [Research Bot 0.4.2 fresh production APK](downloads/android/research-bot-0.4.2-android.apk) · [Installation and checksums](downloads/android/README.md) · [Published 0.4.0 APK](https://github.com/Srimi1/research------bot/releases/download/v0.4.0/research-bot-0.4.0-android.apk)
+**Android download:** [Published original 0.4.0 APK](https://github.com/Srimi1/research------bot/releases/download/v0.4.0/research-bot-0.4.0-android.apk) · [Download status and checksums](downloads/android/README.md)
+
+**Update correction:** the separate-app 0.4.2 APK has been withdrawn. Corrected 0.4.3 source keeps the original app identity and adds a visible update button. Its production APK is blocked until the original signing keystore is recovered. Keep your original app and data.
 
 **Mac download:** [Apple Silicon DMG](https://github.com/Srimi1/research------bot/releases/download/v0.4.1/research-bot-0.4.1-mac-arm64.dmg) · [Intel DMG](https://github.com/Srimi1/research------bot/releases/download/v0.4.1/research-bot-0.4.1-mac-x64.dmg) · [Mac installation and research guide](docs/macos.md)
 
@@ -41,20 +43,20 @@ These are browser-rendered phone previews with synthetic data; the welcome scree
 
 Crossref discovery works without signing in. AI assistants require eligible ChatGPT plan access. The app does not request copied cookies or session tokens, and does not silently switch to separately billed API usage.
 
-**0.4.2** adds literature review to Android and desktop. Select saved papers in **Assistants → Review**, inspect the supporting excerpts, then choose **Add reviewed draft to notes**. See the [literature review guide](docs/literature-review.md). Its signed Android production APK is a fresh installation named **Research Bot 0.4.2**, with its own package and storage alongside the existing app. The GitHub release is published. See the [fresh-install guide](docs/android-fresh-install.md).
+**Current source** includes literature review: select saved papers in **Assistants → Review**, inspect supporting excerpts, then choose **Add reviewed draft to notes**. See the [literature review guide](docs/literature-review.md). These changes do not establish a released compatible Android update.
 
 ## Install or build
 
 **0.4.0 protects ChatGPT sign-in during browser consent on Android.** It adds a short foreground service during browser consent and an `RB-AUTH-INTERRUPTED` recovery notice if Android closes the app. **0.4.0 uses a new signing key and requires a fresh installation.** It cannot update 0.3.9 in place. Export every project and verify the saved files before removing the old installation; uninstalling deletes local projects, notes and settings. Automatic project import is not available. On Legion OS or another aggressive ROM, set **App info → Battery usage → Unrestricted** if sign-in is repeatedly interrupted. See [Android installation and signing](docs/android.md).
 
-The signed **Android 0.4.2 fresh production APK is available in [downloads/android](downloads/android/README.md)** and attached to its draft release. Keep the existing app installed to retain its projects; the fresh app has separate data and cannot update the legacy package in place. [Release 0.4.0](https://github.com/Srimi1/research------bot/releases/tag/v0.4.0) retains the published legacy Android APK. Stable desktop installers are available in [release 0.4.1](https://github.com/Srimi1/research------bot/releases/tag/v0.4.1), with checksums. Mac beta builds are ad hoc signed without Developer ID signing/notarization and use manual updates; see the Mac guide for installation instructions.
+The original [Android 0.4.0 APK](downloads/android/README.md) remains published. The separate-app 0.4.2 release was withdrawn and restored to draft. A compatible Android update has not been released. Stable desktop installers remain available in [release 0.4.1](https://github.com/Srimi1/research------bot/releases/tag/v0.4.1), with checksums. Mac beta builds are ad hoc signed and use manual updates.
 
-| Platform   | Distribution / development                                                                                                      | Guide                                                               |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| Android 8+ | [Signed 0.4.2 fresh production APK](downloads/android/research-bot-0.4.2-android.apk); published legacy 0.4.0 remains available | [Fresh production installation](docs/android-fresh-install.md)      |
-| Windows    | NSIS installer                                                                                                                  | [Releases and updates](docs/implementation.md#releases-and-updates) |
-| Linux      | AppImage; live sign-in needs a secure desktop keyring                                                                           | [Operating notes](docs/implementation.md#operating-notes)           |
-| macOS 13+  | Apple Silicon and Intel DMGs; ad hoc signed beta, manual updates                                                                | [Mac installation and research](docs/macos.md)                      |
+| Platform   | Distribution / development                                                                                  | Guide                                                               |
+| ---------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| Android 8+ | [Published original 0.4.0 APK](downloads/android/research-bot-0.4.0-android.apk); compatible update pending | [Android installation and signing](docs/android.md)                 |
+| Windows    | NSIS installer                                                                                              | [Releases and updates](docs/implementation.md#releases-and-updates) |
+| Linux      | AppImage; live sign-in needs a secure desktop keyring                                                       | [Operating notes](docs/implementation.md#operating-notes)           |
+| macOS 13+  | Apple Silicon and Intel DMGs; ad hoc signed beta, manual updates                                            | [Mac installation and research](docs/macos.md)                      |
 
 For Android 16 on the OnePlus 7T Pro, use the Android build. The app targets SDK 36 and supports Android 8 or later. No local AI model is bundled. Physical-device and custom-ROM behavior still need testing on your phone.
 

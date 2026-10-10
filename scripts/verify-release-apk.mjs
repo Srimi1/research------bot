@@ -13,9 +13,8 @@ const json = path => JSON.parse(readFileSync(join(root, path), 'utf8'));
 const { version } = json('package.json');
 const info = json('downloads/android/BUILD_INFO.json');
 const kind = info.kind || 'release';
-assert.ok(['release', 'fresh-release'].includes(kind), 'Prebuilt publication requires a production release APK');
-const pinFile =
-  kind === 'fresh-release' ? 'fresh-release-signing-certificate.sha256' : 'release-signing-certificate.sha256';
+assert.equal(kind, 'release', 'Prebuilt publication requires an update using the original application identity');
+const pinFile = 'release-signing-certificate.sha256';
 assert.match(version, /^\d+\.\d+\.\d+$/);
 assert.equal(info.version, version, 'APK build version must match package.json');
 assert.match(info.sourceCommit, /^[a-f0-9]{40}$/);
@@ -26,7 +25,7 @@ assert.equal(
   readFileSync(join(root, 'android', pinFile), 'utf8').trim(),
   'Prebuilt APK must use the committed release signing certificate',
 );
-assert.equal(info.package, kind === 'fresh-release' ? 'com.researchbot.android.fresh' : 'com.researchbot.android');
+assert.equal(info.package, 'com.researchbot.android');
 const [major, minor, patch] = version.split('.').map(Number);
 assert.equal(info.versionCode, major * 10000 + minor * 100 + patch);
 

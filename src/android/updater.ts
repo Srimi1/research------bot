@@ -1,58 +1,78 @@
 import { startUpdates, type Updater } from '../../core/updates';
 import type { Fetch } from '../../core/platform';
-import { readLimited, timeoutSignal } from '../../core/platform';
-import { Native } from './native';
-import { checksumFor, findUpdate } from './releases';
+import type { UpdateCheckResult } from '../shared/types';
+import { Native, type ResearchNativePlugin } from './native';
+import { checksumFor, findUpdate, releaseAssetText } from './releases';
 
-/**
- * The desktop update policy (electron/updater.ts) driving Android's installer: check after start
- * and every six hours, download in the background, verify, then ask before opening the installer.
- */
+type Bridge = Pick<ResearchNativePlugin, 'appInfo' | 'downloadUpdate' | 'installUpdate'>;
+
+/** Manual and background checks share one verified download and never change the app identity. */
+export function createAndroidUpdateController(fetch: Fetch, bridge: Bridge) {
+  let ready: string | undefined;
+  let checking: Promise<UpdateCheckResult> | undefined;
+  const checkForUpdates = (): Promise<UpdateCheckResult> => {
+    if (checking) return checking;
+    checking = (async (): Promise<UpdateCheckResult> => {
+      const release = await findUpdate(fetch, await bridge.appInfo());
+      if (!release) {
+        ready = undefined;
+        return { status: 'current' };
+      }
+      if (ready !== release.version) {
+        // The shared native cache is overwritten by a download, including a failed download.
+        ready = undefined;
+        const sums = await releaseAssetText(fetch, release.sumsUrl);
+        const sha256 = checksumFor(sums, `research-bot-${release.version}-android.apk`);
+        if (!sha256 || sha256 !== release.sha256) throw new Error('The update checksum and build information differ.');
+        const downloaded = await bridge.downloadUpdate({ url: release.apkUrl, sha256 });
+        if (downloaded.version !== release.version)
+          throw new Error('The downloaded APK version differs from its release.');
+        ready = release.version;
+      }
+      return { status: 'ready', version: ready };
+    })().finally(() => {
+      checking = undefined;
+    });
+    return checking;
+  };
+  return {
+    checkForUpdates,
+    async installUpdate() {
+      if (!ready) throw new Error('Download the update first.');
+      try {
+        await bridge.installUpdate();
+      } catch (error) {
+        if (/download the update first/i.test(error instanceof Error ? error.message : String(error)))
+          ready = undefined;
+        throw error;
+      }
+    },
+  };
+}
+
+/** Manual checks work even when the shared background update policy is disabled. */
 export function startAndroidUpdates(fetch: Fetch, enabled: () => boolean, log: (message: string) => void) {
+  const controller = createAndroidUpdateController(fetch, Native);
   const listeners: { downloaded: ((info: { version: string }) => void)[]; error: ((error: Error) => void)[] } = {
     downloaded: [],
     error: [],
   };
-  let ready: string | undefined;
-  let checking = false;
   const updater: Updater = {
     autoDownload: true,
     autoInstallOnAppQuit: false,
     async checkForUpdates() {
-      if (checking) return;
-      checking = true;
       try {
-        const info = await Native.appInfo();
-        const release = await findUpdate(fetch, info.version);
-        if (!release) return;
-        if (ready !== release.version) {
-          const sums = await fetch(release.sumsUrl, { signal: timeoutSignal(60_000) });
-          if (!sums.ok) {
-            await sums.body?.cancel();
-            throw new Error(`The update checksums answered HTTP ${sums.status}.`);
-          }
-          const sha256 = checksumFor(await readLimited(sums, 100_000), `research-bot-${release.version}-android.apk`);
-          if (!sha256) throw new Error('The update has no published checksum.');
-          await Native.downloadUpdate({ url: release.apkUrl, sha256 });
-          ready = release.version;
-        }
-        listeners.downloaded.forEach(listener => listener({ version: release.version }));
+        const result = await controller.checkForUpdates();
+        if (result.status === 'ready') listeners.downloaded.forEach(listener => listener({ version: result.version }));
       } catch (error) {
         listeners.error.forEach(listener => listener(error instanceof Error ? error : new Error(String(error))));
-      } finally {
-        checking = false;
       }
     },
     quitAndInstall() {
-      Native.installUpdate().catch(error => {
+      controller.installUpdate().catch(error => {
         const message = error instanceof Error ? error.message : String(error);
         log(`Update install failed: ${message}`);
-        if (/download the update first/i.test(message)) {
-          // Android cleared the cached APK. Download it again and ask once it is ready.
-          ready = undefined;
-          window.alert('The downloaded update was removed by Android. Research Bot will download it again.');
-          void updater.checkForUpdates();
-        } else window.alert(message || 'The update could not be installed.');
+        window.alert(message || 'The update could not be installed.');
       });
     },
     on(event: 'update-downloaded' | 'error', listener: any) {
@@ -65,9 +85,9 @@ export function startAndroidUpdates(fetch: Fetch, enabled: () => boolean, log: (
     enabled,
     askToRestart: async version =>
       window.confirm(
-        `Research Bot ${version} is ready to install.\n\nInstall it now? Your projects stay on this phone. ` +
-          'If you choose Cancel, you will be asked again next time.',
+        `Research Bot ${version} is ready to install.\n\nInstall it now? Your projects stay on this phone.`,
       ),
     log,
   });
+  return controller;
 }

@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import type {
   Account,
+  UpdateCheckResult,
   ConnectionDiagnostics,
   AgentResult,
   GrammarEdit,
@@ -289,6 +290,10 @@ function AccountSettings({
   const [error, setError] = useState('');
   const [checkingConnection, setCheckingConnection] = useState(false);
   const [connection, setConnection] = useState<ConnectionDiagnostics | null>(null);
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [installingUpdate, setInstallingUpdate] = useState(false);
+  const [updateResult, setUpdateResult] = useState<UpdateCheckResult | null>(null);
+  const [updateError, setUpdateError] = useState('');
   const connectionController = useRef<AbortController | null>(null);
   const signingRef = useRef(false);
   useEffect(() => () => connectionController.current?.abort(), []);
@@ -530,6 +535,66 @@ function AccountSettings({
         </div>
       )}
       <div className="divider" />
+      {platform === 'android' && api().checkForUpdates && (
+        <>
+          <h3>App updates</h3>
+          <p className="help">Check for an update that keeps your projects and replaces this app.</p>
+          <div className="account-actions">
+            <button
+              className="button secondary"
+              disabled={checkingUpdate || installingUpdate}
+              onClick={async () => {
+                setCheckingUpdate(true);
+                setUpdateError('');
+                setUpdateResult(null);
+                try {
+                  setUpdateResult((await api().checkForUpdates!()) ?? null);
+                } catch (error) {
+                  setUpdateError(errorText(error));
+                } finally {
+                  setCheckingUpdate(false);
+                }
+              }}
+            >
+              {checkingUpdate && <LoaderCircle size={16} className="spin" />}
+              {checkingUpdate ? 'Checking for updates…' : 'Check for updates'}
+            </button>
+            {updateResult?.status === 'ready' && (
+              <button
+                className="button primary"
+                disabled={installingUpdate || checkingUpdate}
+                onClick={async () => {
+                  setInstallingUpdate(true);
+                  setUpdateError('');
+                  try {
+                    await api().installUpdate!();
+                  } catch (error) {
+                    setUpdateError(errorText(error));
+                    if (/download the update first/i.test(errorText(error))) setUpdateResult(null);
+                  } finally {
+                    setInstallingUpdate(false);
+                  }
+                }}
+              >
+                Install update {updateResult.version}
+              </button>
+            )}
+          </div>
+          {updateResult && (
+            <p className="help" role="status">
+              {updateResult.status === 'ready'
+                ? `Research Bot ${updateResult.version} is downloaded and verified.`
+                : 'No newer compatible update is published.'}
+            </p>
+          )}
+          {updateError && (
+            <p className="error" role="alert">
+              {updateError}
+            </p>
+          )}
+          <div className="divider" />
+        </>
+      )}
       <h3>Agent preferences</h3>
       {settings && (
         <>

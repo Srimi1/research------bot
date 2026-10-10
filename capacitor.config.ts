@@ -1,8 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId:
-    process.env.RESEARCH_ANDROID_FRESH_INSTALL === 'true' ? 'com.researchbot.android.fresh' : 'com.researchbot.android',
+  appId: 'com.researchbot.android',
   appName: 'Research Bot',
   webDir: 'dist',
   android: {

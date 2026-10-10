@@ -40,6 +40,8 @@ export interface ResearchNativePlugin {
     sdk: number;
     canInstall: boolean;
     webviewVersion?: string;
+    packageName?: string;
+    certificateSha256?: string;
   }>;
   downloadUpdate(options: { url: string; sha256: string }): Promise<{ version: string }>;
   installUpdate(): Promise<void>;

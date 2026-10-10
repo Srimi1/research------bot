@@ -13,7 +13,7 @@ on:
       tag:
         description: Release tag, for example v0.4.0. Must match the version in package.json.
         required: true
-        default: v0.4.0
+        default: v0.4.3
       platforms:
         description: Build all installers, only desktop installers, or only the Android APK.
         type: choice
@@ -36,9 +36,9 @@ on:
           - build
           - prebuilt
       android_upgrade_from:
-        description: Optional previous published tag to test upgrading without losing projects, for example v0.3.7.
+        description: Previous published Android release that must upgrade with saved projects intact.
         required: false
-        default: ''
+        default: v0.4.0
 
 permissions:
   contents: write
@@ -205,6 +205,7 @@ jobs:
     env:
       RESEARCH_RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
       ANDROID_SOURCE: ${{ inputs.android_source || 'build' }}
+      RESEARCH_PREVIOUS_TAG: ${{ inputs.android_upgrade_from || 'v0.4.0' }}
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
@@ -266,19 +267,7 @@ jobs:
         run: ./gradlew --no-daemon assembleRelease lintRelease
       - name: Verify the committed APK and its source provenance
         if: env.ANDROID_SOURCE == 'prebuilt'
-        env:
-          RESEARCH_PREVIOUS_TAG: ${{ inputs.android_upgrade_from }}
-        run: |
-          node scripts/verify-release-apk.mjs
-          node --input-type=module <<'NODE'
-          import assert from 'node:assert/strict';
-          import { appendFileSync, readFileSync } from 'node:fs';
-          const info = JSON.parse(readFileSync('downloads/android/BUILD_INFO.json', 'utf8'));
-          if (info.kind === 'fresh-release') {
-            assert.ok(!process.env.RESEARCH_PREVIOUS_TAG, 'A fresh package must not be tested as an in-place legacy upgrade.');
-            appendFileSync(process.env.GITHUB_ENV, 'RESEARCH_ANDROID_PACKAGE=com.researchbot.android.fresh\n');
-          }
-          NODE
+        run: node scripts/verify-release-apk.mjs
       - name: Verify and collect the APK
         run: |
           version="${RESEARCH_RELEASE_TAG#v}"
@@ -297,16 +286,13 @@ jobs:
           cd upload
           sha256sum -- * > SHA256SUMS-android.txt
           cat SHA256SUMS-android.txt
-          cp ../docs/audits/2026-10-09-releases-and-apks.md RELEASE_AUDIT-2026-10-09.md
+          cp ../docs/audits/2026-10-10-android-update-correction.md RELEASE_AUDIT-2026-10-10.md
       - name: Install the persistent Android accessibility driver
         run: |
           python3 -m venv "$RUNNER_TEMP/research-android-qa"
           "$RUNNER_TEMP/research-android-qa/bin/pip" install uiautomator2==3.7.0
           echo "RESEARCH_UIAUTOMATOR_PYTHON=$RUNNER_TEMP/research-android-qa/bin/python" >> "$GITHUB_ENV"
       - name: Download and verify the previous APK for an upgrade test
-        if: github.event_name == 'workflow_dispatch' && inputs.android_upgrade_from != ''
-        env:
-          RESEARCH_PREVIOUS_TAG: ${{ inputs.android_upgrade_from }}
         run: |
           if ! [[ "$RESEARCH_PREVIOUS_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "::error::Previous tag must be a version such as v0.3.7"
@@ -325,7 +311,7 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: Verify fresh and upgraded signed APK persistence on Android 16
+      - name: Verify the signed in-place upgrade and saved projects on Android 16
         uses: ReactiveCircus/android-emulator-runner@4c44018e59b437e86cdfc41da381398f93ed8808 # v2
         with:
           api-level: 36
@@ -338,11 +324,7 @@ jobs:
           disable-animations: true
           script: |
             node scripts/android-emulator-ready.mjs
-            if [ "${RESEARCH_ANDROID_PACKAGE:-}" = com.researchbot.android.fresh ]; then RESEARCH_ANDROID_PACKAGE=com.researchbot.android RESEARCH_ANDROID_RESULTS=android-startup-results/legacy-before node scripts/android-startup-smoke.mjs downloads/android/research-bot-0.4.0-android.apk; fi
-            node scripts/android-startup-smoke.mjs "upload/research-bot-${RESEARCH_RELEASE_TAG#v}-android.apk"
-            if [ "${RESEARCH_ANDROID_PACKAGE:-}" = com.researchbot.android.fresh ]; then RESEARCH_ANDROID_PACKAGE=com.researchbot.android RESEARCH_ANDROID_RESULTS=android-startup-results/legacy-after node scripts/android-startup-smoke.mjs downloads/android/research-bot-0.4.0-android.apk --verify-existing; fi
-            # This action executes each script line separately; keep the conditional together.
-            if [ -n "${RESEARCH_PREVIOUS_APK:-}" ]; then adb uninstall com.researchbot.android && node scripts/android-startup-smoke.mjs "upload/research-bot-${RESEARCH_RELEASE_TAG#v}-android.apk" "$RESEARCH_PREVIOUS_APK"; fi
+            test -n "$RESEARCH_PREVIOUS_APK" && node scripts/android-startup-smoke.mjs "upload/research-bot-${RESEARCH_RELEASE_TAG#v}-android.apk" "$RESEARCH_PREVIOUS_APK"
       - name: Record the passed signed APK runtime check
         run: |
           node --input-type=module <<'NODE'
@@ -350,18 +332,14 @@ jobs:
           const path = 'upload/BUILD_INFO-android.json';
           const info = JSON.parse(readFileSync(path, 'utf8'));
           info.validation.android16SignedApkStartupAndPersistence = 'passed';
-          if (info.kind === 'fresh-release') info.validation.android16FreshAndLegacyCoexistence = 'passed';
-          if (process.env.RESEARCH_PREVIOUS_APK) info.validation.android16SignedApkUpgradeAndPersistence = 'passed';
+          if (!process.env.RESEARCH_PREVIOUS_APK) throw new Error('An Android release requires an in-place upgrade test.');
+          info.validation.android16SignedApkUpgradeAndPersistence = 'passed';
+          info.upgradeFrom = process.env.RESEARCH_PREVIOUS_TAG;
           info.githubReleaseRun = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
           writeFileSync(path, JSON.stringify(info, null, 2) + '\n');
-          if (info.kind === 'fresh-release') {
-            const auditPath = 'upload/RELEASE_AUDIT-2026-10-09.md';
-            const evidence = `\n\n## Fresh production APK runtime verification\n\nThe exact signed 0.4.2 APK passed Android 16 installation, SQLite startup, project/note creation and cold-restart recovery. The regular 0.4.0 app and its saved project/notes remained available after installing and testing the fresh production app. Workflow: ${info.githubReleaseRun}.\n`;
-            writeFileSync(auditPath, readFileSync(auditPath, 'utf8') + evidence);
-          }
           NODE
           cd upload
-          sha256sum BUILD_INFO-android.json research-bot-*-android.apk RELEASE_AUDIT-2026-10-09.md > SHA256SUMS-android.txt
+          sha256sum BUILD_INFO-android.json research-bot-*-android.apk RELEASE_AUDIT-2026-10-10.md > SHA256SUMS-android.txt
       - name: Upload release files
         run: gh release upload "$RESEARCH_RELEASE_TAG" upload/* --repo "$GITHUB_REPOSITORY" --clobber
       - uses: actions/upload-artifact@v4

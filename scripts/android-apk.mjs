@@ -6,12 +6,8 @@ import { verifyAndroidApk } from './verify-android-apk.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const kind = process.argv[2] || 'release';
-assert.ok(
-  ['release', 'fresh-release', 'install-check'].includes(kind),
-  'Choose release, fresh-release or install-check',
-);
-if (kind === 'fresh-release') process.env.RESEARCH_ANDROID_FRESH_INSTALL = 'true';
-const signedRelease = kind === 'release' || kind === 'fresh-release';
+assert.ok(['release', 'install-check'].includes(kind), 'Choose release or install-check');
+const signedRelease = kind === 'release';
 const gradle = (...tasks) => {
   const command = process.platform === 'win32' ? 'cmd.exe' : 'bash';
   const wrapper = process.platform === 'win32' ? ['/d', '/c', 'gradlew.bat'] : ['./gradlew'];

@@ -8,14 +8,15 @@ def releaseSigningCheck = tasks.register('verifyReleaseSigning') {
     group = 'verification'
     description = 'Require the configured private key to match the pinned Android release certificate.'
     doLast {
+        if (System.getenv('RESEARCH_ANDROID_FRESH_INSTALL') == 'true') {
+            throw new GradleException('Separate production packages are not supported. An update must retain the original package and signing key.')
+        }
         def names = ['ANDROID_KEYSTORE_PATH', 'ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_ALIAS', 'ANDROID_KEY_PASSWORD']
         def missing = names.findAll { !System.getenv(it) }
         if (!missing.isEmpty()) {
             throw new GradleException("Release APK signing is not configured: ${missing.join(', ')}. Restore the existing release key; see docs/android.md. Use assembleInstallCheck for a separate test APK.")
         }
-        def pinName = System.getenv('RESEARCH_ANDROID_FRESH_INSTALL') == 'true'
-            ? 'fresh-release-signing-certificate.sha256' : 'release-signing-certificate.sha256'
-        def pinFile = rootProject.file(pinName)
+        def pinFile = rootProject.file('release-signing-certificate.sha256')
         def expected = pinFile.isFile() ? pinFile.text.trim() : ''
         if (!(expected ==~ /[a-f0-9]{64}/)) {
             throw new GradleException('The Android release certificate fingerprint is missing or invalid.')

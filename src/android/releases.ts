@@ -1,7 +1,8 @@
 import type { Fetch } from '../../core/platform';
-import { requestJson } from '../../core/platform';
+import { readLimited, requestJson, timeoutSignal } from '../../core/platform';
 
-const RELEASES = 'https://api.github.com/repos/Srimi1/research------bot/releases/latest';
+const REPOSITORY = 'https://github.com/Srimi1/research------bot';
+const RELEASES = 'https://api.github.com/repos/Srimi1/research------bot/releases?per_page=30';
 
 interface Release {
   tag_name?: unknown;
@@ -34,21 +35,64 @@ export interface AndroidRelease {
   version: string;
   apkUrl: string;
   sumsUrl: string;
+  sha256: string;
 }
 
-/** The newest published Android build, when it is newer than `current`. */
-export async function findUpdate(fetch: Fetch, current: string): Promise<AndroidRelease | undefined> {
-  const release = await requestJson<Release>(fetch, RELEASES, {
+export interface InstalledAndroidApp {
+  version: string;
+  versionCode: number;
+  sdk: number;
+  packageName?: string;
+  certificateSha256?: string;
+}
+
+/** GitHub assets redirect to its CDN; these bounded public reads contain no credentials. */
+export async function releaseAssetText(fetch: Fetch, url: string): Promise<string> {
+  const response = await fetch(url, { redirect: 'follow', signal: timeoutSignal(60_000) });
+  if (!response.ok) {
+    await response.body?.cancel();
+    throw new Error(`The update metadata answered HTTP ${response.status}.`);
+  }
+  return readLimited(response, 100_000);
+}
+
+/** Select a compatible Android release independently of desktop Latest. */
+export async function findUpdate(fetch: Fetch, current: InstalledAndroidApp): Promise<AndroidRelease | undefined> {
+  if (!current.packageName || !/^[a-f0-9]{64}$/.test(current.certificateSha256 ?? ''))
+    throw new Error('The installed app signing information is unavailable. No update can be offered safely.');
+  const releases = await requestJson<Release[]>(fetch, RELEASES, {
     headers: { Accept: 'application/vnd.github+json' },
   });
-  if (release.draft || release.prerelease || typeof release.tag_name !== 'string') return undefined;
-  const version = release.tag_name.replace(/^v/, '');
-  if (!/^\d+\.\d+\.\d+$/.test(version) || !newer(version, current)) return undefined;
-  const asset = (name: string) => {
-    const url = release.assets?.find(item => item.name === name)?.browser_download_url;
-    return typeof url === 'string' && url.startsWith('https://github.com/') ? url : undefined;
-  };
-  const apkUrl = asset(`research-bot-${version}-android.apk`);
-  const sumsUrl = asset('SHA256SUMS-android.txt');
-  return apkUrl && sumsUrl ? { version, apkUrl, sumsUrl } : undefined;
+  if (!Array.isArray(releases)) throw new Error('GitHub returned invalid release information.');
+  const candidates = releases
+    .filter(release => !release.draft && !release.prerelease && typeof release.tag_name === 'string')
+    .map(release => ({ release, version: (release.tag_name as string).replace(/^v/, '') }))
+    .filter(({ version }) => /^\d+\.\d+\.\d+$/.test(version) && newer(version, current.version))
+    .sort((a, b) => (newer(a.version, b.version) ? -1 : newer(b.version, a.version) ? 1 : 0));
+  for (const { release, version } of candidates) {
+    const asset = (name: string) => {
+      const url = release.assets?.find(item => item.name === name)?.browser_download_url;
+      return url === `${REPOSITORY}/releases/download/${release.tag_name}/${name}` ? url : undefined;
+    };
+    const apkUrl = asset(`research-bot-${version}-android.apk`);
+    const sumsUrl = asset('SHA256SUMS-android.txt');
+    const infoUrl = asset('BUILD_INFO-android.json');
+    if (!apkUrl || !sumsUrl || !infoUrl) continue;
+    const info = JSON.parse(await releaseAssetText(fetch, infoUrl));
+    if (
+      !info ||
+      (info.kind !== undefined && info.kind !== 'release') ||
+      info.version !== version ||
+      info.package !== current.packageName ||
+      info.certificateSha256 !== current.certificateSha256 ||
+      !Number.isSafeInteger(info.versionCode) ||
+      info.versionCode <= current.versionCode ||
+      !Number.isSafeInteger(info.minSdk) ||
+      info.minSdk > current.sdk ||
+      !/^[a-f0-9]{64}$/.test(info.apkSha256)
+    )
+      continue;
+    return { version, apkUrl, sumsUrl, sha256: info.apkSha256 };
+  }
+  return undefined;
 }

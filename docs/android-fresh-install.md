@@ -1,13 +1,9 @@
-# Android 0.4.2 fresh production installation
+# Withdrawn Android 0.4.2 separate-app distribution
 
-The 0.4.2 fresh production APK uses package `com.researchbot.android.fresh` and appears as **Research Bot 0.4.2**. It is a signed release build with debugging disabled, rather than the development-signed APK Test application.
+The old 0.4.2 APK used `com.researchbot.android.fresh` and its own signing key and storage. It installed a second app and did not meet the requirement to update the existing Research Bot app. It has been withdrawn from public releases and active repository downloads.
 
-It can be installed alongside the existing `com.researchbot.android` app. Existing projects and credentials remain in that app; the fresh app starts with separate local storage. It does not perform an in-place upgrade or automatically import old projects. Keep the existing app installed to retain access to its data.
+Its successful startup and saved-note tests verified the separate app. They did not verify an in-place update of `com.researchbot.android`. The independent private key cannot sign an update accepted by the original app, even if the package name is changed.
 
-This distribution has an independent release certificate pinned in `android/fresh-release-signing-certificate.sha256`. The original 0.4.0 certificate remains pinned in `android/release-signing-certificate.sha256`. The private production keystore and credentials are backed up outside Git in the managed workspace; no private signing material is committed or attached to a release.
+Corrected source retains the original package and certificate and rejects the former production build flag. The independent key and withdrawn APK remain backed up privately for audit and for safeguarding any data created in that app; they are not used as a fallback for regular release signing.
 
-To reproduce a compatible build, select that saved signing profile and run `npm run android:apk:fresh`. The command generates the Capacitor plugin files, verifies the actual private key against the fresh certificate, and packages the production app. Its default legacy release command retains the original application identity and certificate requirements.
-
-The prebuilt release workflow verifies APK bytes, source provenance, signature, package, version, SDK levels, disabled debugging and alignment. On Android 16 it creates a project and notes in the existing 0.4.0 app, installs and tests the fresh production app, and then checks the original project's notes again. Publication can remain disabled while the verified assets are uploaded to a draft.
-
-Live ChatGPT authorization/inference and the physical OnePlus 7T Pro / Legion OS remain separate validation limits.
+Keep the original app and its projects. See the [update correction audit](audits/2026-10-10-android-update-correction.md). A compatible production update requires recovery of the original private signing key.

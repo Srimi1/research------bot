@@ -152,19 +152,12 @@ try {
   assert.ok(valid.text.includes(marker));
   assert.match(valid.text, /Verified release signing certificate/);
   console.log('Passed: the pinned private key permits release packaging.');
-  const freshPinPath = join(fixture, 'fresh-release-signing-certificate.sha256');
-  writeFileSync(freshPinPath, `${pin}\n`);
-  writeFileSync(pinPath, `${'0'.repeat(64)}\n`);
   const fresh = run({ ...configured, RESEARCH_ANDROID_FRESH_INSTALL: 'true' });
-  assert.equal(fresh.status, 0, fresh.text);
-  assert.ok(fresh.text.includes(marker));
-  assert.equal(readFileSync(pinPath, 'utf8'), `${'0'.repeat(64)}\n`, 'Fresh signing must not replace the legacy pin');
-  writeFileSync(freshPinPath, `${'1'.repeat(64)}\n`);
-  const freshMismatch = run({ ...configured, RESEARCH_ANDROID_FRESH_INSTALL: 'true' });
-  assert.notEqual(freshMismatch.status, 0);
-  assert.match(freshMismatch.text, /does not match the pinned release certificate/);
-  assert.ok(!freshMismatch.text.includes(marker));
-  console.log('Passed: fresh production signing uses its independent pin and rejects a different key.');
+  assert.notEqual(fresh.status, 0);
+  assert.match(fresh.text, /Separate production packages are not supported/);
+  assert.ok(!fresh.text.includes(marker));
+  assert.equal(readFileSync(pinPath, 'utf8'), `${pin}\n`, 'The original certificate pin must not change');
+  console.log('Passed: a separate production package cannot bypass the original signing identity.');
 } finally {
   rmSync(fixture, { recursive: true, force: true });
 }

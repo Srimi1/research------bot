@@ -90,12 +90,12 @@ export function createAndroidAPI(): ResearchAPI {
     void App.addListener('backButton', () => {
       if (!back()) void App.minimizeApp();
     });
-    startAndroidUpdates(
+    const updates = startAndroidUpdates(
       nativeFetch,
       () => store.getSettings().autoUpdate,
       message => console.warn(message),
     );
-    return { handlers };
+    return { handlers, updates };
   })();
 
   const call =
@@ -128,6 +128,8 @@ export function createAndroidAPI(): ResearchAPI {
     signIn: () => withDevice(call('signIn')()),
     checkSignInConnection: createConnectionCheck(nativeFetch, Native, device),
     openAppSettings: () => Native.openAppSettings(),
+    checkForUpdates: async () => (await ready).updates.checkForUpdates(),
+    installUpdate: async () => (await ready).updates.installUpdate(),
     cancelSignIn: call('cancelSignIn'),
     signOut: call('signOut'),
     models: call('models'),

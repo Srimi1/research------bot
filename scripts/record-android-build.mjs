@@ -8,6 +8,7 @@ import { verifyAndroidApk } from './verify-android-apk.mjs';
 
 const [apk, output, kind = 'release'] = process.argv.slice(2);
 assert.ok(apk && output, 'Pass the signed APK and output BUILD_INFO JSON paths');
+assert.equal(kind, 'release', 'Record production updates only with the original application identity');
 const verified = verifyAndroidApk(apk, kind);
 const tools = join(process.env.ANDROID_HOME, 'build-tools/36.0.0');
 const run = (command, args) => execFileSync(command, args, { encoding: 'utf8', timeout: 60_000 });
@@ -46,11 +47,6 @@ const info = {
     android16SignedApkStartupAndPersistence: 'pending release workflow',
   },
   limits: [
-    ...(kind === 'fresh-release'
-      ? [
-          'Fresh production installation with separate app data; cannot update the legacy com.researchbot.android package.',
-        ]
-      : []),
     'Live ChatGPT sign-in and inference on the physical OnePlus 7T Pro / Legion OS require maintainer confirmation',
   ],
 };

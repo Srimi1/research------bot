@@ -37,3 +37,9 @@ The original 0.4.0 download, bytes, metadata and checksum are restored unchanged
 - The complete UI regression suite passed: desktop/phone layouts, save/review/export flows, literature evidence, sign-in entry points, packaged SQLite, Android OAuth with current and legacy WebView capabilities, and the manual update flow. Network/native services in these browser tests are synthetic. No production-signature upgrade or physical-phone test has passed for 0.4.3.
 
 The source correction and draft PR do not modify an already installed APK. The signing blocker remains, physical-device installation remains unverified, and duplicate apps on the user's phone remain outside this environment's control.
+
+## Follow-up verification
+
+The [pull-request checks](https://github.com/Srimi1/research------bot/actions/runs/38051874408) and [Android installation checks](https://github.com/Srimi1/research------bot/actions/runs/38051874523) passed for commit `9d478ec519a922567e7fd2daa634b38c2a832303`. Android runtime tests also passed in the [push run](https://github.com/Srimi1/research------bot/actions/runs/38051871430), including startup, saved notes and browser-consent transport. These were debug/internal test APKs, not a production-key upgrade.
+
+The push run caught a phone-layout failure: retrying sign-in could leave its complete error above the visible portion of the enlarged preferences sheet. Account and update errors now scroll into view when they appear, including when saved account diagnostics change the layout. The existing Android authentication test now deliberately scrolls the sheet before retrying. Current and legacy-WebView authentication tests, manual-update UI tests, TypeScript/build, lint and formatting passed locally with this correction. New GitHub checks run after the follow-up push. The original production signing key remains unavailable; no compatible replacement APK has been released.

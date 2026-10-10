@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
   ArrowDown,
@@ -294,6 +294,14 @@ function AccountSettings({
   const [installingUpdate, setInstallingUpdate] = useState(false);
   const [updateResult, setUpdateResult] = useState<UpdateCheckResult | null>(null);
   const [updateError, setUpdateError] = useState('');
+  const errorRef = useRef<HTMLParagraphElement>(null);
+  const updateErrorRef = useRef<HTMLParagraphElement>(null);
+  useLayoutEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ block: 'nearest' });
+  }, [error, account?.message]);
+  useLayoutEffect(() => {
+    if (updateError) updateErrorRef.current?.scrollIntoView({ block: 'nearest' });
+  }, [updateError]);
   const connectionController = useRef<AbortController | null>(null);
   const signingRef = useRef(false);
   useEffect(() => () => connectionController.current?.abort(), []);
@@ -401,7 +409,7 @@ function AccountSettings({
         </p>
       )}
       {error && (
-        <p className="error" role="alert">
+        <p className="error" role="alert" ref={errorRef}>
           {error}
         </p>
       )}
@@ -588,7 +596,7 @@ function AccountSettings({
             </p>
           )}
           {updateError && (
-            <p className="error" role="alert">
+            <p className="error" role="alert" ref={updateErrorRef}>
               {updateError}
             </p>
           )}
